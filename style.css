@@ -259,3 +259,82 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 #login-overlay { background: var(--bg-body); z-index: 99999; display: flex; justify-content: center; align-items: center; }
 .auth-card { background: var(--bg-surface); padding: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); width: 350px; text-align: center; border: 1px solid var(--border-color); }
 
+/* ========================================= */
+/* 11. WORKSPACE COLUMNS & COLLAPSIBLE MENU  */
+/* ========================================= */
+
+/* Fixed 3-Column Workspace Layout */
+#workspace-grid-container {
+    display: grid !important;
+    /* Add Patient (340px) | Pending (Fluid/Malaki) | Completed (240px) */
+    grid-template-columns: 340px 1fr 240px !important;
+    gap: 20px;
+    height: 100%;
+    align-items: stretch;
+}
+
+/* Fix para hindi siksikan ang Add Patient Form */
+#pane-add-patient .form-input, #pane-add-patient .form-select {
+    padding: 10px 12px; /* Sakto lang ang luwag */
+    font-size: 0.85rem;
+}
+
+/* Collapsible Sidebar Styles */
+.sidebar {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.sidebar.collapsed {
+    width: 80px; /* Narrow mode */
+    padding: 20px 10px;
+}
+
+/* Itago ang mga text kapag collapsed ang sidebar */
+.sidebar.collapsed .logo-container h2, 
+.sidebar.collapsed .nav-links span.menu-text, 
+.sidebar.collapsed .nav-tooltip,
+.sidebar.collapsed #theme-text {
+    display: none !important;
+}
+
+.sidebar.collapsed .logo-container img {
+    width: 40px; height: 40px; margin-bottom: 0;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 12px 0;
+}
+
+.sidebar.collapsed .nav-item i {
+    margin-right: 0;
+    font-size: 1.6rem;
+}
+
+/* Sidebar Toggle Button */
+.btn-toggle-sidebar {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    position: absolute;
+    top: 20px;
+    left: 10px;
+    transition: 0.2s;
+}
+.btn-toggle-sidebar:hover { color: var(--pri); }
+
+.sidebar.collapsed .btn-toggle-sidebar { left: 50%; transform: translateX(-50%); }
+
+/* ========================================= */
+/* 12. FIX: NO-DROP REGISTRY MENU HITBOX     */
+/* ========================================= */
+.pop-out-menu {
+    /* Dinikit natin nang husto para walang gap */
+    right: 100%;
+    margin-right: -15px; 
+    padding-right: 15px; /* Invisible bridge para hindi mawala hover */
+}
+
