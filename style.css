@@ -1,340 +1,226 @@
 /* ========================================= */
-/* 1. AESTHETIC FLUFFY SYSTEM (Feminine)     */
+/* 1. AESTHETIC FLUFFY SYSTEM (Minimalist)   */
 /* ========================================= */
 :root {
-    /* -- LIGHT MODE (Soft, Feminine, Fluffy) -- */
-    --bg-body: #FFF5F8;       /* Very soft blush pink */
-    --bg-surface: rgba(255, 255, 255, 0.85); 
-    --text-main: #4A4A68;     /* Soft dark indigo */
+    --bg-body: #FFF7FA;       
+    --bg-surface: rgba(255, 255, 255, 0.9); 
+    --text-main: #3D3D53;     
     --text-muted: #8E8EA8;
     
-    --pri: #F06292;           /* Aesthetic Pastel Pink */
+    --pri: #F06292;           
     --pri-hover: #E91E63;
     --pri-light: #FCE4EC;
+    --sec: #BA68C8;           
     
-    --sec: #BA68C8;           /* Soft Lavender */
-    
-    --success: #4DB6AC;       /* Mint Green */
+    --success: #4DB6AC;       
     --success-bg: #E0F2F1;
-    --warning: #FFB74D;       /* Peach/Orange */
+    --warning: #FFB74D;       
     --warning-bg: #FFF3E0;
-    --danger: #FF8A80;        /* Soft Coral Red */
+    --danger: #FF8A80;        
     --danger-bg: #FFEBEE;
     
-    --border-color: rgba(240, 98, 146, 0.2); 
+    --border-color: rgba(240, 98, 146, 0.15); 
     
-    /* Fluffy Corners & Shadows */
-    --radius-lg: 24px;        
-    --radius-md: 16px;
-    --radius-sm: 10px;
+    --radius-lg: 20px;        
+    --radius-md: 12px;
+    --radius-sm: 8px;
     --radius-pill: 50px;
     
-    --shadow-sm: 0 4px 15px rgba(240, 98, 146, 0.08);
-    --shadow-md: 0 10px 30px rgba(240, 98, 146, 0.12);
-    --blur-effect: blur(20px);
+    --shadow-sm: 0 4px 15px rgba(240, 98, 146, 0.05); 
+    --shadow-md: 0 8px 25px rgba(240, 98, 146, 0.08);
+    --blur-effect: blur(15px);
 }
 
-/* -- DARK MODE VARIABLES -- */
+/* -- DARK MODE FIX (Kasama ang dropdowns) -- */
 body.dark-mode {
-    --bg-body: #1E1E2E;       /* Deep aesthetic indigo */
-    --bg-surface: rgba(40, 40, 58, 0.85); 
+    color-scheme: dark; /* FIX: Ito ang mag-aayos ng dropdown background sa dark mode! */
+    --bg-body: #1E1E2E;       
+    --bg-surface: rgba(40, 40, 58, 0.9); 
     --text-main: #F5F5F8;
     --text-muted: #A6A6B8;
-    
     --pri: #F48FB1;           
-    --pri-hover: #F06292;
-    --pri-light: rgba(240, 98, 146, 0.2);
-    
-    --border-color: rgba(255, 255, 255, 0.05);
+    --pri-light: rgba(240, 98, 146, 0.15);
+    --border-color: rgba(255, 255, 255, 0.06);
     --shadow-sm: 0 4px 15px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 /* ========================================= */
-/* 2. GLOBAL RESETS & LAYOUT                 */
+/* 2. GLOBAL COMPACT TYPOGRAPHY              */
 /* ========================================= */
-*, *::before, *::after { box-sizing: border-box; transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+*, *::before, *::after { box-sizing: border-box; transition: background-color 0.3s, border-color 0.3s; }
 
 body {
     margin: 0; padding: 0;
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-body);
     color: var(--text-main);
-    display: flex;
-    flex-direction: row-reverse; /* CRITICAL: Puts Sidebar on the RIGHT! */
+    display: flex; flex-direction: row-reverse; /* Sidebar sa Right */
     height: 100vh; overflow: hidden;
-    font-size: 13px; /* Smaller, cleaner text */
+    font-size: 12px; /* FIX: Pinaliit natin ang base font */
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--pri-light); border-radius: 10px; }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
+h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); letter-spacing: -0.02em; }
 .text-muted { color: var(--text-muted); }
-.text-center { text-align: center !important; }
 
 /* ========================================= */
-/* 3. SIDEBAR (Right Side)                   */
+/* 3. SIDEBAR & TOOLTIPS                     */
 /* ========================================= */
 .sidebar {
-    width: 250px;
+    width: 220px; /* Pinaliit para mas malaki ang workspace */
     background-color: var(--bg-surface); 
     backdrop-filter: var(--blur-effect);
     border-left: 1px solid var(--border-color); 
     display: flex; flex-direction: column;
-    padding: 20px 16px;
-    z-index: 100;
+    padding: 16px 12px; z-index: 100;
 }
 
-.logo-container {
-    display: flex; flex-direction: column; align-items: center;
-    padding-bottom: 20px; border-bottom: 1px dashed var(--border-color);
-    margin-bottom: 16px;
-}
-.logo-container img { width: 60px; height: 60px; border-radius: 50%; box-shadow: var(--shadow-sm); margin-bottom: 10px; object-fit: contain; background: white;}
-.logo-container h2 { font-size: 1.1rem; color: var(--pri); text-align: center; }
+.logo-container { display: flex; flex-direction: column; align-items: center; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); margin-bottom: 12px; }
+.logo-container img { width: 50px; height: 50px; border-radius: 50%; box-shadow: var(--shadow-sm); margin-bottom: 8px; }
+.logo-container h2 { font-size: 1rem; color: var(--pri); text-align: center; }
 
 .nav-links { list-style: none; margin: 0; padding: 0; flex-grow: 1; }
-
 .nav-item {
-    display: flex; align-items: center; padding: 12px 16px; margin-bottom: 8px;
-    border-radius: var(--radius-md); cursor: pointer; font-weight: 600;
+    display: flex; align-items: center; padding: 10px 12px; margin-bottom: 4px;
+    border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.85rem;
     color: var(--text-muted); position: relative;
 }
-.nav-item i { font-size: 1.4rem; margin-right: 12px; color: var(--sec); transition: 0.2s; }
-.nav-item:hover { background-color: var(--pri-light); color: var(--pri); transform: translateX(-4px); }
-
-.nav-item.active {
-    background: linear-gradient(135deg, var(--pri), var(--sec));
-    color: white; box-shadow: var(--shadow-md);
-}
+.nav-item i { font-size: 1.2rem; margin-right: 10px; color: var(--sec); }
+.nav-item:hover { background-color: var(--pri-light); color: var(--pri); transform: translateX(-3px); }
+.nav-item.active { background: linear-gradient(135deg, var(--pri), var(--sec)); color: white; box-shadow: var(--shadow-sm); }
 .nav-item.active i { color: white; }
 
-/* Pop Out Menu */
 .pop-out-menu {
-    display: none; position: absolute; right: 105%; top: 0;
+    display: none; position: absolute; right: 100%; top: 0;
     background-color: var(--bg-surface); backdrop-filter: var(--blur-effect);
     border: 1px solid var(--border-color); border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md); min-width: 180px; z-index: 1000; padding: 8px;
+    box-shadow: var(--shadow-md); min-width: 160px; z-index: 1000; padding: 6px; margin-right: 4px;
 }
 .nav-item:hover .pop-out-menu { display: block; animation: slideLeft 0.2s ease; }
-.pop-menu-item { padding: 8px 12px; font-size: 0.85rem; color: var(--text-main); cursor: pointer; border-radius: 6px; display: flex; align-items: center; }
+.pop-menu-item { padding: 6px 10px; font-size: 0.8rem; color: var(--text-main); cursor: pointer; border-radius: 6px; display: flex; align-items: center; }
 .pop-menu-item:hover { background-color: var(--pri-light); color: var(--pri); }
-.pop-menu-item i { margin-right: 8px; font-size: 1rem; color: var(--pri); }
-
+.pop-menu-item i { margin-right: 8px; font-size: 0.95rem; color: var(--pri); }
 @keyframes slideLeft { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
 /* ========================================= */
-/* 4. MAIN CONTENT & WORKSPACE               */
+/* 4. MAIN WORKSPACE GRID                    */
 /* ========================================= */
-.main-content { flex-grow: 1; height: 100vh; overflow-y: auto; padding: 20px; }
-.page-area { display: none; height: 100%; max-width: 1600px; margin: 0 auto; }
+.main-content { flex-grow: 1; height: 100vh; overflow-y: auto; padding: 16px; }
+.page-area { display: none; height: 100%; max-width: 100%; margin: 0 auto; }
 
-.workspace-grid {
-    display: grid;
-    grid-template-columns: 320px 1fr 300px; /* 3 Columns */
-    gap: 20px; height: 100%;
+.split-wrapper { 
+    display: grid; 
+    grid-template-columns: 280px 1fr 240px; /* FIX: Sakto ang luwag para sa form at completed */
+    gap: 16px; height: 100%; 
 }
 
-.workspace-pane, .report-card {
-    background-color: var(--bg-surface);
-    backdrop-filter: var(--blur-effect);
-    border-radius: var(--radius-lg); 
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-color);
+.pane-left, .pane-right, .report-card {
+    background-color: var(--bg-surface); backdrop-filter: var(--blur-effect);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color); padding: 16px; 
     display: flex; flex-direction: column; overflow: hidden;
 }
 
-.workspace-header { padding: 16px 20px; border-bottom: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: space-between; }
-.workspace-header h2 { font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
-.workspace-header h2 i { color: var(--pri); font-size: 1.3rem; }
+.section-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); }
+.section-header h2 { font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
+.section-header h2 i { color: var(--pri); font-size: 1.1rem; }
 
 /* ========================================= */
-/* 5. FORMS & INPUTS                         */
+/* 5. COMPACT FORMS & INPUTS                 */
 /* ========================================= */
-.form-grid { display: grid; gap: 10px; margin-bottom: 16px; }
+.form-grid { display: grid; gap: 8px; margin-bottom: 12px; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-3 { grid-template-columns: repeat(3, 1fr); }
 .full-width { grid-column: 1 / -1; }
 
-.field-group { display: flex; flex-direction: column; gap: 4px; }
-.field-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+.field-group { display: flex; flex-direction: column; gap: 3px; }
+.field-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 
 .form-input, .form-select {
-    width: 100%; padding: 10px 14px; font-size: 0.85rem; font-family: inherit;
-    background-color: var(--bg-body); border: 2px solid transparent;
-    border-radius: var(--radius-md); color: var(--text-main); transition: 0.2s;
+    width: 100%; padding: 8px 10px; font-size: 0.8rem; /* FIX: Pinaliit para compact */
+    background-color: var(--bg-body); border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm); color: var(--text-main); font-family: inherit;
 }
-.form-input:focus, .form-select:focus { background-color: transparent; border-color: var(--pri); outline: none; box-shadow: 0 0 0 4px var(--pri-light); }
+.form-input:focus, .form-select:focus { border-color: var(--pri); outline: none; box-shadow: 0 0 0 3px var(--pri-light); background: transparent;}
+.form-select option { background-color: var(--bg-surface); color: var(--text-main); } /* Fix for Dark Mode Dropdowns */
 
 /* ========================================= */
-/* 6. BUTTONS & TEST CHIPS                   */
+/* 6. BUTTONS & CHIPS                        */
 /* ========================================= */
 .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 10px 18px; font-weight: 700; border-radius: var(--radius-md); border: none; cursor: pointer; transition: 0.2s; font-size: 0.85rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 14px; font-weight: 700; font-size: 0.75rem; border-radius: var(--radius-sm); border: none; cursor: pointer; transition: 0.2s;
 }
-.btn-primary { background: linear-gradient(135deg, var(--pri), var(--sec)); color: white; box-shadow: var(--shadow-sm); }
-.btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); filter: brightness(1.1); }
+.btn-primary { background: linear-gradient(135deg, var(--pri), var(--sec)); color: white; }
+.btn-primary:hover { box-shadow: var(--shadow-sm); filter: brightness(1.1); }
 .btn-secondary { background: var(--bg-body); color: var(--text-main); border: 1px solid var(--border-color); }
-.btn-secondary:hover { background: var(--pri-light); color: var(--pri); border-color: var(--pri); }
-.btn-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.btn-secondary:hover { background: var(--pri-light); color: var(--pri); }
+.btn-icon { width: 26px; height: 26px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
 .btn-icon:hover { background: var(--pri-light); color: var(--pri); }
 
-.test-selector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-.test-card {
-    background: var(--bg-body); border: 1px solid var(--border-color); border-radius: var(--radius-md);
-    padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; text-align: center;
+/* Test Chips - Smaller */
+.chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+    padding: 6px 12px; background: var(--bg-body); border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill); font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s;
 }
-.test-card i { font-size: 1.8rem; }
-.test-card span { font-size: 0.75rem; font-weight: 700; color: var(--text-main); }
-.test-card:hover { border-color: var(--pri); background: var(--pri-light); color: var(--pri); transform: translateY(-2px); }
-.test-card:hover i { color: var(--pri); }
-.test-card.active { background: linear-gradient(135deg, var(--pri), var(--sec)); border-color: transparent; }
-.test-card.active i, .test-card.active span { color: white !important; }
-
-/* Sub-test Chips */
-.chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;}
-.chip { padding: 6px 12px; background: var(--bg-body); border: 1px solid var(--border-color); border-radius: var(--radius-pill); font-size: 0.75rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
 .chip:hover { border-color: var(--pri); color: var(--pri); }
 .chip.active { background: var(--pri); color: white; border-color: var(--pri); box-shadow: var(--shadow-sm); }
+.chip.active i { color: white !important; }
 
 /* ========================================= */
-/* 7. PATIENT CARDS & BADGES                 */
+/* 7. COMPACT PATIENT CARDS                  */
 /* ========================================= */
-.patient-list { display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; flex: 1; }
+.patient-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; padding-right: 5px;}
+
 .patient-card {
-    background: var(--bg-surface); border-radius: var(--radius-md); padding: 16px;
-    border: 1px solid var(--border-color); transition: 0.2s; box-shadow: var(--shadow-sm);
+    background: var(--bg-body); border-radius: var(--radius-sm); padding: 12px;
+    border: 1px solid var(--border-color); transition: 0.2s;
 }
-.patient-card:hover { border-color: var(--pri); transform: translateY(-2px); }
-.patient-card.selected { border-left: 4px solid var(--pri); background: var(--pri-light); }
+.patient-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: var(--pri); }
 
-.pc-name { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
-.pc-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
-.pc-expand-area { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color); }
+.pc-name { font-size: 0.85rem; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; font-weight: 500; }
 
-.badge { display: inline-flex; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+/* Completed Card (More compact) */
+.patient-card.print-target { padding: 10px; display: flex; align-items: center; gap: 8px; }
+.patient-card.print-target .pc-name { font-size: 0.8rem; }
+.patient-card.print-target .pc-meta { font-size: 0.65rem; }
+
+.pc-expand-area { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
+
+/* ========================================= */
+/* 8. REGISTRY COMPACT TABLES                */
+/* ========================================= */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; } /* Pinaliit lalo ang table */
+.data-table th { background: var(--pri-light); color: var(--pri); padding: 8px 10px; border-radius: 6px; text-align: left; font-weight: 700; white-space: nowrap;}
+.data-table td { padding: 8px 10px; border-bottom: 1px dashed var(--border-color); vertical-align: middle; }
+
+/* Status Badges */
+.badge { display: inline-flex; padding: 3px 8px; border-radius: var(--radius-pill); font-size: 0.6rem; font-weight: 700; text-transform: uppercase; }
 .badge-warning { background: var(--warning-bg); color: var(--warning); }
-.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-neutral { background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); }
 
-/* ========================================= */
-/* 8. REGISTRY & DATA TABLES                 */
-/* ========================================= */
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.data-table th { background: var(--bg-body); padding: 12px; font-weight: 700; border-bottom: 2px solid var(--border-color); text-align: left; color: var(--text-muted); text-transform: uppercase; position: sticky; top: 0; z-index: 5;}
-.data-table td { padding: 12px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
-.data-table tbody tr:hover { background-color: var(--bg-body); }
-
-/* Color Coded Registry Results */
-.res-badge { display: block; width: 100%; padding: 6px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-align: center; text-transform: uppercase; }
-.res-negative { background-color: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
-.res-positive { background-color: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
-.res-warning  { background-color: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
+.res-badge { display: inline-block; padding: 4px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-align: center; text-transform: uppercase; white-space: nowrap;}
+.res-negative { background-color: var(--success-bg); color: var(--success); }
+.res-positive { background-color: var(--danger-bg); color: var(--danger); }
+.res-warning  { background-color: var(--warning-bg); color: var(--warning); }
 .res-dark-red { background-color: #B71C1C; color: #FFFFFF; } 
 .res-black    { background-color: #212121; color: #FFFFFF; } 
-.res-gray     { background-color: var(--bg-body); color: var(--text-muted); font-style: italic; }
+.res-gray     { background-color: var(--bg-body); color: var(--text-muted); font-style: italic; border: 1px solid var(--border-color); }
 
 /* ========================================= */
-/* 9. MHO HEADER & PRINT                     */
+/* 9. HEADER & MISC                          */
 /* ========================================= */
-.rep-header {
-    display: flex; align-items: center; justify-content: space-between; padding: 20px;
-    background: linear-gradient(to bottom, #FFCDD2 0%, #FFFFFF 100%);
-    border-bottom: 2px solid var(--pri); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-}
-.rep-header-text h1 { font-size: 1.5rem; color: #B71C1C; margin: 4px 0; }
-
 #user-profile-pill {
-    position: fixed; top: 20px; left: 20px; background: var(--bg-surface); backdrop-filter: var(--blur-effect);
-    padding: 6px 16px 6px 6px; border-radius: var(--radius-pill); display: flex; align-items: center; gap: 10px;
+    position: fixed; top: 16px; left: 20px; background: var(--bg-surface); backdrop-filter: var(--blur-effect);
+    padding: 4px 12px 4px 4px; border-radius: var(--radius-pill); display: flex; align-items: center; gap: 8px;
     box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); cursor: pointer; z-index: 101; transition: 0.2s;
 }
-#user-profile-pill:hover { border-color: var(--pri); transform: scale(1.02); }
-.user-pill-avatar { width: 32px; height: 32px; background: var(--pri); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.user-pill-name { font-weight: 700; font-size: 0.8rem; }
-.user-pill-role { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-
-#login-overlay { background: var(--bg-body); z-index: 99999; display: flex; justify-content: center; align-items: center; }
-.auth-card { background: var(--bg-surface); padding: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); width: 350px; text-align: center; border: 1px solid var(--border-color); }
-
-/* ========================================= */
-/* 11. WORKSPACE COLUMNS & COLLAPSIBLE MENU  */
-/* ========================================= */
-
-/* Fixed 3-Column Workspace Layout */
-#workspace-grid-container {
-    display: grid !important;
-    /* Add Patient (340px) | Pending (Fluid/Malaki) | Completed (240px) */
-    grid-template-columns: 340px 1fr 240px !important;
-    gap: 20px;
-    height: 100%;
-    align-items: stretch;
-}
-
-/* Fix para hindi siksikan ang Add Patient Form */
-#pane-add-patient .form-input, #pane-add-patient .form-select {
-    padding: 10px 12px; /* Sakto lang ang luwag */
-    font-size: 0.85rem;
-}
-
-/* Collapsible Sidebar Styles */
-.sidebar {
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-}
-
-.sidebar.collapsed {
-    width: 80px; /* Narrow mode */
-    padding: 20px 10px;
-}
-
-/* Itago ang mga text kapag collapsed ang sidebar */
-.sidebar.collapsed .logo-container h2, 
-.sidebar.collapsed .nav-links span.menu-text, 
-.sidebar.collapsed .nav-tooltip,
-.sidebar.collapsed #theme-text {
-    display: none !important;
-}
-
-.sidebar.collapsed .logo-container img {
-    width: 40px; height: 40px; margin-bottom: 0;
-}
-
-.sidebar.collapsed .nav-item {
-    justify-content: center;
-    padding: 12px 0;
-}
-
-.sidebar.collapsed .nav-item i {
-    margin-right: 0;
-    font-size: 1.6rem;
-}
-
-/* Sidebar Toggle Button */
-.btn-toggle-sidebar {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.2rem;
-    cursor: pointer;
-    position: absolute;
-    top: 20px;
-    left: 10px;
-    transition: 0.2s;
-}
-.btn-toggle-sidebar:hover { color: var(--pri); }
-
-.sidebar.collapsed .btn-toggle-sidebar { left: 50%; transform: translateX(-50%); }
-
-/* ========================================= */
-/* 12. FIX: NO-DROP REGISTRY MENU HITBOX     */
-/* ========================================= */
-.pop-out-menu {
-    /* Dinikit natin nang husto para walang gap */
-    right: 100%;
-    margin-right: -15px; 
-    padding-right: 15px; /* Invisible bridge para hindi mawala hover */
-}
+.user-pill-avatar { width: 28px; height: 28px; background: var(--pri); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.75rem;}
+.user-pill-name { font-weight: 700; font-size: 0.75rem; }
+.user-pill-role { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
 
