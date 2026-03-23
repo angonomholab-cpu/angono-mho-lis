@@ -176,19 +176,34 @@ const availableTests = {
 
 function openTestDetails(id) {
     const config = availableTests[id];
-    document.getElementById('test-grid-main').style.display = 'none';
+    if(!config) return;
+    
+    // FIX: Ito yung bug dati. Dapat 'test-chips-container' yung tinatago, hindi 'test-grid-main'
+    const chipsContainer = document.getElementById('test-chips-container');
+    if (chipsContainer) chipsContainer.style.display = 'none'; 
+    
     const area = document.getElementById('test-details-area');
     area.style.display = 'block';
+    
     area.innerHTML = `
-        <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
             <i class="ph ph-info"></i> ${config.title}
         </div>
-        <div id="temp-form-data">${config.html}</div>
-        <div style="margin-top:16px; display:flex; gap:8px;">
+        <div id="temp-form-data" class="form-grid grid-1">${config.html}</div>
+        <div style="margin-top:12px; display:flex; gap:8px;">
             <button class="btn btn-secondary" style="flex:1;" onclick="cancelDetail()">Cancel</button>
             <button class="btn btn-primary" style="flex:1;" onclick="confirmDetail('${id}')">Confirm</button>
         </div>`;
 }
+
+function cancelDetail() { 
+    document.getElementById('test-details-area').style.display = 'none'; 
+    // FIX: Ibalik ang display ng test chips
+    const chipsContainer = document.getElementById('test-chips-container');
+    if (chipsContainer) chipsContainer.style.display = 'flex'; 
+}
+
+
 
 function toggleSub(btn) { btn.classList.toggle('active'); }
 function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-grid-main').style.display = 'grid'; }
