@@ -188,3 +188,42 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
 #user-profile-pill { position: fixed; top: 20px; right: 30px; background: white; padding: 6px 16px 6px 6px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-card); border: 1px solid var(--border-color); cursor: pointer; z-index: 101; }
 .user-pill-avatar { width: 34px; height: 34px; background: var(--sys-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
+/* ========================================= */
+/* 11. SOLO DUTY WORKSPACE GRID              */
+/* ========================================= */
+.solo-duty-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 280px; /* Fixed Left, Fluid Middle, Fixed Right */
+    gap: 20px;
+    height: 100%;
+}
+
+.workspace-pane {
+    background-color: var(--bg-surface);
+    backdrop-filter: var(--blur-effect);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.workspace-header {
+    padding: 16px 20px;
+    border-bottom: 1px dashed var(--border-color);
+    background: var(--bg-body);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.workspace-header h2 {
+    font-size: 1.1rem;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.workspace-header h2 i { color: var(--pri); font-size: 1.3rem; }
+
