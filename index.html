@@ -70,78 +70,82 @@
             </div>
         </div>
 
-        <div id="page-workspace" class="page-area" style="display: block;">
+               <div id="page-workspace" class="page-area" style="display: block;">
             <input type="hidden" id="finalPatientId">
-            <div class="split-wrapper" id="workspace-grid-container">
+            <div class="workspace-grid" id="workspace-grid-container">
                 
-                <div class="pane-left" id="pane-add-patient">
-                    <div class="section-header" style="margin-bottom: 12px;">
-                        <h2><i class="ph ph-user-plus"></i> New Entry</h2>
+                <div class="workspace-pane" id="pane-add-patient" style="padding: 0;">
+                    <div class="workspace-header">
+                        <h2><i class="ph ph-user-plus"></i> Patient Entry</h2>
                         <button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>
                     </div>
                     
-                    <div style="overflow-y: auto; flex: 1; padding-right: 5px;">
-                        <div style="position: relative; margin-bottom: 16px;">
-                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                            <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
-                            <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
-                        </div>
-
-                        <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-2" style="gap: 10px; margin-bottom: 16px;">
-                            <div class="field-group full-width"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID()"></div>
-                            <div class="field-group full-width"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
-                            <div class="field-group"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
-                            <div class="field-group"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                            <div class="field-group full-width"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input"></div>
-                            <div class="field-group full-width"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
-                            <input type="hidden" id="p_email" value=""> 
-                            
-                            <div class="field-group full-width">
-                                <label class="field-label">Source Facility</label>
-                                <select id="p_facility" class="form-select">
-                                    <option value="" disabled selected>Select Source...</option>
-                                    <option value="San Isidro">San Isidro</option>
-                                    <option value="Kalayaan">Kalayaan</option>
-                                    <option value="San Vicente">San Vicente</option>
-                                    <option value="Sto. Niño">Sto. Niño</option>
-                                    <option value="San Roque">San Roque</option>
-                                    <option value="San Pedro">San Pedro</option>
-                                    <option value="Bagumbayan">Bagumbayan</option>
-                                    <option value="Pob. Itaas">Pob. Itaas</option>
-                                    <option value="Pob. Ibaba">Pob. Ibaba</option>
-                                    <option value="Mahabang Parang">Mahabang Parang</option>
-                                    <option value="San Isidro Hospital">San Isidro Hospital</option>
-                                    <option value="Angono Medics Hospital">Angono Medics Hospital</option>
-                                    <option value="Angono RHU I">Angono RHU I</option>
-                                </select>
+                    <div class="ap-split">
+                        <div class="ap-left">
+                            <div style="position: relative; margin-bottom: 16px;">
+                                <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
+                                <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
                             </div>
-                        </form>
 
-                        <div class="section-header" style="margin-top: 10px; padding-bottom: 5px; margin-bottom: 10px;"><h2><i class="ph ph-flask"></i> Select Tests</h2></div>
-                        <div class="chip-group" id="test-chips-container" style="justify-content: center;">
-                            <div class="chip" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus" style="color:var(--pri);"></i> GXP</div>
-                            <div class="chip" onclick="openTestDetails('dssm')" id="btn-dssm"><i class="ph ph-microscope" style="color:var(--pri);"></i> DSSM</div>
-                            <div class="chip" onclick="toggleSimple('viral')" id="btn-viral"><i class="ph ph-dna" style="color:var(--sec);"></i> VL</div>
-                            <div class="chip" onclick="openTestDetails('sero')" id="btn-sero"><i class="ph ph-drop" style="color:var(--danger);"></i> Sero</div>
-                            <div class="chip" onclick="openTestDetails('hema')" id="btn-hema"><i class="ph ph-drop-half" style="color:var(--danger);"></i> Hema</div>
-                            <div class="chip" onclick="openTestDetails('chem')" id="btn-chem"><i class="ph ph-flask" style="color:var(--warning);"></i> Chem</div>
-                            <div class="chip" onclick="toggleSimple('uria')" id="btn-uria"><i class="ph ph-toilet-paper" style="color:var(--warning);"></i> Uria</div>
-                            <div class="chip" onclick="toggleSimple('feca')" id="btn-feca"><i class="ph ph-bug" style="color:var(--success);"></i> Feca</div>
-                            <div class="chip" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle" style="color:var(--success);"></i> Dengue</div>
-                            <div class="chip" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background" style="color:var(--text-muted);"></i> Gram</div>
+                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 10px;">
+                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID()"></div>
+                                <div class="field-group"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div class="field-group"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
+                                    <div class="field-group"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                </div>
+                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input"></div>
+                                <div class="field-group"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
+                                <input type="hidden" id="p_email" value=""> 
+                                <div class="field-group">
+                                    <label class="field-label">Source Facility</label>
+                                    <select id="p_facility" class="form-select">
+                                        <option value="" disabled selected>Select Source...</option>
+                                        <option value="San Isidro">San Isidro</option>
+                                        <option value="Kalayaan">Kalayaan</option>
+                                        <option value="San Vicente">San Vicente</option>
+                                        <option value="Sto. Niño">Sto. Niño</option>
+                                        <option value="San Roque">San Roque</option>
+                                        <option value="San Pedro">San Pedro</option>
+                                        <option value="Bagumbayan">Bagumbayan</option>
+                                        <option value="Pob. Itaas">Pob. Itaas</option>
+                                        <option value="Pob. Ibaba">Pob. Ibaba</option>
+                                        <option value="Mahabang Parang">Mahabang Parang</option>
+                                        <option value="San Isidro Hospital">San Isidro Hospital</option>
+                                        <option value="Angono Medics Hospital">Angono Medics Hospital</option>
+                                        <option value="Angono RHU I">Angono RHU I</option>
+                                    </select>
+                                </div>
+                            </form>
                         </div>
 
-                        <div id="test-details-area" style="display:none; background:var(--pri-light); padding:16px; border-radius:var(--radius-md); margin-top:15px; border:1px solid var(--border-color);"></div>
-                        <div id="order-summary" style="margin-top:15px; display:flex; flex-wrap:wrap; gap:5px;"></div>
-                    </div>
+                        <div class="ap-right">
+                            <label class="field-label" style="margin-bottom: 8px;">Select Tests</label>
+                            
+                            <div class="chip-group" id="test-grid-main" style="margin-bottom: 15px;">
+                                <div class="chip" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus" style="color:var(--pri);"></i> GXP</div>
+                                <div class="chip" onclick="openTestDetails('dssm')" id="btn-dssm"><i class="ph ph-microscope" style="color:var(--pri);"></i> DSSM</div>
+                                <div class="chip" onclick="toggleSimple('viral')" id="btn-viral"><i class="ph ph-dna" style="color:var(--sec);"></i> VL</div>
+                                <div class="chip" onclick="openTestDetails('sero')" id="btn-sero"><i class="ph ph-drop" style="color:var(--danger);"></i> Sero</div>
+                                <div class="chip" onclick="openTestDetails('hema')" id="btn-hema"><i class="ph ph-drop-half" style="color:var(--danger);"></i> Hema</div>
+                                <div class="chip" onclick="openTestDetails('chem')" id="btn-chem"><i class="ph ph-flask" style="color:var(--warning);"></i> Chem</div>
+                                <div class="chip" onclick="toggleSimple('uria')" id="btn-uria"><i class="ph ph-toilet-paper" style="color:var(--warning);"></i> Uria</div>
+                                <div class="chip" onclick="toggleSimple('feca')" id="btn-feca"><i class="ph ph-bug" style="color:var(--success);"></i> Feca</div>
+                                <div class="chip" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle" style="color:var(--success);"></i> Dengue</div>
+                                <div class="chip" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background" style="color:var(--text-muted);"></i> Gram</div>
+                            </div>
 
-                    <div style="padding-top: 16px; border-top: 1px solid var(--border-color); margin-top: auto;">
-                        <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()" style="padding: 14px;"><i class="ph ph-paper-plane-right"></i> Save & Send</button>
+                            <div id="test-details-area" style="display:none; background:var(--pri-light); padding:12px; border-radius:var(--radius-md); margin-bottom:15px; border:1px solid var(--border-color);"></div>
+                            <div id="order-summary" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom: 15px;"></div>
+
+                            <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()" style="margin-top: auto; padding: 12px;"><i class="ph ph-paper-plane-right"></i> Save Record</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="pane-right" id="pane-pending">
-                    <div class="section-header" style="margin-bottom: 12px;">
+                <div class="workspace-pane" id="pane-pending" style="padding: 0;">
+                    <div class="workspace-header">
                         <h2><i class="ph ph-hourglass-medium"></i> Pending</h2>
                         <div style="display: flex; gap: 8px;">
                             <select id="test-filter" onchange="renderLists()" class="form-select text-xs font-semibold" style="width: auto; padding: 6px; min-height: 0;">
@@ -155,22 +159,20 @@
                             <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon" class="ph ph-arrows-clockwise"></i></button>
                         </div>
                     </div>
-                    <div id="list-pending" class="patient-list" style="padding: 0; padding-right: 5px;"></div>
+                    <div id="list-pending" class="patient-list" style="padding: 16px;"></div>
                 </div>
 
-                <div class="pane-right" id="pane-completed">
-                    <div class="section-header" style="margin-bottom: 12px;">
+                <div class="workspace-pane" id="pane-completed" style="padding: 0;">
+                    <div class="workspace-header">
                         <h2><i class="ph ph-check-circle" style="color: var(--success);"></i> Completed</h2>
-                        <button onclick="toggleSelectAll()" class="btn-icon" title="Select All"><i class="ph ph-check-square-offset"></i></button>
-                    </div>
-                    <div id="list-completed" class="patient-list" style="padding: 0; padding-right: 5px;"></div>
-                    <div id="batch-footer" style="display:none; padding-top: 16px; border-top: 1px solid var(--border-color); margin-top: auto;">
-                        <button class="btn full-width" style="background: var(--text-main); color: white;" onclick="batchPrint()"><i class="ph ph-printer"></i> Print Selected</button>
-                    </div>
+                        </div>
+                    <div id="list-completed" style="padding: 16px; overflow-y: auto; flex: 1;"></div>
                 </div>
                 
             </div>
         </div>
+
+
 
         <div id="page-registry" class="page-area">
             <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 24px;">
