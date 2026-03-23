@@ -534,3 +534,28 @@ function filterRegistryTable() {
     });
 }
 
+// ==========================================
+// 7. SIDEBAR TOGGLE LOGIC
+// ==========================================
+function toggleSidebar() {
+    const sidebar = document.getElementById('main-sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('collapsed');
+        // I-save ang preference ng user sa browser
+        if (sidebar.classList.contains('collapsed')) {
+            localStorage.setItem('sidebar-pref', 'collapsed');
+        } else {
+            localStorage.setItem('sidebar-pref', 'expanded');
+        }
+    }
+}
+
+// Kapag nag-refresh, titingnan kung naka-collapse dati
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('sidebar-pref') === 'collapsed') {
+        const sidebar = document.getElementById('main-sidebar');
+        if (sidebar) sidebar.classList.add('collapsed');
+    }
+});
+
+
