@@ -176,15 +176,13 @@ const availableTests = {
 
 function openTestDetails(id) {
     const config = availableTests[id];
-    if(!config) return;
+    if (!config) return;
     
-    // FIX: Ito yung bug dati. Dapat 'test-chips-container' yung tinatago, hindi 'test-grid-main'
-    const chipsContainer = document.getElementById('test-chips-container');
-    if (chipsContainer) chipsContainer.style.display = 'none'; 
+    // Itago ang mga test buttons
+    document.getElementById('test-grid-main').style.display = 'none';
     
     const area = document.getElementById('test-details-area');
     area.style.display = 'block';
-    
     area.innerHTML = `
         <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
             <i class="ph ph-info"></i> ${config.title}
@@ -197,12 +195,11 @@ function openTestDetails(id) {
 }
 
 function cancelDetail() { 
+    // Itago ang details form
     document.getElementById('test-details-area').style.display = 'none'; 
-    // FIX: Ibalik ang display ng test chips
-    const chipsContainer = document.getElementById('test-chips-container');
-    if (chipsContainer) chipsContainer.style.display = 'flex'; 
+    // FIX: Ibalik ang display ng mga test buttons (flex kasi ang gamit natin sa chip-group)
+    document.getElementById('test-grid-main').style.display = 'flex'; 
 }
-
 
 
 function toggleSub(btn) { btn.classList.toggle('active'); }
