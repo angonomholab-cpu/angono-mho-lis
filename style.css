@@ -224,3 +224,71 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); letter-sp
 .user-pill-name { font-weight: 700; font-size: 0.75rem; }
 .user-pill-role { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
 
+/* ========================================= */
+/* 11. ADJUSTED WORKSPACE PROPORTIONS        */
+/* ========================================= */
+
+/* Pinalapad ang Add Patient, Flexible ang Pending, Maliit ang Completed */
+.workspace-grid {
+    display: grid !important;
+    grid-template-columns: 560px 1fr 220px !important; 
+    gap: 16px; 
+    height: 100%;
+}
+
+/* Mini 2-Column layout para sa Add Patient */
+.ap-split {
+    display: flex; 
+    gap: 16px; 
+    height: 100%; 
+    padding: 16px;
+    overflow: hidden;
+}
+.ap-left { 
+    flex: 1.2; 
+    overflow-y: auto; 
+    padding-right: 10px; 
+}
+.ap-right { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    border-left: 1px dashed var(--border-color); 
+    padding-left: 16px; 
+    overflow-y: auto; 
+}
+
+/* Super compact design para sa Completed Tests */
+.completed-item {
+    background: var(--bg-body); 
+    border-radius: var(--radius-sm); 
+    padding: 10px 12px;
+    border: 1px solid var(--border-color); 
+    cursor: pointer; 
+    transition: 0.15s;
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    margin-bottom: 8px;
+}
+.completed-item:hover { 
+    border-color: var(--pri); 
+    transform: translateX(-3px); 
+    box-shadow: var(--shadow-sm); 
+}
+.completed-item .pc-name { 
+    font-size: 0.75rem; 
+    font-weight: 700; 
+    color: var(--text-main);
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    max-width: 140px;
+}
+.completed-item .pc-meta { 
+    font-size: 0.65rem; 
+    color: var(--text-muted); 
+    margin-top: 2px; 
+    font-weight: 600; 
+}
+
