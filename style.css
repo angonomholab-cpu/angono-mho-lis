@@ -1,43 +1,44 @@
 /* ========================================= */
-/* 1. APPLE INSPIRED DESIGN SYSTEM (iOS/macOS) */
+/* 1. MODERN LIS DESIGN SYSTEM (variables)   */
 /* ========================================= */
 :root {
     /* -- APPLE COLOR PALETTE -- */
-    --sys-blue: #007AFF;
+    --sys-blue: #007AFF;       /* SF Blue */
     --sys-blue-bg: #E5F1FF;
     
-    --sys-green: #34C759;
+    --sys-green: #24A249;      /* Adjusted SF Green */
     --sys-green-bg: #EAF9EE;
     
-    --sys-orange: #FF9500;
+    --sys-orange: #FF9500;     /* SF Orange */
     --sys-orange-bg: #FFF5E5;
     
-    --sys-red: #FF3B30;
+    --sys-red: #FF3B30;        /* SF Red */
     --sys-red-bg: #FFEBEA;
     
-    --sys-gray: #8E8E93;
-    --sys-gray-bg: #F2F2F7;
+    --sys-gray: #8E8E93;       /* SF Gray */
+    --sys-gray-bg: #F2F2F7;    /* Gray 6 */
 
     /* -- NEUTRAL COLORS -- */
-    --bg-body: #F5F5F7;       /* Apple System Gray 6 */
-    --bg-surface: rgba(255, 255, 255, 0.7); /* For Glassmorphism */
+    --bg-body: #F5F5F7;       /* Apple Gray 6 */
+    --bg-surface: rgba(255, 255, 255, 0.75); /* Translucent */
     --text-main: #1D1D1F;     /* Apple SF Text */
     --text-muted: #86868B;
-    --border-color: rgba(0, 0, 0, 0.08); /* Minimalist border */
+    --text-light: #C1C1C1;
+    --border-color: rgba(0, 0, 0, 0.06); /* Minimalist border */
     
     /* -- EFFECTS -- */
-    --blur-effect: blur(20px) saturate(180%);
-    --radius-lg: 16px;
-    --radius-md: 12px;
+    --blur-effect: blur(25px) saturate(190%);
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
     --radius-pill: 50px;
     
-    /* Neumorphic Shadows */
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
-    --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.02);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 /* ========================================= */
-/* 2. GLOBAL RESETS & SF FONTS               */
+/* 2. GLOBAL RESETS & COMPACT TYPOGRAPHY    */
 /* ========================================= */
 *, *::before, *::after {
     box-sizing: border-box;
@@ -47,50 +48,66 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
     background-color: var(--bg-body);
     color: var(--text-main);
     display: flex;
     height: 100vh;
     overflow: hidden;
+    /* FIX: Set root font size smaller (Compact requests) */
+    font-size: 14px; 
 }
 
-/* Scrollbar styling (macOS style) */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+/* macOS Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.15); }
+
+/* Typography Helpers */
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
+p { margin: 0 0 1rem 0; color: var(--text-muted); }
+.text-sm { font-size: 0.8rem; }
+.text-xs { font-size: 0.7rem; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.text-muted { color: var(--text-muted); }
+.text-center { text-align: center !important; }
 
 /* ========================================= */
-/* 3. SIDEBAR (Glassmorphism Effect)         */
+/* 3. SIDEBAR (true glassmorphism)           */
 /* ========================================= */
 .sidebar {
-    width: 260px;
-    background-color: rgba(245, 245, 247, 0.7); /* Semi-transparent */
+    width: 240px; /* Reduced width */
+    background-color: rgba(245, 245, 247, 0.6); 
     -webkit-backdrop-filter: var(--blur-effect);
     backdrop-filter: var(--blur-effect);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: 20px 12px;
+    padding: 16px 8px;
+    z-index: 100;
 }
 
 .logo-container {
-    padding: 10px 12px 24px 12px;
+    padding: 8px 12px 20px 12px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    margin-bottom: 12px;
 }
 
 .logo-container img {
-    width: 44px; height: 44px;
-    border-radius: 10px;
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    object-fit: contain;
 }
 
 .logo-container h2 {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    line-height: 1.2;
 }
 
 .nav-links { list-style: none; margin: 0; padding: 0; flex-grow: 1; }
@@ -98,54 +115,50 @@ body {
 .nav-item {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
-    margin-bottom: 4px;
-    border-radius: 10px;
-    color: #333;
+    padding: 9px 12px;
+    margin-bottom: 2px;
+    border-radius: 8px;
+    color: #444;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.15s ease;
     font-weight: 500;
     font-size: 0.9rem;
     position: relative;
 }
 
 .nav-item i {
-    font-size: 1.2rem;
-    margin-right: 12px;
-    color: var(--sys-blue); /* Icons have character now */
+    font-size: 1.15rem;
+    margin-right: 10px;
+    color: var(--sys-gray); /* Clean default color */
+    transition: 0.15s;
 }
 
-.nav-item:hover { background-color: rgba(0,0,0,0.04); }
+.nav-item:hover { background-color: rgba(0,0,0,0.03); color: var(--text-main); }
+.nav-item:hover i { color: var(--sys-blue); }
 
 .nav-item.active {
     background-color: var(--sys-blue);
     color: white;
-    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.15);
 }
 
-.nav-item.active i { color: white; }
+.nav-item.active i { color: white !important; }
 
-/* FIX: Ibinalik natin ang Lab Registry Menu guide/pop-up */
-.nav-item:hover .pop-out-menu {
-    display: block;
-    animation: slideIn 0.2s ease;
-}
-
+/* FIXED: Lab Registry Pop-out (Guide) style */
 .pop-out-menu {
     display: none;
     position: absolute;
-    left: 100%;
+    left: calc(100% + 10px);
     top: -10px;
-    background-color: rgba(255, 255, 255, 0.8);
-    -webkit-backdrop-filter: var(--blur-effect);
-    backdrop-filter: var(--blur-effect);
+    background-color: rgba(255, 255, 255, 0.9);
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
-    min-width: 200px;
+    min-width: 190px;
     z-index: 1000;
-    padding: 8px;
-    margin-left: 10px;
+    padding: 6px;
 }
 
 .pop-out-menu::before {
@@ -155,256 +168,312 @@ body {
     top: 20px;
     border-width: 5px;
     border-style: solid;
-    border-color: transparent rgba(255, 255, 255, 0.8) transparent transparent;
+    border-color: transparent rgba(255, 255, 255, 0.9) transparent transparent;
 }
 
+.nav-item:hover .pop-out-menu { display: block; animation: slideIn 0.2s ease; }
+
 .pop-menu-item {
-    padding: 8px 12px;
-    font-size: 0.85rem;
+    padding: 7px 10px;
+    font-size: 0.8rem;
     color: var(--text-main);
     cursor: pointer;
     border-radius: 6px;
     display: flex;
     align-items: center;
+    transition: 0.15s;
 }
 
 .pop-menu-item:hover { background-color: var(--sys-blue); color: white; }
-.pop-menu-item i { margin-right: 8px; font-size: 1rem; color: inherit; }
+.pop-menu-item i { margin-right: 8px; font-size: 0.95rem; color: var(--sys-blue); }
+.pop-menu-item:hover i { color: white; }
 
-@keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
 
 /* ========================================= */
-/* 4. MAIN CONTENT & PANELS                  */
+/* 4. MAIN CONTENT & PANEL LAYOUT (Columns) */
 /* ========================================= */
-.main-content { flex-grow: 1; height: 100vh; overflow-y: auto; }
+.main-content {
+    flex-grow: 1;
+    height: 100vh;
+    overflow-y: auto;
+    background-color: var(--bg-body);
+}
 
-.page-area { display: none; padding: 30px; }
+.page-area {
+    display: none;
+    padding: 24px 30px;
+    height: 100%;
+}
 
+.split-wrapper { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; /* True 2-column layout */
+    gap: 24px; 
+    height: 100%;
+}
+
+.pane-left, .pane-right {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important for inner lists */
+}
+
+/* Translucent panels for character */
+.pane-right {
+    background-color: rgba(255,255,255,0.7);
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
+}
+
+.scroll-area { overflow-y: auto; flex: 1; padding-right: 4px;}
+
+/* Section Headers */
 .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .section-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    letter-spacing: -0.03em;
-}
-
-/* Neumorphic Panels */
-.pane-left, .pane-right, .report-card {
-    background-color: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    padding: 24px;
-    border: 1px solid var(--border-color);
-}
-
-.pane-right {
-    -webkit-backdrop-filter: var(--blur-effect);
-    backdrop-filter: var(--blur-effect);
 }
 
 /* ========================================= */
-/* 5. USER PROFILE PILL                      */
+/* 5. USER PROFILE PILL (Minimalist)        */
 /* ========================================= */
 #user-profile-pill {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 30px;
     background-color: rgba(255, 255, 255, 0.7);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    padding: 6px 14px 6px 6px;
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
+    padding: 5px 12px 5px 5px;
     border-radius: var(--radius-pill);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(0,0,0,0.04);
     z-index: 101;
     cursor: pointer;
+    transition: 0.15s;
 }
+#user-profile-pill:hover { box-shadow: var(--shadow-md); border-color: rgba(0,0,0,0.1);}
 
 .user-pill-avatar {
-    width: 30px; height: 30px;
+    width: 28px; height: 28px;
     background-color: var(--sys-blue);
     color: white;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-weight: 600; font-size: 0.8rem;
+    font-weight: 600; font-size: 0.75rem;
+}
+.user-pill-name { font-weight: 600; font-size: 0.8rem; color: var(--text-main); }
+.user-pill-role { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 500; }
+
+/* ========================================= */
+/* 6. FORMS, INPUTS & COMPACT CHIPS         */
+/* ========================================= */
+.form-grid { display: grid; gap: 12px; margin-bottom: 20px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.full-width { grid-column: 1 / -1; }
+
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+
+.field-label {
+    font-size: 0.7rem; /* Smpact label */
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-left: 2px;
 }
 
-.user-pill-name { font-weight: 600; font-size: 0.85rem; }
-.user-pill-role { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; }
-
-/* ========================================= */
-/* 6. FORMS, INPUTS & Test Buttons           */
-/* ========================================= */
 .form-input, .form-select {
     width: 100%;
-    padding: 12px 14px;
-    font-size: 0.9rem;
+    padding: 8px 12px; /* Compact padding */
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--text-main);
     background-color: var(--sys-gray-bg);
     border: 1px solid transparent;
-    border-radius: 10px;
-    transition: 0.2s;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
 }
 
 .form-input:focus, .form-select:focus {
     outline: none;
     background-color: white;
-    border-color: var(--sys-blue);
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+    border-color: rgba(0, 122, 255, 0.4);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
-/* Modern Test Selector */
-.test-card {
+.form-input::placeholder { color: var(--text-light); font-weight: 400;}
+
+/* Neumorphic Chips for Test Selection */
+.chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.chip {
+    padding: 5px 14px;
     background: white;
     border: 1px solid var(--border-color);
-    padding: 16px;
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    transition: 0.2s;
-    box-shadow: var(--shadow-sm);
-}
-
-.test-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--sys-blue); }
-
-/* Karakter para sa bawat test icon */
-.test-card i { font-size: 1.8rem; }
-#btn-mtb i, #btn-dssm i { color: #8E24AA; } /* Violet for TB */
-#btn-hema i { color: #E53935; } /* Red for Blood */
-#btn-chem i { color: #FB8C00; } /* Orange */
-#btn-uria i, #btn-feca i { color: #FDD835; } /* Yellow */
-#btn-sero i, #btn-dengue i { color: #1E88E5; } /* Blue */
-
-.test-card.active {
-    background-color: var(--sys-blue);
-    border-color: var(--sys-blue);
-    color: white;
-}
-.test-card.active i { color: white !important; }
-
-/* ========================================= */
-/* 7. APPLE STYLE BADGES                     */
-/* ========================================= */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
     border-radius: var(--radius-pill);
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: 0.15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.chip:hover { border-color: var(--sys-blue); color: var(--sys-blue); transform: translateY(-1px);}
+.chip.active { background: var(--sys-blue); color: white; border-color: var(--sys-blue); box-shadow: 0 2px 6px rgba(0,122,255,0.2);}
+
+/* Floating Footer for Form Actions (Minimized) */
+.form-footer {
+    margin: auto -20px -20px -20px;
+    padding: 12px 20px;
+    background: white;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    z-index: 10;
 }
 
+/* ========================================= */
+/* 7. APPLE STYLE BUTTONS & BADGES          */
+/* ========================================= */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px;
+    padding: 8px 16px; /* Compact button */
+    font-family: inherit; font-size: 0.8rem; font-weight: 600;
+    border-radius: 8px; border: none;
+    cursor: pointer; transition: 0.15s;
+}
+
+.btn-primary { background-color: var(--sys-blue); color: white; }
+.btn-primary:hover { opacity: 0.9; box-shadow: 0 2px 8px rgba(0,122,255,0.25); }
+
+.btn-secondary { background-color: var(--sys-gray-bg); color: var(--text-main); }
+.btn-secondary:hover { background-color: #E5E5EA; }
+
+.btn-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+.btn-icon:hover { background: rgba(0,0,0,0.04); color: var(--sys-blue); }
+
+/* Badges */
+.badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 8px; border-radius: var(--radius-pill);
+    font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+}
 .badge-negative { background-color: var(--sys-green-bg); color: var(--sys-green); }
 .badge-positive { background-color: var(--sys-red-bg); color: var(--sys-red); } 
 .badge-warning  { background-color: var(--sys-orange-bg); color: var(--sys-orange); } 
 .badge-neutral  { background-color: var(--sys-gray-bg); color: var(--text-main); }       
 
 /* ========================================= */
-/* 8. WORKLOAD CARDS (Pending Page)           */
+/* 8. COMPACT PATIENT CARDS (Pending)       */
 /* ========================================= */
-/* FIX: Ibinalik natin ang malinis na grid layout para sa pending */
+/* FIX: Ibinalik ang clean grid layout para compact */
 #list-pending, #list-completed {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-    padding: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
 }
 
 .patient-card {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 18px;
-    box-shadow: var(--shadow-sm);
-    transition: 0.2s;
+    padding: 14px; /* Reduced padding */
+    cursor: pointer;
+    transition: 0.15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.01);
 }
 
-.patient-card:hover { border-color: var(--sys-blue); box-shadow: var(--shadow-md); }
+.patient-card:hover { border-color: rgba(0,122,255,0.3); box-shadow: var(--shadow-sm); transform: translateY(-1px);}
 
-.pc-name { font-size: 1rem; font-weight: 700; }
-.pc-meta { font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 10px 0; }
+.pc-name { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+.pc-meta { font-size: 0.75rem; color: var(--text-muted); margin: 3px 0 8px 0; line-height: 1.3; }
 
 .pc-expand-area {
     display: none; 
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color);
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.03);
 }
-.patient-card.expanded .pc-expand-area { display: block; animation: slideDown 0.3s ease; }
+.patient-card.expanded { border-color: var(--sys-blue); box-shadow: var(--shadow-sm); }
+.patient-card.expanded .pc-expand-area { display: block; animation: slideDown 0.2s ease; }
 
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ========================================= */
-/* 9. LOGIN & MODALS (Frosted Glass)         */
+/* 9. LOGIN & MODALS (frosted glass)         */
 /* ========================================= */
 #login-overlay { 
-    background-color: rgba(245, 245, 247, 0.6); 
-    -webkit-backdrop-filter: blur(30px);
-    backdrop-filter: blur(30px);
+    background-color: rgba(245, 245, 247, 0.5); 
+    -webkit-backdrop-filter: blur(25px);
+    backdrop-filter: blur(25px);
 }
         
 .auth-card {
     background: rgba(255, 255, 255, 0.8);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    padding: 40px 30px;
+    padding: 30px;
     border-radius: var(--radius-lg);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-    width: 360px;
-    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    width: 320px;
+    border: 1px solid rgba(255,255,255,0.2);
     text-align: center;
 }
 
 .auth-icon {
-    width: 60px; height: 60px;
-    background-color: var(--sys-blue-bg);
-    color: var(--sys-blue);
-    border-radius: 14px;
-    margin: 0 auto 24px auto;
+    width: 50px; height: 50px;
+    background-color: var(--sys-blue-bg); color: var(--sys-blue);
+    border-radius: 12px;
+    margin: 0 auto 20px auto;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
 }
 
-/* APPLE BUTTONS */
-.btn-primary {
-    background-color: var(--sys-blue);
-    color: white;
-    border-radius: 10px;
-    border: none;
-    padding: 12px 20px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: 0.2s;
+.auth-input {
+    width: 100%; padding: 10px 14px; margin-bottom: 12px;
+    border: 1px solid transparent; border-radius: 9px;
+    font-size: 0.9rem; background: #EEEFEE; transition: 0.15s;
 }
-.btn-primary:hover { opacity: 0.9; box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); }
+.auth-input:focus { background: white; border-color: var(--sys-blue); outline: none;}
 
 /* ========================================= */
-/* 10. DATA TABLES (Registry/Reports)         */
+/* 10. CLEAN DATA TABLES (Registry)         */
 /* ========================================= */
 .data-table {
     width: 100%;
     border-collapse: separate; 
     border-spacing: 0;
-    font-size: 0.85rem;
+    font-size: 0.8rem; /* Compact table text */
 }
 
 .data-table th {
     background-color: var(--sys-gray-bg);
     color: var(--text-main);
     font-weight: 600;
-    padding: 12px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
 }
@@ -413,8 +482,9 @@ body {
 .data-table th:last-child { border-radius: 0 8px 0 0; }
 
 .data-table td {
-    padding: 12px;
+    padding: 10px 12px;
     border-bottom: 1px solid rgba(0,0,0,0.03);
+    color: var(--text-main);
 }
 
 .data-table tbody tr:last-child td:first-child { border-radius: 0 0 0 8px; }
