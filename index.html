@@ -4,149 +4,128 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Angono MHO LIS</title>
-    
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-       <nav class="sidebar" id="main-sidebar">
-        <button class="btn-toggle-sidebar" onclick="toggleSidebar()" title="Toggle Menu">
-            <i class="ph ph-list"></i>
-        </button>
+    <button id="menu-toggle-btn" onclick="toggleSidebar()"><i class="ph ph-list"></i></button>
 
+    <nav class="sidebar" id="main-sidebar">
+        <div style="text-align: right;"><button class="btn-icon" onclick="toggleSidebar()"><i class="ph ph-x"></i></button></div>
+        
         <div class="logo-container">
             <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000" alt="MHO Logo">
-            <h2>Angono MHO<br>LIS</h2>
+            <h2>Angono MHO LIS</h2>
         </div>
         
         <ul class="nav-links">
-            <li class="nav-item active" id="nav-workspace" onclick="showPage('workspace')">
-                <i class="ph ph-desktop"></i> <span class="menu-text">Workspace</span>
+            <li class="nav-item active" id="nav-workspace" onclick="showPage('workspace'); toggleSidebar();">
+                <i class="ph ph-desktop"></i> Workspace
             </li>
             
-            <li class="nav-item" id="nav-registry" style="position: relative;" onclick="showPage('registry')">
-                <i class="ph ph-books"></i> <span class="menu-text">Lab Registry</span>
-                <div class="pop-out-menu">
-                    <div class="pop-menu-item" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop"></i> Hematology</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('UA')"><i class="ph ph-flask"></i> Urinalysis</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('FA')"><i class="ph ph-toilet-paper"></i> Fecalysis</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('CHEM')"><i class="ph ph-test-tube"></i> Chemistry</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('SERO')"><i class="ph ph-shield-check"></i> Serology</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('DENGUE')"><i class="ph ph-virus"></i> Dengue NS1</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('GXP')"><i class="ph ph-dna"></i> GXP MTB</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('GXVL')"><i class="ph ph-chart-line-up"></i> Viral Load</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope"></i> DSSM/AFB</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('GRAM')"><i class="ph ph-paint-brush-broad"></i> Gram Stain</div>
-                </div>
+            <li class="nav-item" id="nav-registry" onclick="showPage('registry'); toggleSidebar();">
+                <i class="ph ph-books"></i> Lab Registry
             </li>
             
-            <li class="nav-item" id="nav-reports" onclick="showPage('reports')">
-                <i class="ph ph-chart-bar"></i> <span class="menu-text">Reports</span>
+            <li class="nav-item" id="nav-reports" onclick="showPage('reports'); toggleSidebar();">
+                <i class="ph ph-chart-bar"></i> Reports
             </li>
-            <li class="nav-item" id="nav-settings" onclick="showPage('settings')">
-                <i class="ph ph-gear-six"></i> <span class="menu-text">Settings</span>
+            
+            <li class="nav-item" id="nav-settings" onclick="showPage('settings'); toggleSidebar();">
+                <i class="ph ph-gear-six"></i> Settings
             </li>
         </ul>
         
         <div style="margin-top: auto; display: flex; justify-content: center; padding-top: 15px;">
-            <button onclick="toggleDarkMode()" style="background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 50px; padding: 10px; display: flex; gap: 8px; align-items: center; cursor: pointer; color: var(--text-main); font-weight: bold; transition: 0.2s;">
-                <i class="ph ph-moon-stars" id="theme-icon" style="color: var(--sec); font-size: 1.2rem;"></i> 
-                <span id="theme-text">Dark Mode</span>
+            <button onclick="toggleDarkMode()" style="background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 50px; padding: 10px 20px; display: flex; gap: 8px; align-items: center; cursor: pointer; color: var(--text-main); font-weight: bold; transition: 0.2s;">
+                <i class="ph ph-moon-stars" id="theme-icon" style="color: var(--sec);"></i> <span id="theme-text">Dark Mode</span>
             </button>
         </div>
     </nav>
 
+    <div id="user-profile-pill" onclick="logoutUser()">
+        <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
+        <div class="user-pill-info">
+            <div class="user-pill-name" id="display-full-name" style="font-size:0.75rem; font-weight:700;">Loading...</div>
+            <div class="user-pill-role" id="display-role-facility" style="font-size:0.6rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Please Log In</div>
+        </div>
+    </div>
+
     <main class="main-content">
         
-        <div id="user-profile-pill" onclick="logoutUser()">
-            <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
-            <div class="user-pill-info">
-                <div class="user-pill-name" id="display-full-name">Loading...</div>
-                <div class="user-pill-role" id="display-role-facility">Please Log In</div>
-            </div>
-        </div>
-
-               <div id="page-workspace" class="page-area" style="display: block;">
+        <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
             <input type="hidden" id="finalPatientId">
             <div class="workspace-grid" id="workspace-grid-container">
                 
-                <div class="workspace-pane" id="pane-add-patient" style="padding: 0;">
+                <div class="workspace-col" id="col-entry">
                     <div class="workspace-header">
                         <h2><i class="ph ph-user-plus"></i> Patient Entry</h2>
                         <button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>
                     </div>
                     
-                    <div class="ap-split">
-                        <div class="ap-left">
-                            <div style="position: relative; margin-bottom: 16px;">
-                                <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                                <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
-                                <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
-                            </div>
+                    <div style="overflow-y: auto; flex: 1; padding: 20px;">
+                        
+                        <div style="position: relative; margin-bottom: 20px;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                            <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
+                            <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
+                        </div>
 
-                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 10px;">
-                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID()"></div>
-                                <div class="field-group"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                    <div class="field-group"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
-                                    <div class="field-group"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                        <div style="display: flex; gap: 20px;">
+                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="flex: 1; gap: 10px;">
+                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" oninput="generateSmartID()"></div>
+                                <div style="display:flex; gap:10px;">
+                                    <div class="field-group" style="flex:2;"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
+                                    <div class="field-group" style="flex:1;"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <div class="field-group" style="flex:1;"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                    <div class="field-group" style="flex:2;"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
                                 </div>
                                 <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input"></div>
-                                <div class="field-group"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
                                 <input type="hidden" id="p_email" value=""> 
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
                                     <select id="p_facility" class="form-select">
                                         <option value="" disabled selected>Select Source...</option>
                                         <option value="San Isidro">San Isidro</option>
-                                        <option value="Kalayaan">Kalayaan</option>
-                                        <option value="San Vicente">San Vicente</option>
-                                        <option value="Sto. Niño">Sto. Niño</option>
-                                        <option value="San Roque">San Roque</option>
-                                        <option value="San Pedro">San Pedro</option>
-                                        <option value="Bagumbayan">Bagumbayan</option>
-                                        <option value="Pob. Itaas">Pob. Itaas</option>
-                                        <option value="Pob. Ibaba">Pob. Ibaba</option>
-                                        <option value="Mahabang Parang">Mahabang Parang</option>
-                                        <option value="San Isidro Hospital">San Isidro Hospital</option>
-                                        <option value="Angono Medics Hospital">Angono Medics Hospital</option>
                                         <option value="Angono RHU I">Angono RHU I</option>
                                     </select>
                                 </div>
                             </form>
                         </div>
 
-                        <div class="ap-right">
-                            <label class="field-label" style="margin-bottom: 8px;">Select Tests</label>
+                        <div style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 20px;">
+                            <label class="field-label" style="display: block; margin-bottom: 10px;">Select Tests to Perform</label>
                             
-                            <div class="chip-group" id="test-grid-main" style="margin-bottom: 15px;">
-                                <div class="chip" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus" style="color:var(--pri);"></i> GXP</div>
-                                <div class="chip" onclick="openTestDetails('dssm')" id="btn-dssm"><i class="ph ph-microscope" style="color:var(--pri);"></i> DSSM</div>
-                                <div class="chip" onclick="toggleSimple('viral')" id="btn-viral"><i class="ph ph-dna" style="color:var(--sec);"></i> VL</div>
-                                <div class="chip" onclick="openTestDetails('sero')" id="btn-sero"><i class="ph ph-drop" style="color:var(--danger);"></i> Sero</div>
-                                <div class="chip" onclick="openTestDetails('hema')" id="btn-hema"><i class="ph ph-drop-half" style="color:var(--danger);"></i> Hema</div>
-                                <div class="chip" onclick="openTestDetails('chem')" id="btn-chem"><i class="ph ph-flask" style="color:var(--warning);"></i> Chem</div>
-                                <div class="chip" onclick="toggleSimple('uria')" id="btn-uria"><i class="ph ph-toilet-paper" style="color:var(--warning);"></i> Uria</div>
-                                <div class="chip" onclick="toggleSimple('feca')" id="btn-feca"><i class="ph ph-bug" style="color:var(--success);"></i> Feca</div>
-                                <div class="chip" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle" style="color:var(--success);"></i> Dengue</div>
-                                <div class="chip" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background" style="color:var(--text-muted);"></i> Gram</div>
+                            <div class="test-row-container" id="test-row-container">
+                                <div class="test-card-big" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus"></i><span>GXP MTB</span></div>
+                                <div class="test-card-big" onclick="openTestDetails('dssm')" id="btn-dssm"><i class="ph ph-microscope"></i><span>DSSM / AFB</span></div>
+                                <div class="test-card-big" onclick="toggleSimple('viral')" id="btn-viral"><i class="ph ph-dna"></i><span>Viral Load</span></div>
+                                <div class="test-card-big" onclick="openTestDetails('sero')" id="btn-sero"><i class="ph ph-drop"></i><span>Serology</span></div>
+                                <div class="test-card-big" onclick="openTestDetails('hema')" id="btn-hema"><i class="ph ph-drop-half"></i><span>Hematology</span></div>
+                                <div class="test-card-big" onclick="openTestDetails('chem')" id="btn-chem"><i class="ph ph-flask"></i><span>Chemistry</span></div>
+                                <div class="test-card-big" onclick="toggleSimple('uria')" id="btn-uria"><i class="ph ph-toilet-paper"></i><span>Urinalysis</span></div>
+                                <div class="test-card-big" onclick="toggleSimple('feca')" id="btn-feca"><i class="ph ph-bug"></i><span>Fecalysis</span></div>
+                                <div class="test-card-big" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle"></i><span>Dengue NS1</span></div>
+                                <div class="test-card-big" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
                             </div>
 
-                            <div id="test-details-area" style="display:none; background:var(--pri-light); padding:12px; border-radius:var(--radius-md); margin-bottom:15px; border:1px solid var(--border-color);"></div>
-                            <div id="order-summary" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom: 15px;"></div>
-
-                            <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()" style="margin-top: auto; padding: 12px;"><i class="ph ph-paper-plane-right"></i> Save Record</button>
+                            <div id="test-details-area" style="display:none; background:var(--pri-light); padding:20px; border-radius:var(--radius-md); border:1px solid var(--border-color);"></div>
+                            <div id="order-summary" style="margin-top:15px; display:flex; flex-wrap:wrap; gap:5px;"></div>
                         </div>
+                    </div>
+
+                    <div style="padding: 20px; border-top: 1px dashed var(--border-color);">
+                        <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()" style="padding: 14px;"><i class="ph ph-paper-plane-right"></i> Save & Send Record</button>
                     </div>
                 </div>
 
-                <div class="workspace-pane" id="pane-pending" style="padding: 0;">
+                <div class="workspace-col" id="col-pending">
                     <div class="workspace-header">
-                        <h2><i class="ph ph-hourglass-medium"></i> Pending</h2>
+                        <h2><i class="ph ph-hourglass-medium"></i> Pending Tests</h2>
                         <div style="display: flex; gap: 8px;">
                             <select id="test-filter" onchange="renderLists()" class="form-select text-xs font-semibold" style="width: auto; padding: 6px; min-height: 0;">
                                 <option value="ALL">All Sections</option>
@@ -154,19 +133,18 @@
                                 <option value="DSSM">DSSM / AFB</option>
                                 <option value="HEMA">Hematology</option>
                                 <option value="CHEM">Chemistry</option>
-                                <option value="SERO">Serology</option>
                             </select>
                             <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon" class="ph ph-arrows-clockwise"></i></button>
                         </div>
                     </div>
-                    <div id="list-pending" class="patient-list" style="padding: 16px;"></div>
+                    <div id="list-pending" class="patient-list"></div>
                 </div>
 
-                <div class="workspace-pane" id="pane-completed" style="padding: 0;">
+                <div class="workspace-col" id="col-completed">
                     <div class="workspace-header">
-                        <h2><i class="ph ph-check-circle" style="color: var(--success);"></i> Completed</h2>
-                        </div>
-                    <div id="list-completed" style="padding: 16px; overflow-y: auto; flex: 1;"></div>
+                        <h2><i class="ph ph-check-circle"></i> Completed</h2>
+                    </div>
+                    <div id="list-completed" class="patient-list"></div>
                 </div>
                 
             </div>
