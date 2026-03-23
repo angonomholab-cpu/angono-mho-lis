@@ -174,37 +174,37 @@ const availableTests = {
     "chem": { testName: "Blood Chemistry", testCode: "CHEM", title: "Chemistry", html: `<div class="chip-group">${['FBS','OGTT','BUN','Uric Acid','Cholesterol','Triglycerides','Lipid Profile','HBA1C','Creatinine'].map(a => `<div class="chip" onclick="toggleSub(this)" data-val="${a}">${a}</div>`).join('')}</div>` }
 };
 
+// ==========================================
+// FIX: SHOWING/HIDING TEST ROW
+// ==========================================
 function openTestDetails(id) {
     const config = availableTests[id];
     if (!config) return;
     
-    // Itago ang mga test buttons
-    document.getElementById('test-grid-main').style.display = 'none';
+    // Itago ang buong 1-row ng buttons
+    document.getElementById('test-row-container').style.display = 'none';
     
     const area = document.getElementById('test-details-area');
     area.style.display = 'block';
+    
     area.innerHTML = `
-        <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
-            <i class="ph ph-info"></i> ${config.title}
+        <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+            <i class="ph ph-info"></i> ${config.title} Options
         </div>
         <div id="temp-form-data" class="form-grid grid-1">${config.html}</div>
-        <div style="margin-top:12px; display:flex; gap:8px;">
+        <div style="margin-top:16px; display:flex; gap:10px;">
             <button class="btn btn-secondary" style="flex:1;" onclick="cancelDetail()">Cancel</button>
-            <button class="btn btn-primary" style="flex:1;" onclick="confirmDetail('${id}')">Confirm</button>
+            <button class="btn btn-primary" style="flex:1;" onclick="confirmDetail('${id}')">Confirm Options</button>
         </div>`;
 }
 
 function cancelDetail() { 
-    // Itago ang details form
     document.getElementById('test-details-area').style.display = 'none'; 
-    // FIX: Ibalik ang display ng mga test buttons (flex kasi ang gamit natin sa chip-group)
-    document.getElementById('test-grid-main').style.display = 'flex'; 
+    // Ibalik ang 1-row buttons
+    document.getElementById('test-row-container').style.display = 'flex'; 
 }
 
-
-function toggleSub(btn) { btn.classList.toggle('active'); }
-function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-grid-main').style.display = 'grid'; }
-
+// Kapag cinonfirm, ibabalik din natin yung row para makapili pa ng ibang test
 function confirmDetail(id) {
    let details = {}; let subSelected = [];
    if(id === 'mtb') details = { "History of Treatment": document.getElementById('gx_hist').value, "Source of Request": document.getElementById('gx_src').value, "X-Ray Result": document.getElementById('gx_xray').value };
@@ -212,7 +212,7 @@ function confirmDetail(id) {
    else if(id === 'gram') details = { "Source of Specimen": document.getElementById('gs_src').value };
    else if(id === 'dengue') details = { "Day/s of Onset of Illness": document.getElementById('dn_onset').value };
    else if(['sero','hema','chem'].includes(id)) {
-       const activeBtns = document.querySelectorAll('.chip.active');
+       const activeBtns = document.querySelectorAll('#test-details-area .chip.active');
        if(activeBtns.length === 0) { alert("Select at least one sub-test."); return; }
        subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val'));
        if(id === 'sero') details = { "Classification": document.getElementById('sr_class').value, "KAP Category": document.getElementById('sr_kap').value };
@@ -220,8 +220,27 @@ function confirmDetail(id) {
 
    labOrders[id] = { details: details, subTests: subSelected };
    document.getElementById('btn-'+id).classList.add('active');
-   updateSummary(); cancelDetail(); 
+   updateSummary(); 
+   cancelDetail(); // Hides details, shows row again
 }
+
+
+
+
+// ==========================================
+// FIX: SIDEBAR SLIDE TOGGLE
+// ==========================================
+function toggleSidebar() {
+    const sidebar = document.getElementById('main-sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('show');
+    }
+}
+
+
+function toggleSub(btn) { btn.classList.toggle('active'); }
+
+
 
 function toggleSimple(id) {
     const btn = document.getElementById('btn-'+id);
@@ -362,6 +381,7 @@ function renderLists() {
     const fPending = window.pendingData.filter(i => filterFn(i, false));
     const fComp = window.completedData.filter(i => filterFn(i, true));
 
+    // --- RENDER PENDING CARDS ---
     pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
         const isEditing = editModeIds.has(item.id);
@@ -371,27 +391,28 @@ function renderLists() {
         if(!isEditing) {
             let subTxt = ""; try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch(e){}
             return `
-            <div class="patient-card" id="card-${safeId}">
+            <div class="pending-card" id="card-${safeId}">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                    <div style="flex-grow:1; cursor:pointer;" onclick="toggleExpand('${safeId}')">
-                      <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.75rem;">${subTxt}</span></div>
+                      <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.75rem; font-weight:normal;">${subTxt}</span></div>
                       <div class="pc-meta">${item.test} • ${item.id}</div>
                    </div>
                    <div style="display:flex; gap:5px;">
-                        <button onclick="toggleEditMode('${item.id}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>
-                        <button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button>
+                        <button onclick="toggleEditMode('${item.id}')" class="btn-icon" title="Edit Data"><i class="ph ph-pencil-simple"></i></button>
+                        <button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete Entry"><i class="ph ph-trash"></i></button>
                    </div>
                 </div>
                 <div id="expand-${safeId}" class="pc-expand-area">
-                    <div style="display:flex; gap:10px; margin-bottom: 12px;">
-                        <button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save</button>
-                        <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Print</button>
+                    <div style="display:flex; gap:10px; margin-bottom: 16px;">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button>
                     </div>
                     <div>${getResultTemplate(tCode, safeId, item)}</div>
                 </div>
             </div>`;
         } else {
-            return `<div class="patient-card" style="border-color:var(--warning);">
+            return `
+            <div class="pending-card" style="border-color:var(--warning);">
                 <input type="text" id="edit-name-${safeId}" value="${item.name}" class="form-input" style="margin-bottom:8px;">
                 <textarea id="edit-details-${safeId}" class="form-input" style="min-height: 60px; font-family: monospace; font-size: 0.75rem; margin-bottom:8px;">${typeof item.details==='string'?item.details:JSON.stringify(item.details)}</textarea>
                 <div style="display:flex; gap:8px;">
@@ -402,22 +423,22 @@ function renderLists() {
         }
     }).join('');
 
+    // --- RENDER COMPLETED CARDS (Super Compact, Click to Print) ---
     cList.innerHTML = fComp.map(item => {
-        const isSel = selectedIds.has(item.id);
         return `
-        <div class="patient-card print-target ${isSel ? 'selected' : ''}" data-id="${item.id}" data-test="${item.test}" onclick="toggleCard(this)" style="display:flex; align-items:center;">
-            <i class="ph ph-check-circle-fill sel-icon" style="font-size:1.5rem; color:${isSel?'var(--pri)':'transparent'}; margin-right:12px; transition:0.2s;"></i>
-            <div style="flex-grow:1;">
-                <div class="pc-name" style="font-size:0.9rem;">${item.name}</div>
-                <div class="pc-meta" style="margin:0;">${item.test}</div>
+        <div class="completed-card" onclick="printDirect(event, '${item.id}', '${item.test}')" title="Click to print result">
+            <div style="overflow:hidden;">
+                <div class="pc-name">${item.name}</div>
+                <div class="pc-meta">${item.test}</div>
             </div>
-            <button onclick="printDirect(event, '${item.id}', '${item.test}')" class="btn-icon"><i class="ph ph-printer"></i></button>
+            <i class="ph ph-printer" style="color: var(--success); font-size: 1.3rem;"></i>
         </div>`;
     }).join('');
 
     document.getElementById('count-pending').innerText = fPending.length;
-    updateFooter();
 }
+
+
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 function toggleEditMode(id) { if(editModeIds.has(id)) editModeIds.delete(id); else editModeIds.add(id); renderLists(); }
