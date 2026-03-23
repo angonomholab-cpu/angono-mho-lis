@@ -1,17 +1,21 @@
 // ==========================================
 // 1. API CONNECTION SETUP
 // ==========================================
-// ILAGAY DITO ANG BAGO MONG GOOGLE SCRIPT WEB APP URL (yung nagtatapos sa /exec)
+// PALITAN ITO NG TOTOONG WEB APP URL MO NA NAGTATAPOS SA /exec
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6Krts8ndJr93iN103htz0zvdn9znxcm8Qqa3Z2WW9snrILKGgp6pbh-kmUqnBjg2i0w/exec"; 
 
 async function apiGet(action, params = {}) {
     let url = new URL(SCRIPT_URL);
     url.searchParams.append('action', action);
-    for (let key in params) url.searchParams.append(key, params[key]);
-    
+    for (let key in params) {
+        if (params[key] !== undefined && params[key] !== null) {
+            url.searchParams.append(key, params[key]);
+        }
+    }
     try {
         const response = await fetch(url);
-        return await response.json();
+        const result = await response.json();
+        return result; 
     } catch (error) {
         console.error("API GET Error:", error);
         throw error;
@@ -25,7 +29,8 @@ async function apiPost(action, payload) {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
             body: JSON.stringify({ action: action, ...payload })
         });
-        return await response.json();
+        const result = await response.json();
+        return result;
     } catch (error) {
         console.error("API POST Error:", error);
         throw error;
@@ -33,7 +38,7 @@ async function apiPost(action, payload) {
 }
 
 // ==========================================
-// 2. GLOBAL STATE & SYSTEM STARTUP
+// 2. GLOBAL STATE & STARTUP
 // ==========================================
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 const ALL_PAGES = ['page-add-patient', 'page-pending', 'page-registry', 'page-settings', 'page-reports'];
@@ -45,6 +50,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
+            // Safety check for malformed data
+            if (!currentUser.username || !currentUser.role) throw new Error("Invalid session");
+
             document.getElementById('login-overlay').style.display = 'none';
             
             // Update UI with User Details
@@ -53,62 +61,90 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('pill-avatar').innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
 
             applyPermissions();
-            
-            // TANGGALIN ANG LOADER
             if(loader) loader.style.display = 'none';
             
+            // Redirect based on role
             if(currentUser.role === 'VIEWER') showPage('page-registry');
             else showPage('page-add-patient');
+
         } catch (e) {
+            console.error("Startup Session Error:", e);
             localStorage.removeItem('labUser');
             if(loader) loader.style.display = 'none';
             document.getElementById('login-overlay').style.display = 'flex';
         }
     } else {
-        // TANGGALIN ANG LOADER KUNG WALANG NAKA-LOGIN
         if(loader) loader.style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
     }
 });
 
 // ==========================================
-// 3. NAVIGATION & PERMISSIONS
+// 3. NAVIGATION & DATA LOADING CONTROL
 // ==========================================
 function showPage(targetId) {
-    const role = (currentUser && currentUser.role) ? currentUser.role.toUpperCase() : "VIEWER";
-    const cleanId = targetId.replace('page-', '');
+    const elId = targetId.startsWith('page-') ? targetId : 'page-' + targetId;
+    const cleanId = elId.replace('page-', '');
 
-    if (role === 'VIEWER' && (cleanId === 'settings' || cleanId === 'pending')) { alert("Access Denied."); return; }
-    if ((role === 'STAFF' || role === 'ENCODER') && cleanId === 'settings') { alert("Access Denied."); return; }
+    // 1. RBAC Check (Role Based Access Control)
+    if (!checkAccess(cleanId)) return;
 
+    // 2. Hide all pages
     ALL_PAGES.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
 
-    const fullId = targetId.startsWith('page-') ? targetId : 'page-' + targetId;
-    const target = document.getElementById(fullId);
+    // 3. Show target page
+    const target = document.getElementById(elId);
     if (target) target.style.display = 'block';
 
+    // 4. Update Sidebar Active State
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
+        // Handle pop-out menus by checking children
         const clickCode = item.getAttribute('onclick') || "";
-        if (clickCode.includes(fullId) || clickCode.includes(cleanId)) item.classList.add('active');
+        if (clickCode.includes(elId) || clickCode.includes(cleanId) || item.id === 'nav-'+cleanId) {
+            item.classList.add('active');
+        }
     });
+
+    // 5. TRIGGER DATA LOAD BASED ON PAGE
+    if (cleanId === 'pending') {
+        if (typeof loadPendingData === 'function') loadPendingData();
+    } else if (cleanId === 'reports') {
+        // Option to pre-load or reset reports
+    } else if (cleanId === 'settings') {
+        if (typeof loadSettingsData === 'function') loadSettingsData();
+    }
+}
+
+// FIX: permissions logic for Sidebar IDs
+function checkAccess(page) {
+    const role = (currentUser && currentUser.role) ? currentUser.role.toUpperCase() : "VIEWER";
+    if (role === 'ADMIN') return true;
+    
+    if (page === 'settings') return false; // Only Admin
+    if (page === 'pending' && role === 'VIEWER') return false; 
+    if (page === 'add-patient' && role === 'VIEWER') return false;
+
+    return true;
 }
 
 function applyPermissions() {
     const role = (currentUser.role || "VIEWER").toUpperCase();
     const navAdd = document.querySelector("li[onclick*='page-add-patient']");
-    const navPending = document.querySelector("li[onclick*='page-pending']");
-    const navReg = document.getElementById('regIcon');
-    const navSet = document.querySelector("li[onclick*='page-settings']");
+    const navPending = document.getElementById('nav-pending');
+    const navReg = document.getElementById('nav-registry');
+    const navSet = document.getElementById('nav-settings');
 
+    // Hide everything first
     if(navAdd) navAdd.style.display = 'none';
     if(navPending) navPending.style.display = 'none';
     if(navReg) navReg.style.display = 'none';
     if(navSet) navSet.style.display = 'none';
 
+    // Show based on role
     switch (role) {
         case 'ADMIN':
             if(navAdd) navAdd.style.display = 'flex';
@@ -116,7 +152,6 @@ function applyPermissions() {
             if(navReg) navReg.style.display = 'flex';
             if(navSet) navSet.style.display = 'flex';
             break;
-        case 'LAB STAFF':
         case 'STAFF':
             if(navAdd) navAdd.style.display = 'flex';
             if(navPending) navPending.style.display = 'flex';
@@ -134,7 +169,7 @@ function applyPermissions() {
 }
 
 // ==========================================
-// 4. LOGIN & REGISTRATION
+// 4. LOGIN & REGISTRATION API
 // ==========================================
 async function attemptLogin() {
     const uInput = document.getElementById('login_user');
@@ -146,10 +181,10 @@ async function attemptLogin() {
     const u = uInput.value.trim();
     const p = pInput.value.trim();
 
-    if (!u || !p) { err.style.display = 'block'; err.innerText = "Please enter credentials."; return; }
+    if (!u || !p) { err.style.display = 'block'; err.innerText = "Enter credentials."; return; }
 
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Verifying...';
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>SF Verifying...';
     btn.disabled = true;
     err.style.display = 'none';
 
@@ -166,142 +201,95 @@ async function attemptLogin() {
             applyPermissions();
             localStorage.setItem('labUser', JSON.stringify(currentUser));              
             
-            document.getElementById('app-loader').style.display = 'none';
             document.getElementById('login-overlay').style.display = 'none';
 
             if (currentUser.role === 'VIEWER') showPage('page-registry');
             else showPage('page-add-patient');
-            
-            btn.innerHTML = originalText; btn.disabled = false;
         } 
         else if (res.status === "PENDING") {
             err.style.display = 'block';
-            err.innerHTML = "<i class='ph ph-clock'></i> Account Pending Approval";
-            btn.innerHTML = originalText; btn.disabled = false;
+            err.innerHTML = "<i class='ph ph-clock'></i> Pending Approval";
         } 
         else {
             err.style.display = 'block';
             err.innerHTML = "Invalid credentials";
-            btn.innerHTML = originalText; btn.disabled = false;
         }
     } catch (error) {
-        alert("Server Error. Please check your internet connection.");
-        btn.innerHTML = originalText; btn.disabled = false;
-    }
-}
-
-function showRegister() {
-    document.getElementById('login-card').style.display = 'none';
-    document.getElementById('register-card').style.display = 'block';
-    loadRegisterFacilities(); 
-}
-
-function hideRegister() {
-    document.getElementById('register-card').style.display = 'none';
-    document.getElementById('login-card').style.display = 'block';
-}
-
-async function loadRegisterFacilities() {
-    const dropdown = document.getElementById('reg_fac');
-    dropdown.innerHTML = '<option value="" disabled selected>Loading...</option>';
-    try {
-        const res = await apiGet("getFacilityList");
-        dropdown.innerHTML = '<option value="" disabled selected>Select Your Facility</option>';
-        if (res.status === "success" && res.data) {
-            res.data.forEach(fac => { dropdown.innerHTML += `<option value="${fac.name}">${fac.name}</option>`; });
-        }
-    } catch(e) {
-        dropdown.innerHTML = '<option value="" disabled>Error loading facilities</option>';
-    }
-}
-
-async function submitRegister() {
-    const n = document.getElementById('reg_name').value;
-    const u = document.getElementById('reg_user').value;
-    const p = document.getElementById('reg_pass').value;
-    const f = document.getElementById('reg_fac').value;
-
-    if(!n || !u || !p || !f) { alert("All fields required"); return; }
-
-    const btn = document.querySelector('#register-card button');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Sending...';
-    btn.disabled = true;
-
-    try {
-        const res = await apiPost("registerUser", { data: { username: u, password: p, facility: f, fullName: n }});
-        if(res.status === "success") {
-            alert("Request Sent! Please wait for the Admin to approve your account.");
-            hideRegister();
-        } else {
-            alert("Error: " + res.message);
-        }
-    } catch(e) {
-        alert("Error connecting to server.");
+        alert("Server Error. Check connection.");
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
 }
 
-// ==========================================
-// 5. REGISTRY MODAL OPENER
-// ==========================================
-async function openRegistryModal(type) {
-    showPage('page-registry');
-    
-    const titleEl = document.getElementById('regTitle');
-    if(titleEl) titleEl.innerText = type + " Registry";
-    
-    const cont = document.getElementById('registry-table-content');
-    if(cont) cont.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted);"><i class="ph ph-circle-notch ph-spin" style="font-size:2rem; margin-bottom:8px;"></i>Loading data...</div>';
-
-    try {
-        const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
-        if (res.status === "success") {
-            if (typeof renderRegistryTable === 'function') {
-                renderRegistryTable(res.data);
-            } else {
-                cont.innerHTML = 'Error: renderRegistryTable function missing.';
-            }
-        } else {
-            throw new Error(res.message);
-        }
-    } catch (err) {
-        if(cont) cont.innerHTML = `<div style="text-align:center; padding:50px; color:red;">Error: ${err.message}</div>`;
-    }
-}
-
-// ==========================================
-// 6. LOGOUT & AUTO-LOGOUT
-// ==========================================
+// FIX: Logout logic
 function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() {
-    const btn = document.querySelector('#logout-modal .btn-danger');
-    if(btn) btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Exiting...';
     localStorage.removeItem('labUser');
     window.location.reload();
 }
 
-const AUTO_LOGOUT_MINUTES = 15;
-let idleTimeCounter = 0;
-
-setInterval(() => {
-    if (typeof currentUser !== 'undefined' && currentUser.role) {
-        const role = String(currentUser.role).toUpperCase();
-        if (role === 'ENCODER' || role === 'VIEWER') {
-            idleTimeCounter++;
-            if (idleTimeCounter >= AUTO_LOGOUT_MINUTES) {
-                localStorage.removeItem('labUser');
-                alert("SECURITY ALERT:\n\nYour session has expired due to inactivity.\nPlease log in again.");
-                window.location.reload();
-            }
+// Registration Functions (Kept for completeness)
+function showRegister() { document.getElementById('login-card').style.display = 'none'; document.getElementById('register-card').style.display = 'block'; loadRegisterFacilities(); }
+function hideRegister() { document.getElementById('register-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
+async function loadRegisterFacilities() {
+    const dropdown = document.getElementById('reg_fac');
+    if(!dropdown) return;
+    dropdown.innerHTML = '<option value="" disabled selected>Loading...</option>';
+    try {
+        const res = await apiGet("getFacilityList");
+        dropdown.innerHTML = '<option value="" disabled selected>Select Facility</option>';
+        if (res.status === "success" && res.data) {
+            res.data.forEach(fac => { dropdown.innerHTML += `<option value="${fac.name}">${fac.name}</option>`; });
         }
-    }
-}, 60000);
+    } catch(e) { dropdown.innerHTML = '<option value="" disabled>Error loading</option>'; }
+}
+async function submitRegister() {
+    const n = document.getElementById('reg_name').value;
+    const u = document.getElementById('reg_user').value;
+    const p = document.getElementById('reg_pass').value;
+    const f = document.getElementById('reg_fac').value;
+    if(!n || !u || !p || !f) { alert("Fields required"); return; }
+    try {
+        const res = await apiPost("registerUser", { data: { username: u, password: p, facility: f, fullName: n }});
+        if(res.status === "success") { alert("Sent! Wait for Admin approval."); hideRegister(); } 
+        else { alert("Error: " + res.message); }
+    } catch(e) { alert("Error connecting."); }
+}
 
-['mousemove', 'keypress', 'click', 'scroll', 'touchstart'].forEach(evt => {
-    document.addEventListener(evt, () => { idleTimeCounter = 0; }, { passive: true });
-});
+// ==========================================
+// 5. REGISTRY & MODAL LOGIC
+// ==========================================
+function openRegistryModal(type) {
+    // Navigate to registry page first
+    showPage('page-registry');
+    
+    // Set Title
+    const titleEl = document.getElementById('regTitle');
+    if(titleEl) titleEl.innerText = type + " Registry";
+    
+    // Show Loading in table area
+    const cont = document.getElementById('registry-table-content');
+    if(cont) cont.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted);"><i class="ph ph-circle-notch ph-spin" style="font-size:2rem; margin-bottom:8px; color:var(--sys-blue);"></i>Querying SF Database...</div>';
+
+    // Fetch Data
+    apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role })
+    .then(res => {
+        if (res.status === "success") {
+            // CALLS RENDER FUNCTION IN THE ADD_PATIENT HTML BLOCK
+            if (typeof renderRegistryTable === 'function') {
+                renderRegistryTable(res.data);
+            } else {
+                console.error("renderRegistryTable function not loaded.");
+                if(cont) cont.innerHTML = "Error: Render engine not ready.";
+            }
+        } else {
+            throw new Error(res.message);
+        }
+    })
+    .catch(err => {
+        if(cont) cont.innerHTML = `<div style="text-align:center; padding:50px; color:var(--sys-red);">Error: ${err.message}</div>`;
+    });
+}
 
