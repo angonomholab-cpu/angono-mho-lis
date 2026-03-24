@@ -514,7 +514,12 @@ function getResultTemplate(code, safeId, item) {
      case 'FA': return `<div class="form-grid grid-2">${select('Color','Color',['Brown','Yellow','Green','Black','Red'])}${select('Consistency','Consistency',['Formed','Soft','Loose','Watery'])}<div class="full-width">${input('parasite','Parasite')}</div>${input('RBC','RBC')}${input('WBC','WBC')}</div>${rem}`;
      case 'GRAM': return `<div class="form-grid grid-2"><div class="full-width font-bold" style="color:var(--pri);">Gram Positive</div>${input('GP_Quantity','Qty')}${input('GP_Morphology','Morph')}${input('GP_Arrangement','Arrange')}<div class="full-width font-bold" style="color:var(--sec); margin-top:8px;">Gram Negative</div>${input('GN_Quantity','Qty')}${input('GN_Morphology','Morph')}${input('GN_Arrangement','Arrange')}</div>${rem}`;
      case 'SERO': return `<div class="form-grid grid-3">${select('HIV','HIV',['NONREACTIVE','REACTIVE'],['HIV','SERO'])}${select('HBSAG','HBsAg',['NONREACTIVE','REACTIVE'],['HBSAG','SERO'])}${select('SYPHILIS','Syphilis',['NONREACTIVE','REACTIVE'],['SYPHILIS','SERO'])}</div>${rem}`;
-     case 'DENGUE': return `<div class="form-grid grid-1">${select('Dengue_Result','Dengue NS1',['Negative','Positive'])}</div>${rem}`;
+         case 'DENGUE': 
+        let duoHtml = '';
+        if (req.includes('DUO')) {
+            duoHtml = select('IgG', 'IgG', ['Negative','Positive']) + select('IgM', 'IgM', ['Negative','Positive']);
+        }
+        return `<div class="form-grid grid-1">${select('Dengue_Result', 'Dengue NS1', ['Negative', 'Positive'])}${duoHtml}</div>${rem}`;
      default: return `<div class="form-grid grid-1">${input('Result','Result')}</div>${rem}`;
  }
 }
