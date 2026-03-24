@@ -70,29 +70,50 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .nav-item.active i { color: white; }
 
 /* ========================================= */
-/* 3. WORKSPACE COLUMNS                      */
+/* 3. WORKSPACE COLUMNS (RESPONSIVE)         */
 /* ========================================= */
-.main-content { height: 100vh; overflow-x: auto; overflow-y: hidden; padding: 20px 20px 20px 10px; background: var(--bg-body); }
+.main-content { 
+    height: 100vh; overflow-y: auto; overflow-x: hidden; 
+    padding: 20px; background: var(--bg-body); 
+}
 .page-area { display: none; height: 100%; }
-.workspace-grid { display: flex; gap: 16px; height: calc(100vh - 40px); align-items: stretch; min-width: 1200px; justify-content: flex-start; }
 
-.workspace-col { background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.workspace-grid { 
+    display: flex; gap: 16px; height: calc(100vh - 40px); 
+    align-items: stretch; justify-content: flex-start; 
+}
+
+.workspace-col { 
+    background: var(--bg-surface); border-radius: var(--radius-lg); 
+    box-shadow: var(--shadow-card); border: 1px solid var(--border-color); 
+    display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; 
+}
+
 .workspace-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed var(--border-color); background: var(--bg-surface); z-index: 2;}
 .workspace-header h2 { font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--pri); }
 
-#col-entry { width: 620px; }
-#col-pending { width: 440px; }
-#col-completed { width: 280px; }
+/* Flexible Widths para mas responsive */
+#col-entry { flex: 1.8; min-width: 400px; }
+#col-pending { flex: 1.2; min-width: 350px; }
+#col-completed { flex: 0.8; min-width: 250px; }
 
 .ap-split { display: flex; height: calc(100% - 50px); overflow: hidden; }
-.ap-left { flex: 1.2; padding: 16px; overflow-y: auto; border-right: 1px dashed var(--border-color); display: flex; flex-direction: column; padding-bottom: 80px; position: relative;}
+.ap-left { flex: 1.2; padding: 16px; overflow-y: auto; border-right: 1px dashed var(--border-color); display: flex; flex-direction: column; padding-bottom: 80px; position: relative; z-index: 5;}
 .ap-right { flex: 0.8; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-body); padding-bottom: 80px;}
+
 .sticky-footer { position: absolute; bottom: 0; left: 0; width: 100%; padding: 12px 16px; background: var(--bg-surface); border-top: 1px solid var(--border-color); z-index: 10; }
 
-/* Edit Mode Aestehtics - No more ugly orange! */
-.edit-mode-pane { border: 2px solid var(--sec) !important; background: var(--sec-light) !important; }
-.edit-mode-header { background: var(--sec) !important; color: white !important; }
-.edit-mode-header h2 { color: white !important; }
+/* --- RESPONSIVE MEDIA QUERIES (TABLET & LANDSCAPE) --- */
+@media screen and (max-width: 1200px) {
+    .workspace-grid { flex-direction: column; height: auto; }
+    .workspace-col { width: 100% !important; min-height: 500px; margin-bottom: 20px; flex: none; }
+    .ap-split { flex-direction: column; height: auto; overflow: visible; }
+    .ap-left { border-right: none; border-bottom: 1px dashed var(--border-color); padding-bottom: 20px; }
+    .ap-right { padding-bottom: 20px; }
+    .sticky-footer { position: static; background: transparent; border: none; padding: 15px 0 0 0; }
+}
+
+
 
 /* ========================================= */
 /* 4. FORMS & INPUTS                         */
