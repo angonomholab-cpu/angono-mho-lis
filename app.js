@@ -159,36 +159,35 @@ function applyPermissions() {
 }
 
 // ==========================================
-// 4. ADD PATIENT LOGIC
+// 4. ADD PATIENT LOGIC & CONFIG
 // ==========================================
 const availableTests = {
-    "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" class="form-input"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" class="form-input"></div>`},
-    "dssm": { testName: "DSSM", testCode: "DSSM", title: "DSSM Microscopy", html: `<div class="field-group"><label class="field-label">TB Case No</label><input type="text" id="ds_case" class="form-input"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" id="ds_month" class="form-input"></div>` },
+    "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" class="form-input" placeholder="e.g. Dr. Cruz"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" class="form-input" placeholder="e.g. Normal"></div>`},
+    "dssm": { testName: "DSSM", testCode: "DSSM", title: "DSSM Microscopy", html: `<div class="field-group"><label class="field-label">TB Case No</label><input type="text" id="ds_case" class="form-input" placeholder="Case Number"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" id="ds_month" class="form-input" placeholder="e.g. 2nd Month"></div>` },
     "viral": { testName: "GeneXpert Viral Load", testCode: "GXVL", isSimple: true },
-    "sero": { testName: "Serology", testCode: "SERO", title: "Serology", html: `<label class="field-label">Test(s):</label><div class="chip-group" id="sero-sub-tests">${['HIV Screening','Syphilis Screening','HBsAg Screening'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div><div class="form-grid grid-2"><div class="field-group"><label class="field-label">Classification</label><select id="sr_class" class="form-select"><option>Maternal</option><option>SHC</option><option>TB Patient</option></select></div><div class="field-group"><label class="field-label">KAP Category</label><select id="sr_kap" class="form-select"><option value="None">None</option><option>MSM</option><option>TGW</option><option>FSW</option><option>MSW</option><option>PDL</option><option>PWID</option></select></div></div>` },
-    "gram": { testName: "Gram Stain", testCode: "GRAM", title: "Gram Stain", html: `<div class="field-group"><label class="field-label">Source</label><input type="text" id="gs_src" class="form-input"></div>` },
-    "dengue": { testName: "Dengue NS1", testCode: "DENG", title: "Dengue", html: `<div class="field-group"><label class="field-label">Days of Illness</label><input type="number" id="dn_onset" class="form-input"></div>` },
+    "sero": { testName: "Serology", testCode: "SERO", title: "Serology", html: `<label class="field-label">Test(s):</label><div class="chip-group" id="sero-sub-tests">${['HIV Screening','Syphilis Screening','HBsAg Screening'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div><div class="form-grid grid-1" style="margin-top:12px;"><div class="field-group"><label class="field-label">Classification</label><select id="sr_class" class="form-select"><option>Maternal</option><option>SHC</option><option>TB Patient</option></select></div><div class="field-group"><label class="field-label">KAP Category</label><select id="sr_kap" class="form-select"><option value="None">None</option><option>MSM</option><option>TGW</option><option>FSW</option><option>MSW</option><option>PDL</option><option>PWID</option></select></div></div>` },
+    "gram": { testName: "Gram Stain", testCode: "GRAM", title: "Gram Stain", html: `<div class="field-group"><label class="field-label">Source</label><input type="text" id="gs_src" class="form-input" placeholder="e.g. Urethral Discharge"></div>` },
+    
+    // NEW DENGUE LOGIC (NS1 + DUO)
+    "dengue": { testName: "Dengue", testCode: "DENG", title: "Dengue Setup", html: `<div class="field-group"><label class="field-label">Days of Illness</label><input type="number" id="dn_onset" class="form-input" placeholder="e.g. 3"></div> <div class="field-group" style="margin-top:12px;"><label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:var(--text-main); font-size:0.85rem;"><input type="checkbox" id="dn_duo_check" style="accent-color:var(--pri); width:16px; height:16px;"> Include Dengue Duo (IgG/IgM)</label></div>` },
+    
     "hema": { testName: "Hematology", testCode: "HEMA", title: "Hematology", html: `<div class="chip-group">${['CBC','Platelet Count','Blood Typing'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div>` },
     "uria": { testName: "Urinalysis", testCode: "UA", isSimple: true },
     "feca": { testName: "Fecalysis", testCode: "FA", isSimple: true },
     "chem": { testName: "Blood Chemistry", testCode: "CHEM", title: "Chemistry", html: `<div class="chip-group">${['FBS','OGTT','BUN','Uric Acid','Cholesterol','Triglycerides','Lipid Profile','HBA1C','Creatinine'].map(a => `<div class="chip" onclick="toggleSub(this)" data-val="${a}">${a}</div>`).join('')}</div>` }
 };
 
-// ==========================================
-// FIX: SHOWING/HIDING TEST ROW
-// ==========================================
+
 function openTestDetails(id) {
     const config = availableTests[id];
     if (!config) return;
     
-    // Itago ang buong 1-row ng buttons
-    document.getElementById('test-row-container').style.display = 'none';
-    
+    document.getElementById('test-buttons-container').style.display = 'none'; // Hide Vertical List
     const area = document.getElementById('test-details-area');
     area.style.display = 'block';
     
     area.innerHTML = `
-        <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+        <div style="font-weight: 700; color: var(--pri); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
             <i class="ph ph-info"></i> ${config.title} Options
         </div>
         <div id="temp-form-data" class="form-grid grid-1">${config.html}</div>
@@ -200,29 +199,33 @@ function openTestDetails(id) {
 
 function cancelDetail() { 
     document.getElementById('test-details-area').style.display = 'none'; 
-    // Ibalik ang 1-row buttons
-    document.getElementById('test-row-container').style.display = 'flex'; 
+    document.getElementById('test-buttons-container').style.display = 'flex'; // Show Vertical List
 }
 
-// Kapag cinonfirm, ibabalik din natin yung row para makapili pa ng ibang test
 function confirmDetail(id) {
    let details = {}; let subSelected = [];
    if(id === 'mtb') details = { "History of Treatment": document.getElementById('gx_hist').value, "Source of Request": document.getElementById('gx_src').value, "X-Ray Result": document.getElementById('gx_xray').value };
    else if(id === 'dssm') details = { "TB Case Number": document.getElementById('ds_case').value, "Month of Treatment": document.getElementById('ds_month').value };
    else if(id === 'gram') details = { "Source of Specimen": document.getElementById('gs_src').value };
-   else if(id === 'dengue') details = { "Day/s of Onset of Illness": document.getElementById('dn_onset').value };
+   else if(id === 'dengue') {
+       details = { "Day/s of Onset of Illness": document.getElementById('dn_onset').value };
+       // Capture if Duo is requested
+       if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) {
+           subSelected.push('Dengue Duo');
+       }
+   }
    else if(['sero','hema','chem'].includes(id)) {
        const activeBtns = document.querySelectorAll('#test-details-area .chip.active');
-       if(activeBtns.length === 0) { alert("Select at least one sub-test."); return; }
+       if(activeBtns.length === 0) { alert("Select at least one test."); return; }
        subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val'));
        if(id === 'sero') details = { "Classification": document.getElementById('sr_class').value, "KAP Category": document.getElementById('sr_kap').value };
    }
 
    labOrders[id] = { details: details, subTests: subSelected };
    document.getElementById('btn-'+id).classList.add('active');
-   updateSummary(); 
-   cancelDetail(); // Hides details, shows row again
+   updateSummary(); cancelDetail(); 
 }
+
 
 
 
