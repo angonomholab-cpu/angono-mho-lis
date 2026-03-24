@@ -10,24 +10,35 @@
 </head>
 <body>
 
-    <button id="menu-toggle-btn" onclick="toggleSidebar()"><i class="ph ph-list"></i></button>
+    <div class="float-actions">
+        <button class="float-btn" onclick="openQuickSearch()" title="Quick Search Profile"><i class="ph ph-magnifying-glass"></i></button>
+        <button class="float-btn" id="menu-toggle-btn" onclick="toggleSidebar()" title="Open Menu"><i class="ph ph-list"></i></button>
+    </div>
 
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    
     <nav class="sidebar" id="main-sidebar">
         <div style="text-align: right;"><button class="btn-icon" onclick="toggleSidebar()"><i class="ph ph-x"></i></button></div>
+        
+        <div id="user-profile-sidebar" onclick="logoutUser()" title="Click to Log Out">
+            <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
+            <div style="display:flex; flex-direction:column; flex: 1;">
+                <span class="user-pill-name" id="display-full-name">Loading...</span>
+                <span class="user-pill-role" id="display-role-facility">Please Log In</span>
+            </div>
+            <i class="ph ph-sign-out" style="color: var(--danger); font-size: 1.2rem;"></i>
+        </div>
         
         <ul class="nav-links">
             <li class="nav-item active" id="nav-workspace" onclick="showPage('workspace'); toggleSidebar();">
                 <i class="ph ph-desktop"></i> Workspace
             </li>
-            
-                       <li class="nav-item" id="nav-registry" onclick="showRegistrySelectionModal()">
+            <li class="nav-item" id="nav-registry" onclick="showRegistrySelectionModal(); toggleSidebar();">
                 <i class="ph ph-books"></i> Lab Registry
             </li>
-            
             <li class="nav-item" id="nav-reports" onclick="showPage('reports'); toggleSidebar();">
                 <i class="ph ph-chart-bar"></i> Reports
             </li>
-            
             <li class="nav-item" id="nav-settings" onclick="showPage('settings'); toggleSidebar();">
                 <i class="ph ph-gear-six"></i> Settings
             </li>
@@ -41,45 +52,27 @@
     </nav>
 
     <main class="main-content">
-               <div id="user-profile-pill" onclick="logoutUser()">
-            <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
-            <div class="user-pill-info">
-                <div class="user-pill-name" id="display-full-name" style="font-size:0.75rem; font-weight:700;">Loading...</div>
-                <div class="user-pill-role" id="display-role-facility" style="font-size:0.6rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Please Log In</div>
-            </div>
-            <i class="ph ph-sign-out" style="color: var(--danger); font-size: 1.2rem; margin-left: 8px;" title="Log Out"></i>
-        </div>
-
-
         <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
             <input type="hidden" id="finalPatientId">
             <div class="workspace-grid" id="workspace-grid-container">
                 
                 <div class="workspace-col" id="col-entry">
-                    <div class="workspace-header">
+                    <div class="workspace-header" id="entry-main-header">
                         <h2><i class="ph ph-user-plus"></i> Patient Entry</h2>
-                        <button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>
+                        <button class="btn-icon" onclick="cancelEditPending()" title="Clear Form"><i class="ph ph-eraser"></i></button>
                     </div>
                     
                     <div class="ap-split">
-                                               <div class="ap-left">
+                        <div class="ap-left" id="entry-left-pane">
                             <div style="position: relative; margin-bottom: 12px;">
                                 <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
                                 <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
                                 <div id="search-status" style="font-size: 0.65rem; color: var(--pri); position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-weight: bold; display: none;">Searching...</div>
-                                <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
-                            </div>
-
-                            <div id="new-entry-header" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                                <h3 style="font-size: 0.9rem; color: var(--text-main);"><i class="ph ph-user-plus" style="color: var(--pri);"></i> New Entry Form</h3>
-                            </div>
-                            <div id="profile-header" style="margin-bottom: 10px; display: none; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">
-                                <h3 style="font-size: 0.9rem; color: var(--pri);"><i class="ph ph-user-circle"></i> Patient Profile</h3>
-                                <span class="badge badge-negative">Returning Patient</span>
+                                <div id="direct-results-box" class="search-results-container"></div>
                             </div>
 
                             <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 8px;">
-                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" oninput="generateSmartID()"></div>
+                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID()"></div>
                                 <div style="display:flex; gap:8px;">
                                     <div class="field-group" style="flex:2;"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
                                     <div class="field-group" style="flex:1;"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
@@ -88,11 +81,11 @@
                                     <div class="field-group" style="flex:1;"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
                                     <div class="field-group" style="flex:2;"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
                                 </div>
-                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input"></div>
+                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input" placeholder="Brgy. / Address"></div>
                                 <input type="hidden" id="p_email" value=""> 
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
-                                                                       <select id="p_facility" class="form-select">
+                                    <select id="p_facility" class="form-select">
                                         <option value="" disabled selected>Select Source...</option>
                                         <option value="San Isidro">San Isidro</option>
                                         <option value="Kalayaan">Kalayaan</option>
@@ -107,26 +100,24 @@
                                         <option value="San Isidro Hospital">San Isidro Hospital</option>
                                         <option value="Angono Medics Hospital">Angono Medics Hospital</option>
                                         <option value="Angono RHU I">Angono RHU I</option>
+                                        <option value="Angono RHU II">Angono RHU II</option>
                                     </select>
                                 </div>
                             </form>
 
-                            <div id="history-section" style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                                <h4 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i class="ph ph-clock-counter-clockwise"></i> Laboratory History</h4>
-                                <div id="history-list" style="max-height: 180px; overflow-y: auto;">
-                                    </div>
+                            <div id="history-section" style="display:none; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                                <h4 style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;"><i class="ph ph-clock-counter-clockwise"></i> Previous Lab Records</h4>
+                                <div id="history-list" style="max-height: 120px; overflow-y: auto;"></div>
                             </div>
                             
-                            <div id="order-summary" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
-                            
-                            <div style="margin-top: auto; padding-top: 15px;">
-                                <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save & Send Record</button>
+                            <div class="sticky-footer" style="position:static; padding:15px 0 0 0; background:transparent; border:none; margin-top:auto;">
+                                <div id="order-summary" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom: 10px;"></div>
+                                <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save Record</button>
                             </div>
                         </div>
 
-
-                        <div class="ap-right">
-                            <label class="field-label" style="margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px;">Select Tests</label>
+                        <div class="ap-right" id="entry-right-pane">
+                            <label class="field-label" id="lbl-select-tests" style="margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px;">Select Tests</label>
                             
                             <div class="vertical-test-list" id="test-buttons-container">
                                 <div class="test-btn-vert" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus"></i><span>GeneXpert MTB</span></div>
@@ -151,12 +142,8 @@
                         <h2><i class="ph ph-hourglass-medium"></i> Pending <span id="count-pending" style="color:var(--pri); margin-left:5px;">(0)</span></h2>
                         <div style="display: flex; gap: 6px;">
                             <select id="test-filter" onchange="renderLists()" class="form-select" style="width: auto; padding: 4px 8px; min-height: 0; font-size: 0.75rem; font-weight: bold;">
-                                <option value="ALL">All Sections</option>
-                                <option value="GXP">GeneXpert</option>
-                                <option value="DSSM">DSSM / AFB</option>
-                                <option value="HEMA">Hematology</option>
-                                <option value="CHEM">Chemistry</option>
-                                <option value="SERO">Serology</option>
+                                <option value="ALL">All Sections</option><option value="GXP">GeneXpert</option><option value="DSSM">DSSM / AFB</option>
+                                <option value="HEMA">Hematology</option><option value="CHEM">Chemistry</option><option value="SERO">Serology</option>
                             </select>
                             <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon" class="ph ph-arrows-clockwise"></i></button>
                         </div>
@@ -174,6 +161,47 @@
             </div>
         </div>
 
+        <div id="registry-selection-modal" class="modal-backdrop" style="display:none;">
+            <div class="auth-card" style="width: 500px; padding: 25px; text-align: left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="font-size: 1.1rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
+                    <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div class="test-btn-vert" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
+                    <div class="test-btn-vert" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="quick-search-modal" class="modal-backdrop" style="display:none;">
+            <div class="auth-card" style="width: 500px; padding: 25px; text-align: left; max-height: 90vh; overflow-y: auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h2 style="font-size: 1.1rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Quick Search</h2>
+                    <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+                </div>
+                <div style="position: relative; margin-bottom: 15px;">
+                    <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search..." onkeyup="runQuickSearch(this.value)">
+                    <div id="quick-search-results" class="search-results-container"></div>
+                </div>
+                <div id="quick-profile-view" style="display:none;">
+                    <div style="background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
+                        <h3 id="qs-name" style="color:var(--pri); font-size:1rem; margin-bottom:4px;"></h3>
+                        <div id="qs-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;"></div>
+                    </div>
+                    <h4 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Laboratory History</h4>
+                    <div id="qs-history-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+            </div>
+        </div>
 
 
         <div id="page-registry" class="page-area">
