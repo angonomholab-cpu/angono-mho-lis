@@ -173,3 +173,28 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .auth-card { background: var(--bg-surface); padding: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-float); width: 340px; text-align: center; border: 1px solid var(--border-color); }
 .auth-icon { width: 60px; height: 60px; background: var(--bg-subtle); color: var(--pri); border-radius: 16px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
 
+/* ========================================= */
+/* 13. REGISTRY TABLE & MODAL FIXES          */
+/* ========================================= */
+/* Pipilitin nitong magkasya ang buong table sa screen */
+#registry-table-content table {
+    font-size: 0.65rem; 
+    table-layout: auto; 
+    width: 100%;
+}
+#registry-table-content th, #registry-table-content td {
+    padding: 6px 4px;
+    white-space: nowrap; /* Bawal bumaba ang text */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px; /* Puputulin ang text kung sobrang haba */
+}
+
+/* History List Styles */
+.history-card {
+    background: var(--bg-body); padding: 8px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color); display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 6px;
+}
+.history-card .h-test { font-weight: 700; font-size: 0.75rem; color: var(--text-main); }
+.history-card .h-date { font-size: 0.65rem; color: var(--text-muted); }
