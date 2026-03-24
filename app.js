@@ -478,7 +478,7 @@ function renderLists() {
                       <div class="pc-meta">${item.test} • Encoded by: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div>
                    </div>
                    <div style="display:flex; gap:5px;">
-                        <button onclick="toggleEditMode('${item.id}')" class="btn-icon" title="Edit Entry"><i class="ph ph-pencil-simple"></i></button>
+                        <button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Entry Profile & Test"><i class="ph ph-pencil-simple"></i></button>
                         <button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button>
                    </div>
                 </div>
@@ -635,5 +635,100 @@ function filterRegistryTable() {
         const text = tr.textContent.toLowerCase();
         tr.style.display = (text.includes(s) && text.includes(m)) ? "" : "none";
     });
+}// ==========================================
+// FIX 5: FULL SCREEN PENDING EDIT LOGIC
+// ==========================================
+let editingPendingId = null;
+
+function editPendingFull(id) {
+    const item = window.pendingData.find(i => String(i.id) === String(id).trim());
+    if(!item) return;
+    
+    editingPendingId = item.id;
+    isExistingPatient = true; // Lock ID generation
+    
+    // 1. Populate Demographics (Kaliwa)
+    document.getElementById('finalPatientId').value = item.patientId;
+    document.getElementById('p_name').value = item.name || "";
+    
+    let d = {};
+    try { d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; } catch(e){}
+    
+    document.getElementById('p_age').value = d.age || d.Age || "";
+    setSelectValue('p_sex', d.sex || d.Sex);
+    setSelectValue('p_facility', d.facility || d.Facility);
+    // Note: Kung may birthday at address sa details JSON, pwede rin i-populate dito
+    
+    // Palitan ang Header
+    document.getElementById('new-entry-header').style.display = 'none';
+    document.getElementById('profile-header').style.display = 'flex';
+    document.getElementById('profile-header').innerHTML = `<h3 style="font-size: 0.9rem; color: var(--warning);"><i class="ph ph-pencil-simple"></i> Editing Pending Record</h3>`;
+    
+    // 2. Populate Test Details (Kanan)
+    document.getElementById('test-buttons-container').style.display = 'none';
+    const area = document.getElementById('test-details-area');
+    area.style.display = 'block';
+    
+    // Gagawa tayo ng malaking textarea para mas madaling i-edit ang specific details
+    area.innerHTML = `
+        <div style="font-weight: 700; color: var(--warning); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-pencil-simple"></i> Edit Details: ${item.test}
+        </div>
+        <div class="field-group">
+            <label class="field-label">Test Specific Details (You may edit the JSON values safely)</label>
+            <textarea id="edit-pending-details-box" class="form-input" style="min-height: 150px; font-family: monospace; font-size: 0.8rem; background: #fff;">${JSON.stringify(d, null, 2)}</textarea>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:10px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button>
+        </div>
+    `;
+    
+    // Palitan ang behavior ng Save Button sa ibaba
+    const saveBtn = document.getElementById('save-btn-action');
+    saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Record';
+    saveBtn.onclick = submitPendingUpdate;
+    saveBtn.style.background = 'var(--warning)';
+    saveBtn.style.color = 'white';
 }
+
+function cancelEditPending() {
+    editingPendingId = null;
+    clearForm(); // Babalik lahat sa normal
+    
+    // Ibalik ang Save Button
+    const saveBtn = document.getElementById('save-btn-action');
+    saveBtn.innerHTML = '<i class="ph ph-paper-plane-right"></i> Save & Send Record';
+    saveBtn.onclick = finalSubmit;
+    saveBtn.style.background = '';
+}
+
+async function submitPendingUpdate() {
+    if(!editingPendingId) return;
+    const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
+    const newName = document.getElementById('p_name').value;
+    const newDetails = document.getElementById('edit-pending-details-box').value;
+    
+    const btn = document.getElementById('save-btn-action');
+    const oldTxt = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
+    
+    try {
+        await apiPost("updatePatientAndTestDetails", { 
+            testId: editingPendingId, 
+            patientId: item.patientId, 
+            newName: newName, 
+            newTestType: item.test, 
+            newJsonDetails: newDetails 
+        });
+        alert("Record Updated Successfully!");
+        cancelEditPending();
+        loadPendingData(); // Auto refresh the pending list
+    } catch(e) {
+        alert("Error updating: " + e);
+    } finally {
+        btn.innerHTML = oldTxt; btn.disabled = false;
+    }
+}
+
+
 
