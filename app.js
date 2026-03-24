@@ -186,19 +186,9 @@ function cancelDetail() { document.getElementById('test-details-area').style.dis
 
 function confirmDetail(id) {
    let details = {}; let subSelected = [];
-   
-   // Loop dynamically over inputs that have data-key to build details JSON
-   document.querySelectorAll('#test-details-area [data-key]').forEach(el => {
-       details[el.getAttribute('data-key')] = el.value;
-   });
-
+   document.querySelectorAll('#test-details-area [data-key]').forEach(el => { details[el.getAttribute('data-key')] = el.value; });
    if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
-   else if(['sero','hema','chem'].includes(id)) { 
-       const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); 
-       if(activeBtns.length === 0) { alert("Select at least one test."); return; } 
-       subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); 
-   }
-   
+   else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { alert("Select at least one test."); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); }
    labOrders[id] = { details: details, subTests: subSelected }; 
    document.getElementById('btn-'+id).classList.add('active'); 
    updateSummary(); cancelDetail(); 
@@ -247,7 +237,15 @@ async function runDirectSearch(q) {
 // ==========================================
 // 5. HISTORY & QUICK SEARCH LOGIC
 // ==========================================
-function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; document.getElementById('quick-search-input').focus(); }
+function openQuickSearch() { 
+    document.getElementById('quick-search-modal').style.display='flex'; 
+    const input = document.getElementById('quick-search-input');
+    input.value = '';
+    document.getElementById('quick-search-results').style.display = 'none';
+    document.getElementById('quick-profile-view').style.display = 'none';
+    input.focus(); 
+}
+
 async function runQuickSearch(q) {
   const box = document.getElementById('quick-search-results');
   if(q.length < 2) { box.style.display='none'; return; }
@@ -286,7 +284,6 @@ function editPatientDemographicsQS() {
 }
 function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
 
-// The powerful Expandable History Fetcher
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId);
@@ -299,7 +296,6 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                 const uniqueId = `hist-${listId}-${i}`;
                 const dateStr = new Date(h.date).toLocaleDateString();
                 
-                // Formulate Editable Inputs for History
                 let fullDataHtml = '';
                 if(h.fullData) {
                     for (const [key, value] of Object.entries(h.fullData)) {
@@ -307,7 +303,7 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                            fullDataHtml += `
                            <div style="margin-bottom:6px;">
                                <label class="field-label" style="font-size:0.6rem;">${key}</label>
-                               <input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}" style="padding:4px 8px; font-size:0.75rem;">
+                               <input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}" style="padding:6px; font-size:0.75rem;">
                            </div>`;
                         }
                     }
@@ -315,17 +311,21 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                 
                 return `
                 <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'">
-                        <div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
+                        <div>
+                            <div class="h-test" style="color:var(--pri);">${h.test}</div>
+                            <div class="h-date">${dateStr}</div>
+                        </div>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="badge badge-warning" style="font-size:0.6rem;">${h.result}</span>
+                            <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
                             <i class="ph ph-caret-down" style="color:var(--text-muted);"></i>
                         </div>
                     </div>
                     <div id="${uniqueId}" class="h-expanded-details">
+                        <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
                         ${fullDataHtml}
                         <div style="margin-top:10px; display:flex; gap:10px;">
-                            <button class="btn btn-secondary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Result</button>
+                            <button class="btn btn-secondary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>
                             ${isQuickSearch ? `<button class="btn btn-primary text-xs" onclick="printDirect(event, '${id}', '${h.test}')"><i class="ph ph-printer"></i> Print</button>` : ''}
                         </div>
                     </div>
@@ -339,10 +339,9 @@ async function saveHistoryEdit(patientId, testType, uniqueId) {
     const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`);
     let updates = {};
     inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value);
-    
     try {
         const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates });
-        if (res.status === "success") { alert("Past record updated successfully!"); }
+        if (res.status === "success") { alert("Record updated successfully!"); }
     } catch(e) { alert("Error updating past record: " + e); }
 }
 
@@ -359,7 +358,6 @@ function clearForm() {
     document.getElementById('entry-main-header').classList.remove('edit-mode-header');
     document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-user-plus"></i> Patient Entry</h2><button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>`;
     
-    // Restore Tests Area
     document.getElementById('test-details-area').style.display = 'none'; 
     document.getElementById('test-buttons-container').style.display = 'grid';
     
@@ -401,13 +399,12 @@ async function finalSubmit() {
 }
 
 // ==========================================
-// 6. EDIT PENDING FULL (WITH DYNAMIC TEST FORM)
+// 6. EDIT PENDING FULL
 // ==========================================
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
     editingPendingId = item.id; isExistingPatient = true; 
     
-    // Apply Edit Aesthetics
     document.getElementById('col-entry').classList.add('edit-mode-pane');
     document.getElementById('entry-main-header').classList.add('edit-mode-header');
     document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-pencil-simple"></i> Editing Pending Record</h2><button class="btn-icon" onclick="cancelEditPending()" style="color:white;"><i class="ph ph-x"></i></button>`;
@@ -423,30 +420,20 @@ function editPendingFull(id) {
     
     document.getElementById('new-entry-header').style.display = 'none';
     document.getElementById('profile-header').style.display = 'flex';
-    fetchHistory(item.patientId, 'history-section', 'history-list'); // Load history for context
+    fetchHistory(item.patientId, 'history-section', 'history-list'); 
     
-    // Transform Right Pane to show the Dynamic Form instead of JSON
     document.getElementById('test-buttons-container').style.display = 'none'; 
     const area = document.getElementById('test-details-area'); area.style.display = 'block';
     
-    // Find matching test config
     let testKey = Object.keys(availableTests).find(k => availableTests[k].testName.toUpperCase() === item.test.toUpperCase() || availableTests[k].testCode.toUpperCase() === item.test.toUpperCase());
     let dynamicHtml = testKey ? availableTests[testKey].html : `<textarea id="edit-pending-fallback-box" class="form-input" style="min-height:100px;">${JSON.stringify(d,null,2)}</textarea>`;
     
     area.innerHTML = `
         <div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div>
         <div id="temp-form-data" class="form-grid grid-1">${dynamicHtml}</div>
-        <div style="margin-top:12px; display:flex; gap:8px;">
-            <button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button>
-        </div>`;
+        <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
         
-    // Auto-fill the dynamic form based on data-keys
-    setTimeout(() => {
-        document.querySelectorAll('#test-details-area [data-key]').forEach(el => {
-            let val = d[el.getAttribute('data-key')];
-            if(val) el.value = val;
-        });
-    }, 100);
+    setTimeout(() => { document.querySelectorAll('#test-details-area [data-key]').forEach(el => { let val = d[el.getAttribute('data-key')]; if(val) el.value = val; }); }, 100);
     
     const saveBtn = document.getElementById('save-btn-action');
     saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record';
@@ -460,14 +447,11 @@ async function submitPendingUpdate() {
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML;
     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
     
-    // Collect updated details
-    let newDetails = {};
-    document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
-    // Merge with old details (to keep Age/Sex/Facility)
+    let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
     let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
     let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
 
-    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
+    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) {} finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
 
 // ==========================================
@@ -488,7 +472,6 @@ function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
     
-    // Dynamic Filter Population
     const uniqueTests = [...new Set(window.pendingData.map(item => item.test.toUpperCase()))];
     const currentVal = filterSelect.value;
     filterSelect.innerHTML = '<option value="ALL">All Sections</option>' + uniqueTests.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -513,10 +496,10 @@ function renderLists() {
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                <div style="flex-grow:1; cursor:pointer;" onclick="toggleExpand('${safeId}')">
                   <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span></div>
-                  <div class="pc-meta">${item.test} • Encoded by: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div>
+                  <div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div>
                </div>
                <div style="display:flex; gap:5px;">
-                    <button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Profile & Details"><i class="ph ph-pencil-simple"></i></button>
+                    <button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button>
                     <button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button>
                </div>
             </div>
@@ -542,6 +525,9 @@ function toggleExpand(safeId) { const el = document.getElementById('expand-' + s
 async function deleteEntry(id) { if(!confirm("Delete entry?")) return; try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
 
 async function saveResult(id, safeId, btn, doPrint) {
+  let printWin = null;
+  if (doPrint) { printWin = window.open('', '_blank'); printWin.document.write('<h2>Saving and Generating Document... Please wait.</h2>'); }
+  
   const inputs = document.querySelectorAll('.res-' + safeId);
   const item = window.pendingData.find(d => String(d.id) === String(id).trim());
   let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
@@ -553,17 +539,25 @@ async function saveResult(id, safeId, btn, doPrint) {
       const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
       if (res.status === "success") {
           btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
+          
           let tCodePrint = "DEFAULT"; let t = item.test.toUpperCase();
           if (t.includes("VIRAL")) tCodePrint = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCodePrint = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCodePrint = "DSSM"; else if (t.includes("UA")) tCodePrint = "UA"; else if (t.includes("FA")) tCodePrint = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCodePrint = "HEMA"; else if (t.includes("CHEM")) tCodePrint = "CHEM"; else if (t.includes("GRAM")) tCodePrint = "GRAM"; else if (t.includes("DENGUE")) tCodePrint = "DENGUE"; else if (t.includes("SERO")) tCodePrint = "SERO";
-          if(doPrint) { setTimeout(() => { runPrintJob([{ testCode: id, testName: tCodePrint }]); }, 500); }
+          
+          if(doPrint) { 
+              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}] });
+              if(printRes.status === "success" && printRes.data) { printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; }
+          }
           const pIndex = window.pendingData.findIndex(p => p.id === id);
           if (pIndex > -1) { const moved = window.pendingData[pIndex]; moved.isSessionCompleted = true; moved.dateResult = TODAY_STR; window.completedData.unshift(moved); window.pendingData.splice(pIndex, 1); renderLists(); }
       }
-  } catch (err) {}
+  } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
 }
 
-function printDirect(e, id, testName) { e.stopPropagation(); runPrintJob([{ testCode: id, testName: testName }]); }
-async function runPrintJob(requests) { try { const res = await apiPost("printFromRegistry", { requests: requests }); if (res.status === "success" && res.data) { const win = window.open('', '_blank'); if (win) { win.document.write(res.data); win.document.close(); } } } catch (e) { alert("Print Error"); } }
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); 
+    const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
+    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: testName}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+}
 
 // TEMPLATES
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
@@ -601,11 +595,18 @@ async function openRegistryModal(type) {
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
     try {
         const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
-        if (res.status === "success") {
+        if (res.status === "success" && res.data && res.data.rows) {
             window.CURRENT_REGISTRY_HEADERS = res.data.headers; window.CURRENT_REGISTRY_TITLE = res.data.title;
             const hMap = res.data.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
+            
             const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
-            const sorted = res.data.rows.sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+            // Sort Oldest to Newest based on Date Column (index 0 usually)
+            const sorted = res.data.rows.sort((a, b) => {
+                let d1 = new Date(a[0]); let d2 = new Date(b[0]);
+                if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0);
+                return d1 - d2; 
+            });
             
             let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
@@ -627,8 +628,8 @@ async function openRegistryModal(type) {
                 }); html += `</tr>`;
             });
             cont.innerHTML = html + `</tbody></table>`;
-        }
-    } catch (e) {}
+        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
+    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
 }
 
 function filterRegistryTable() {
@@ -643,9 +644,12 @@ function filterRegistryTable() {
 }
 
 // ==========================================
-// 9. SETTINGS & REPORTS (Restored)
+// 9. SETTINGS & REPORTS (Admin Loader)
 // ==========================================
-async function loadSettingsData() { const uList = document.getElementById('list-users'); if(uList) uList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="ph ph-spinner ph-spin"></i> Loading...</div>'; try { const res = await apiGet("getSettingsData"); if (res.status === "success") renderSettings(res.data); loadStaff(); loadFacilities(); } catch (e) {} }
+async function loadSettingsData() { 
+    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
+    loadStaff(); loadFacilities(); 
+}
 function renderSettings(data) { const uList = document.getElementById('list-users'); if (!data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
 let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { if(!confirm(action + " access for " + username + "?")) return; try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} } async function saveUser() { const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_user').value }; if(!user.u || !user.p || !user.role) { alert("Please fill all fields."); return; } const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; try { await apiPost("saveNewUser", { data: { username: user.u, password: user.p, facility: user.fac, role: user.role, fullName: user.name, roleCheck: currentUser.role }}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } }
 let globalFacilityList = []; async function loadFacilities() { try { const res = await apiGet("getFacilityList"); globalFacilityList = res.data || []; renderFacilityList(); } catch(e) {} } function renderFacilityList() { const container = document.getElementById('list-facilities'); const dropdown = document.getElementById('u_facility'); if(dropdown) { while (dropdown.options.length > 1) { dropdown.remove(1); } } if(container) { container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteFacility(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } globalFacilityList.forEach(f => { if(dropdown) { let o = document.createElement('option'); o.value = f.name; o.innerText = f.name; dropdown.appendChild(o); } }); } let editingFacilityIndex = -1; async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } function deleteFacility(index) { if(!confirm("Remove facility?")) return; globalFacilityList.splice(index, 1); renderFacilityList(); } function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
