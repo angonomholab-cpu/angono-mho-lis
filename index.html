@@ -15,14 +15,6 @@
     <nav class="sidebar" id="main-sidebar">
         <div style="text-align: right;"><button class="btn-icon" onclick="toggleSidebar()"><i class="ph ph-x"></i></button></div>
         
-        <div id="user-profile-sidebar" onclick="logoutUser()">
-            <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
-            <div style="display:flex; flex-direction:column;">
-                <span class="user-pill-name" id="display-full-name">Loading...</span>
-                <span class="user-pill-role" id="display-role-facility">Please Log In</span>
-            </div>
-        </div>
-        
         <ul class="nav-links">
             <li class="nav-item active" id="nav-workspace" onclick="showPage('workspace'); toggleSidebar();">
                 <i class="ph ph-desktop"></i> Workspace
@@ -49,6 +41,16 @@
     </nav>
 
     <main class="main-content">
+               <div id="user-profile-pill" onclick="logoutUser()">
+            <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
+            <div class="user-pill-info">
+                <div class="user-pill-name" id="display-full-name" style="font-size:0.75rem; font-weight:700;">Loading...</div>
+                <div class="user-pill-role" id="display-role-facility" style="font-size:0.6rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Please Log In</div>
+            </div>
+            <i class="ph ph-sign-out" style="color: var(--danger); font-size: 1.2rem; margin-left: 8px;" title="Log Out"></i>
+        </div>
+
+
         <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
             <input type="hidden" id="finalPatientId">
             <div class="workspace-grid" id="workspace-grid-container">
@@ -90,9 +92,20 @@
                                 <input type="hidden" id="p_email" value=""> 
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
-                                    <select id="p_facility" class="form-select">
+                                                                       <select id="p_facility" class="form-select">
                                         <option value="" disabled selected>Select Source...</option>
                                         <option value="San Isidro">San Isidro</option>
+                                        <option value="Kalayaan">Kalayaan</option>
+                                        <option value="San Vicente">San Vicente</option>
+                                        <option value="Sto. Niño">Sto. Niño</option>
+                                        <option value="San Roque">San Roque</option>
+                                        <option value="San Pedro">San Pedro</option>
+                                        <option value="Bagumbayan">Bagumbayan</option>
+                                        <option value="Pob. Itaas">Pob. Itaas</option>
+                                        <option value="Pob. Ibaba">Pob. Ibaba</option>
+                                        <option value="Mahabang Parang">Mahabang Parang</option>
+                                        <option value="San Isidro Hospital">San Isidro Hospital</option>
+                                        <option value="Angono Medics Hospital">Angono Medics Hospital</option>
                                         <option value="Angono RHU I">Angono RHU I</option>
                                     </select>
                                 </div>
@@ -541,6 +554,29 @@
             <button onclick="saveUserChanges()" id="btn-save-user" class="btn btn-primary full-width">Save Changes</button>
         </div>
     </div>
+
+       <div id="registry-selection-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(5px);">
+        <div class="auth-card" style="width: 550px; max-width: 90%; text-align: left; padding: 30px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-size: 1.2rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
+                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="test-selector-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="test-card-big" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background" style="color:#9E9EA7;"></i><span>Gram Stain</span></div>
+            </div>
+        </div>
+    </div>
+
+
 
     <script src="app.js"></script>
 </body>
