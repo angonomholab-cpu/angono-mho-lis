@@ -15,9 +15,12 @@
     <nav class="sidebar" id="main-sidebar">
         <div style="text-align: right;"><button class="btn-icon" onclick="toggleSidebar()"><i class="ph ph-x"></i></button></div>
         
-        <div class="logo-container">
-            <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000" alt="MHO Logo">
-            <h2>Angono MHO LIS</h2>
+        <div id="user-profile-sidebar" onclick="logoutUser()">
+            <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
+            <div style="display:flex; flex-direction:column;">
+                <span class="user-pill-name" id="display-full-name">Loading...</span>
+                <span class="user-pill-role" id="display-role-facility">Please Log In</span>
+            </div>
         </div>
         
         <ul class="nav-links">
@@ -25,8 +28,20 @@
                 <i class="ph ph-desktop"></i> Workspace
             </li>
             
-            <li class="nav-item" id="nav-registry" onclick="showPage('registry'); toggleSidebar();">
+            <li class="nav-item" id="nav-registry" style="position: relative;" onclick="showPage('registry'); toggleSidebar();">
                 <i class="ph ph-books"></i> Lab Registry
+                <div class="pop-out-menu">
+                    <div class="pop-menu-item" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop"></i> Hematology</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('UA')"><i class="ph ph-flask"></i> Urinalysis</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('FA')"><i class="ph ph-toilet-paper"></i> Fecalysis</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('CHEM')"><i class="ph ph-test-tube"></i> Chemistry</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('SERO')"><i class="ph ph-shield-check"></i> Serology</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('DENGUE')"><i class="ph ph-virus"></i> Dengue NS1</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('GXP')"><i class="ph ph-dna"></i> GXP MTB</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('GXVL')"><i class="ph ph-chart-line-up"></i> Viral Load</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope"></i> DSSM/AFB</div>
+                    <div class="pop-menu-item" onclick="openRegistryModal('GRAM')"><i class="ph ph-paint-brush-broad"></i> Gram Stain</div>
+                </div>
             </li>
             
             <li class="nav-item" id="nav-reports" onclick="showPage('reports'); toggleSidebar();">
@@ -45,17 +60,8 @@
         </div>
     </nav>
 
-    <div id="user-profile-pill" onclick="logoutUser()">
-        <div class="user-pill-avatar" id="pill-avatar"><i class="ph ph-user"></i></div>
-        <div class="user-pill-info">
-            <div class="user-pill-name" id="display-full-name" style="font-size:0.75rem; font-weight:700;">Loading...</div>
-            <div class="user-pill-role" id="display-role-facility" style="font-size:0.6rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Please Log In</div>
-        </div>
-    </div>
-
     <main class="main-content">
-        
-               <div id="page-workspace" class="page-area" style="display: block;">
+        <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
             <input type="hidden" id="finalPatientId">
             <div class="workspace-grid" id="workspace-grid-container">
                 
@@ -67,46 +73,44 @@
                     
                     <div class="ap-split">
                         <div class="ap-left">
-                            <div style="position: relative; margin-bottom: 16px;">
+                            <div style="position: relative; margin-bottom: 12px;">
                                 <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
                                 <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
+                                <div id="search-status" style="font-size: 0.65rem; color: var(--pri); position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-weight: bold; display: none;">Searching...</div>
                                 <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
                             </div>
 
-                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 12px;">
+                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 8px;">
                                 <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID()"></div>
-                                <div class="field-group"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" placeholder="mm/dd/yyyy" onchange="calculateAge(); generateSmartID();"></div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                    <div class="field-group"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input" placeholder="e.g. 25"></div>
-                                    <div class="field-group"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                <div style="display:flex; gap:8px;">
+                                    <div class="field-group" style="flex:2;"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
+                                    <div class="field-group" style="flex:1;"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
                                 </div>
-                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input" placeholder="House No., Street, Brgy."></div>
-                                <div class="field-group"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input" placeholder="09XX-XXX-XXXX"></div>
+                                <div style="display:flex; gap:8px;">
+                                    <div class="field-group" style="flex:1;"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                    <div class="field-group" style="flex:2;"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
+                                </div>
+                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input" placeholder="Brgy. / Address"></div>
                                 <input type="hidden" id="p_email" value=""> 
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
                                     <select id="p_facility" class="form-select">
                                         <option value="" disabled selected>Select Source...</option>
                                         <option value="San Isidro">San Isidro</option>
-                                        <option value="Kalayaan">Kalayaan</option>
-                                        <option value="San Vicente">San Vicente</option>
-                                        <option value="Sto. Niño">Sto. Niño</option>
-                                        <option value="San Roque">San Roque</option>
-                                        <option value="San Pedro">San Pedro</option>
-                                        <option value="Bagumbayan">Bagumbayan</option>
-                                        <option value="Pob. Itaas">Pob. Itaas</option>
-                                        <option value="Pob. Ibaba">Pob. Ibaba</option>
-                                        <option value="Mahabang Parang">Mahabang Parang</option>
-                                        <option value="San Isidro Hospital">San Isidro Hospital</option>
-                                        <option value="Angono Medics Hospital">Angono Medics Hospital</option>
                                         <option value="Angono RHU I">Angono RHU I</option>
                                     </select>
                                 </div>
                             </form>
+
+                            <div id="order-summary" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
+                            
+                            <div style="margin-top: auto; padding-top: 15px;">
+                                <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save & Send Record</button>
+                            </div>
                         </div>
 
                         <div class="ap-right">
-                            <label class="field-label" style="margin-bottom: 10px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">Select Tests</label>
+                            <label class="field-label" style="margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px;">Select Tests</label>
                             
                             <div class="vertical-test-list" id="test-buttons-container">
                                 <div class="test-btn-vert" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus"></i><span>GeneXpert MTB</span></div>
@@ -121,32 +125,22 @@
                                 <div class="test-btn-vert" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
                             </div>
 
-                            <div id="test-details-area" style="display:none; background:var(--bg-surface); padding:16px; border-radius:var(--radius-md); margin-bottom:15px; border:1px solid var(--pri);"></div>
-                            <div id="order-summary" style="margin-top:15px; display:flex; flex-wrap:wrap; gap:5px;"></div>
-
-                            <div style="margin-top: auto; padding-top: 15px;">
-                                <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save Record</button>
-                            </div>
+                            <div id="test-details-area" style="display:none; background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); margin-bottom:10px; border:1px solid var(--pri);"></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="workspace-col" id="col-pending">
                     <div class="workspace-header">
-                        <h2><i class="ph ph-hourglass-medium"></i> Pending <span id="count-pending" class="badge badge-warning" style="margin-left:8px;">0</span></h2>
-                        <div style="display: flex; gap: 8px;">
-                            <select id="test-filter" onchange="renderLists()" class="form-select text-xs font-semibold" style="width: auto; padding: 6px; min-height: 0;">
+                        <h2><i class="ph ph-hourglass-medium"></i> Pending <span id="count-pending" style="color:var(--pri); margin-left:5px;">(0)</span></h2>
+                        <div style="display: flex; gap: 6px;">
+                            <select id="test-filter" onchange="renderLists()" class="form-select" style="width: auto; padding: 4px 8px; min-height: 0; font-size: 0.75rem; font-weight: bold;">
                                 <option value="ALL">All Sections</option>
-                                <option value="GXP">GeneXpert MTB</option>
+                                <option value="GXP">GeneXpert</option>
                                 <option value="DSSM">DSSM / AFB</option>
-                                <option value="GXVL">Viral Load</option>
                                 <option value="HEMA">Hematology</option>
                                 <option value="CHEM">Chemistry</option>
-                                <option value="UA">Urinalysis</option>
-                                <option value="FA">Fecalysis</option>
                                 <option value="SERO">Serology</option>
-                                <option value="DENGUE">Dengue NS1</option>
-                                <option value="GRAM">Gram Stain</option>
                             </select>
                             <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon" class="ph ph-arrows-clockwise"></i></button>
                         </div>
@@ -158,13 +152,11 @@
                     <div class="workspace-header">
                         <h2><i class="ph ph-check-circle"></i> Completed</h2>
                     </div>
-                    <div id="list-completed" class="patient-list" style="padding-top: 12px;"></div>
+                    <div id="list-completed" class="patient-list" style="padding-top: 10px;"></div>
                 </div>
                 
             </div>
         </div>
-
-
 
 
 
