@@ -10,7 +10,7 @@
     --pri: #F48FB1;           
     --pri-hover: #F06292;
     --sec: #CE93D8;           
-    --sec-light: rgba(206, 147, 216, 0.15); /* Soft Lavender para sa Edit Mode */
+    --sec-light: rgba(206, 147, 216, 0.15); 
     --success: #81C784;       
     --success-light: #E0F2F1;
     --warning: #FFB74D;       
@@ -70,53 +70,54 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .nav-item.active i { color: white; }
 
 /* ========================================= */
-/* 3. WORKSPACE COLUMNS (RESPONSIVE)         */
+/* 3. WORKSPACE COLUMNS                      */
 /* ========================================= */
-.main-content { 
-    height: 100vh; overflow-y: auto; overflow-x: hidden; 
-    padding: 20px; background: var(--bg-body); 
-}
+.main-content { height: 100vh; overflow-x: auto; overflow-y: auto; padding: 20px 20px 20px 10px; background: var(--bg-body); }
 .page-area { display: none; height: 100%; }
 
-.workspace-grid { 
-    display: flex; gap: 16px; height: calc(100vh - 40px); 
-    align-items: stretch; justify-content: flex-start; 
-}
+.workspace-grid { display: flex; gap: 16px; height: calc(100vh - 40px); align-items: stretch; min-width: 1200px; justify-content: flex-start; }
 
-.workspace-col { 
-    background: var(--bg-surface); border-radius: var(--radius-lg); 
-    box-shadow: var(--shadow-card); border: 1px solid var(--border-color); 
-    display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; 
-}
-
+.workspace-col { background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
 .workspace-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed var(--border-color); background: var(--bg-surface); z-index: 2;}
 .workspace-header h2 { font-size: 1rem; display: flex; align-items: center; gap: 8px; color: var(--pri); }
 
-/* Flexible Widths para mas responsive */
-#col-entry { flex: 1.8; min-width: 400px; }
-#col-pending { flex: 1.2; min-width: 350px; }
-#col-completed { flex: 0.8; min-width: 250px; }
+#col-entry { width: 660px; } /* Pinalapad konti para sa stout buttons */
+#col-pending { width: 440px; }
+#col-completed { width: 280px; }
 
 .ap-split { display: flex; height: calc(100% - 50px); overflow: hidden; }
-.ap-left { flex: 1.2; padding: 16px; overflow-y: auto; border-right: 1px dashed var(--border-color); display: flex; flex-direction: column; padding-bottom: 80px; position: relative; z-index: 5;}
-.ap-right { flex: 0.8; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-body); padding-bottom: 80px;}
+.ap-left { flex: 1.1; padding: 16px; overflow-y: auto; border-right: 1px dashed var(--border-color); display: flex; flex-direction: column; padding-bottom: 80px; position: relative;}
+.ap-right { flex: 0.9; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-body); padding-bottom: 80px;}
 
 .sticky-footer { position: absolute; bottom: 0; left: 0; width: 100%; padding: 12px 16px; background: var(--bg-surface); border-top: 1px solid var(--border-color); z-index: 10; }
 
-/* --- RESPONSIVE MEDIA QUERIES (TABLET & LANDSCAPE) --- */
-@media screen and (max-width: 1200px) {
-    .workspace-grid { flex-direction: column; height: auto; }
-    .workspace-col { width: 100% !important; min-height: 500px; margin-bottom: 20px; flex: none; }
-    .ap-split { flex-direction: column; height: auto; overflow: visible; }
-    .ap-left { border-right: none; border-bottom: 1px dashed var(--border-color); padding-bottom: 20px; }
-    .ap-right { padding-bottom: 20px; }
-    .sticky-footer { position: static; background: transparent; border: none; padding: 15px 0 0 0; }
-}
-
-
+.edit-mode-pane { border: 2px solid var(--sec) !important; background: var(--sec-light) !important; }
+.edit-mode-header { background: var(--sec) !important; color: white !important; }
+.edit-mode-header h2 { color: white !important; }
 
 /* ========================================= */
-/* 4. FORMS & INPUTS                         */
+/* 4. STOUT TEST BUTTONS (Tile Design)       */
+/* ========================================= */
+/* FIX 2: Hindi na boring list. Grid tiles na! */
+.vertical-test-list { 
+    display: grid; 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 10px; 
+    width: 100%; 
+}
+.test-btn-vert { 
+    background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); 
+    padding: 15px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; 
+    cursor: pointer; transition: 0.15s; width: 100%; min-height: 80px; text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.test-btn-vert i { font-size: 1.8rem; color: var(--sec); transition: 0.2s; margin-bottom: 4px; }
+.test-btn-vert span { font-size: 0.75rem; font-weight: 700; color: var(--text-main); line-height: 1.1;}
+.test-btn-vert:hover { border-color: var(--pri); transform: translateY(-3px); background: var(--bg-subtle); box-shadow: var(--shadow-card);}
+.test-btn-vert:hover i { color: var(--pri); }
+
+/* ========================================= */
+/* 5. FORMS & INPUTS                         */
 /* ========================================= */
 .form-grid { display: grid; gap: 10px; margin-bottom: 12px; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
@@ -137,7 +138,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .search-item:hover { background: var(--bg-subtle); color: var(--pri); }
 
 /* ========================================= */
-/* 5. BUTTONS, CHIPS & EXPANDING HISTORY     */
+/* 6. BUTTONS, CHIPS & HISTORY               */
 /* ========================================= */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; font-weight: 700; font-size: 0.8rem; border-radius: var(--radius-sm); border: none; cursor: pointer; transition: 0.2s; }
 .btn-primary { background: linear-gradient(135deg, var(--pri), var(--sec)); color: white; box-shadow: var(--shadow-card); }
@@ -151,7 +152,6 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .chip { padding: 5px 10px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-pill); font-size: 0.7rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
 .chip.active { background: var(--pri); color: white; border-color: var(--pri); }
 
-/* History Card with Expand */
 .history-card { background: var(--bg-body); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
 .history-card:hover { border-color: var(--pri); transform: translateY(-2px); box-shadow: var(--shadow-card); }
 .history-card .h-test { font-weight: 800; font-size: 0.8rem; color: var(--text-main); }
@@ -159,24 +159,18 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .h-expanded-details { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); font-size: 0.75rem; background: var(--bg-surface); padding: 10px; border-radius: var(--radius-sm);}
 
 /* ========================================= */
-/* 6. CARDS & REGISTRY                       */
+/* 7. CARDS & REGISTRY                       */
 /* ========================================= */
-.vertical-test-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.test-btn-vert { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.15s; width: 100%; }
-.test-btn-vert i { font-size: 1.2rem; color: var(--sec); transition: 0.2s; }
-.test-btn-vert span { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
-.test-btn-vert:hover { border-color: var(--pri); transform: translateX(3px); background: var(--bg-subtle);}
-
 .patient-list { display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; flex: 1; }
 .pending-card { background: var(--bg-surface); border-radius: var(--radius-md); padding: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); transition: 0.2s; }
 .pending-card:hover { transform: translateY(-2px); border-color: var(--pri); }
 .completed-card { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 8px 12px; border: 1px solid var(--border-color); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: space-between; }
 .completed-card:hover { transform: translateX(-4px); border-color: var(--success); }
+
 .pc-name { font-size: 0.85rem; font-weight: 800; color: var(--text-main); }
 .pc-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; font-weight: 600; }
 .pc-expand-area { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
 
-/* Compact Registry Table Fit */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; table-layout: auto;}
 .data-table th { background: var(--bg-body); color: var(--pri); padding: 8px; text-align: left; font-weight: 700; white-space: nowrap; border-bottom: 2px solid var(--border-color);}
 .data-table td { padding: 8px; border-bottom: 1px dashed var(--border-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;}
@@ -192,6 +186,23 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 /* Modals */
 #login-overlay, .modal-backdrop { position: fixed; top:0; left:0; width:100%; height:100%; background-color: rgba(30, 30, 38, 0.6); backdrop-filter: var(--blur-effect); z-index: 99999; display: flex; justify-content: center; align-items: center;}
 .auth-card { background: var(--bg-surface); padding: 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-float); width: 400px; text-align: center; border: 1px solid var(--border-color); }
-/* Quick Search Modal Lakihan natin */
-#quick-search-modal .auth-card { width: 850px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;}
+/* FIX 6: Malaking Quick Search Modal */
+#quick-search-modal .auth-card { width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;}
+
+/* ========================================= */
+/* 8. RESPONSIVE PRINT A4 LANDSCAPE FIX      */
+/* ========================================= */
+@media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body * { visibility: hidden; }
+    #page-reports, #page-reports * { visibility: visible; }
+    #page-reports { position: absolute; left: 0; top: 0; width: 100%; display: block !important; padding: 0;}
+    .report-card { border: none; box-shadow: none; margin: 0; }
+    .controls-area { display: none !important; }
+    .rep-header { background: linear-gradient(to right, #FFCDD2 0%, #FFFFFF 100%) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; border-bottom: 3px solid #B71C1C;}
+    .tab-view { display: none !important; }
+    .tab-view[style*="display: block"] { display: block !important; }
+    .data-table { font-size: 8pt; width: 100%; }
+    .data-table th, .data-table td { border: 1px solid #000; padding: 4px; white-space: normal;}
+}
 
