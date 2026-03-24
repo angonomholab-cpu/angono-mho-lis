@@ -28,20 +28,8 @@
                 <i class="ph ph-desktop"></i> Workspace
             </li>
             
-            <li class="nav-item" id="nav-registry" style="position: relative;" onclick="showPage('registry'); toggleSidebar();">
+                       <li class="nav-item" id="nav-registry" onclick="showRegistrySelectionModal()">
                 <i class="ph ph-books"></i> Lab Registry
-                <div class="pop-out-menu">
-                    <div class="pop-menu-item" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop"></i> Hematology</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('UA')"><i class="ph ph-flask"></i> Urinalysis</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('FA')"><i class="ph ph-toilet-paper"></i> Fecalysis</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('CHEM')"><i class="ph ph-test-tube"></i> Chemistry</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('SERO')"><i class="ph ph-shield-check"></i> Serology</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('DENGUE')"><i class="ph ph-virus"></i> Dengue NS1</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('GXP')"><i class="ph ph-dna"></i> GXP MTB</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('GXVL')"><i class="ph ph-chart-line-up"></i> Viral Load</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope"></i> DSSM/AFB</div>
-                    <div class="pop-menu-item" onclick="openRegistryModal('GRAM')"><i class="ph ph-paint-brush-broad"></i> Gram Stain</div>
-                </div>
             </li>
             
             <li class="nav-item" id="nav-reports" onclick="showPage('reports'); toggleSidebar();">
@@ -72,7 +60,7 @@
                     </div>
                     
                     <div class="ap-split">
-                        <div class="ap-left">
+                                               <div class="ap-left">
                             <div style="position: relative; margin-bottom: 12px;">
                                 <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
                                 <input type="text" id="direct-search-input" class="form-input" placeholder="Search Masterlist..." style="padding-left: 36px;" onkeyup="runDirectSearch(this.value)">
@@ -80,8 +68,16 @@
                                 <div id="direct-results-box" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border-color); z-index:100; box-shadow:var(--shadow-md); border-radius:var(--radius-md); max-height: 200px; overflow-y: auto;"></div>
                             </div>
 
+                            <div id="new-entry-header" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                <h3 style="font-size: 0.9rem; color: var(--text-main);"><i class="ph ph-user-plus" style="color: var(--pri);"></i> New Entry Form</h3>
+                            </div>
+                            <div id="profile-header" style="margin-bottom: 10px; display: none; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">
+                                <h3 style="font-size: 0.9rem; color: var(--pri);"><i class="ph ph-user-circle"></i> Patient Profile</h3>
+                                <span class="badge badge-negative">Returning Patient</span>
+                            </div>
+
                             <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 8px;">
-                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID()"></div>
+                                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="p_name" class="form-input" oninput="generateSmartID()"></div>
                                 <div style="display:flex; gap:8px;">
                                     <div class="field-group" style="flex:2;"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
                                     <div class="field-group" style="flex:1;"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
@@ -90,7 +86,7 @@
                                     <div class="field-group" style="flex:1;"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
                                     <div class="field-group" style="flex:2;"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
                                 </div>
-                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input" placeholder="Brgy. / Address"></div>
+                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input"></div>
                                 <input type="hidden" id="p_email" value=""> 
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
@@ -102,12 +98,19 @@
                                 </div>
                             </form>
 
+                            <div id="history-section" style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                                <h4 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i class="ph ph-clock-counter-clockwise"></i> Laboratory History</h4>
+                                <div id="history-list" style="max-height: 180px; overflow-y: auto;">
+                                    </div>
+                            </div>
+                            
                             <div id="order-summary" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
                             
                             <div style="margin-top: auto; padding-top: 15px;">
                                 <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save & Send Record</button>
                             </div>
                         </div>
+
 
                         <div class="ap-right">
                             <label class="field-label" style="margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px;">Select Tests</label>
@@ -472,6 +475,28 @@
             <p id="login-error" style="color:var(--danger); margin-top:15px; display:none; font-size:0.85rem; font-weight:bold;"></p>
             <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('login-card').style.display='none'; document.getElementById('register-card').style.display='block';">Request Account</div>
         </div>
+   <div id="registry-selection-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(5px);">
+        <div class="auth-card" style="width: 550px; max-width: 90%; text-align: left; padding: 30px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-size: 1.2rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
+                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <div class="test-selector-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="test-card-big" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
+                <div class="test-card-big" onclick="openTestDetails('sero')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
+                <div class="test-card-big" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background" style="color:#9E9EA7;"></i><span>Gram Stain</span></div>
+            </div>
+        </div>
+    </div>
+
 
         <div id="register-card" style="display:none; background:var(--bg-surface); padding:40px; border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:350px; text-align:center; border:1px solid var(--border-color); backdrop-filter: var(--blur-effect);">
             <h2 style="margin-bottom:20px;">Register</h2>
