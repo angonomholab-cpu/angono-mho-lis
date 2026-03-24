@@ -1,7 +1,7 @@
 // ==========================================
 // 1. API CONNECTION & GLOBALS
 // ==========================================
-const SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBXVsHQGAqTz8jE-VKkXgdMeUiYGKocxT03Fe3z1ExDgynyO35sR2kQGd0rS2LHWvq/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
