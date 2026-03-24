@@ -27,7 +27,7 @@ async function apiPost(action, payload) {
 }
 
 // ==========================================
-// 2. SYSTEM STARTUP & MENU
+// 2. SYSTEM STARTUP & ANDROID MENU
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
@@ -154,20 +154,20 @@ function applyPermissions() {
     } else {
         if(navReg) navReg.style.display = 'flex';
         const floatBtns = document.querySelector('.float-actions');
-        if (floatBtns) floatBtns.style.display = 'none';
+        if (floatBtns) floatBtns.style.display = 'none'; 
     }
 }
 
 // ==========================================
-// 4. ADD PATIENT LOGIC
+// 4. ADD PATIENT LOGIC & CONFIGURATIONS
 // ==========================================
 const availableTests = {
-    "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" class="form-input" placeholder="e.g. Dr. Cruz"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" class="form-input" placeholder="e.g. Normal"></div>`},
-    "dssm": { testName: "DSSM", testCode: "DSSM", title: "DSSM Microscopy", html: `<div class="field-group"><label class="field-label">TB Case No</label><input type="text" id="ds_case" class="form-input" placeholder="Case Number"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" id="ds_month" class="form-input" placeholder="e.g. 2nd Month"></div>` },
+    "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select" data-key="History of Treatment"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" data-key="Source of Request" class="form-input" placeholder="e.g. Dr. Cruz"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" data-key="X-Ray Result" class="form-input" placeholder="e.g. Normal"></div>`},
+    "dssm": { testName: "DSSM", testCode: "DSSM", title: "DSSM Microscopy", html: `<div class="field-group"><label class="field-label">TB Case No</label><input type="text" id="ds_case" data-key="TB Case Number" class="form-input" placeholder="Case Number"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" id="ds_month" data-key="Month of Treatment" class="form-input" placeholder="e.g. 2nd Month"></div>` },
     "viral": { testName: "GeneXpert Viral Load", testCode: "GXVL", isSimple: true },
-    "sero": { testName: "Serology", testCode: "SERO", title: "Serology", html: `<label class="field-label">Test(s):</label><div class="chip-group" id="sero-sub-tests">${['HIV Screening','Syphilis Screening','HBsAg Screening'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div><div class="form-grid grid-1" style="margin-top:8px;"><div class="field-group"><label class="field-label">Classification</label><select id="sr_class" class="form-select"><option>Maternal</option><option>SHC</option><option>TB Patient</option></select></div><div class="field-group"><label class="field-label">KAP Category</label><select id="sr_kap" class="form-select"><option value="None">None</option><option>MSM</option><option>TGW</option><option>FSW</option><option>MSW</option><option>PDL</option><option>PWID</option></select></div></div>` },
-    "gram": { testName: "Gram Stain", testCode: "GRAM", title: "Gram Stain", html: `<div class="field-group"><label class="field-label">Source</label><input type="text" id="gs_src" class="form-input" placeholder="e.g. Urethral Discharge"></div>` },
-    "dengue": { testName: "Dengue", testCode: "DENG", title: "Dengue Setup", html: `<div class="field-group"><label class="field-label">Days of Illness</label><input type="number" id="dn_onset" class="form-input" placeholder="e.g. 3"></div> <div class="field-group" style="margin-top:12px;"><label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:var(--text-main); font-size:0.85rem;"><input type="checkbox" id="dn_duo_check" style="accent-color:var(--pri); width:16px; height:16px;"> Include Dengue Duo (IgG/IgM)</label></div>` },
+    "sero": { testName: "Serology", testCode: "SERO", title: "Serology", html: `<label class="field-label">Test(s):</label><div class="chip-group" id="sero-sub-tests">${['HIV Screening','Syphilis Screening','HBsAg Screening'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div><div class="form-grid grid-1" style="margin-top:8px;"><div class="field-group"><label class="field-label">Classification</label><select id="sr_class" data-key="Classification" class="form-select"><option>Maternal</option><option>SHC</option><option>TB Patient</option></select></div><div class="field-group"><label class="field-label">KAP Category</label><select id="sr_kap" data-key="KAP Category" class="form-select"><option value="None">None</option><option>MSM</option><option>TGW</option><option>FSW</option><option>MSW</option><option>PDL</option><option>PWID</option></select></div></div>` },
+    "gram": { testName: "Gram Stain", testCode: "GRAM", title: "Gram Stain", html: `<div class="field-group"><label class="field-label">Source</label><input type="text" id="gs_src" data-key="Source of Specimen" class="form-input" placeholder="e.g. Urethral Discharge"></div>` },
+    "dengue": { testName: "Dengue", testCode: "DENG", title: "Dengue Setup", html: `<div class="field-group"><label class="field-label">Days of Illness</label><input type="number" id="dn_onset" data-key="Day/s of Onset of Illness" class="form-input" placeholder="e.g. 3"></div> <div class="field-group" style="margin-top:12px;"><label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:var(--text-main); font-size:0.85rem;"><input type="checkbox" id="dn_duo_check" style="accent-color:var(--pri); width:16px; height:16px;"> Include Dengue Duo (IgG/IgM)</label></div>` },
     "hema": { testName: "Hematology", testCode: "HEMA", title: "Hematology", html: `<div class="chip-group">${['CBC','Platelet Count','Blood Typing'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div>` },
     "uria": { testName: "Urinalysis", testCode: "UA", isSimple: true },
     "feca": { testName: "Fecalysis", testCode: "FA", isSimple: true },
@@ -182,15 +182,22 @@ function openTestDetails(id) {
 }
 
 function toggleSub(btn) { btn.classList.toggle('active'); }
-function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'flex'; }
+function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'grid'; }
 
 function confirmDetail(id) {
    let details = {}; let subSelected = [];
-   if(id === 'mtb') details = { "History of Treatment": document.getElementById('gx_hist').value, "Source of Request": document.getElementById('gx_src').value, "X-Ray Result": document.getElementById('gx_xray').value };
-   else if(id === 'dssm') details = { "TB Case Number": document.getElementById('ds_case').value, "Month of Treatment": document.getElementById('ds_month').value };
-   else if(id === 'gram') details = { "Source of Specimen": document.getElementById('gs_src').value };
-   else if(id === 'dengue') { details = { "Day/s of Onset of Illness": document.getElementById('dn_onset').value }; if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
-   else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { alert("Select at least one test."); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); if(id === 'sero') details = { "Classification": document.getElementById('sr_class').value, "KAP Category": document.getElementById('sr_kap').value }; }
+   
+   // Loop dynamically over inputs that have data-key to build details JSON
+   document.querySelectorAll('#test-details-area [data-key]').forEach(el => {
+       details[el.getAttribute('data-key')] = el.value;
+   });
+
+   if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
+   else if(['sero','hema','chem'].includes(id)) { 
+       const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); 
+       if(activeBtns.length === 0) { alert("Select at least one test."); return; } 
+       subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); 
+   }
    
    labOrders[id] = { details: details, subTests: subSelected }; 
    document.getElementById('btn-'+id).classList.add('active'); 
@@ -205,7 +212,7 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
-// SEARCH PATIENT ENTRY (Updated with Hide Option)
+// SEARCH PATIENT ENTRY 
 async function runDirectSearch(q) {
   const box = document.getElementById('direct-results-box'); const stat = document.getElementById('search-status');
   if(q.length < 2) { box.style.display='none'; stat.style.display='none'; return; }
@@ -266,7 +273,7 @@ async function viewQuickProfile(p) {
     document.getElementById('quick-profile-view').style.display = 'flex';
     document.getElementById('quick-profile-view').style.flexDirection = 'column';
     document.getElementById('qs-name').innerText = p.name;
-    document.getElementById('qs-meta').innerText = `ID: ${p.id} | Age: ${p.age} | Sex: ${p.sex} | Facility: ${p.facility || 'N/A'}`;
+    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true); 
 }
 
@@ -277,8 +284,9 @@ function editPatientDemographicsQS() {
     document.getElementById('qs_edit_age').value = currentQuickPatient.age;
     document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility;
 }
-function savePatientDemographicsQS() { alert("Demographics update triggered. (Need backend endpoint to save to Masterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
+function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
 
+// The powerful Expandable History Fetcher
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId);
@@ -290,10 +298,18 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
             list.innerHTML = res.data.map((h, i) => {
                 const uniqueId = `hist-${listId}-${i}`;
                 const dateStr = new Date(h.date).toLocaleDateString();
+                
+                // Formulate Editable Inputs for History
                 let fullDataHtml = '';
                 if(h.fullData) {
                     for (const [key, value] of Object.entries(h.fullData)) {
-                        if(value && String(value).trim() !== "") fullDataHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px dashed var(--border-color); padding-bottom:2px;"><strong style="color:var(--text-muted);">${key}:</strong> <span>${value}</span></div>`;
+                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE") {
+                           fullDataHtml += `
+                           <div style="margin-bottom:6px;">
+                               <label class="field-label" style="font-size:0.6rem;">${key}</label>
+                               <input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}" style="padding:4px 8px; font-size:0.75rem;">
+                           </div>`;
+                        }
                     }
                 }
                 
@@ -309,14 +325,25 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                     <div id="${uniqueId}" class="h-expanded-details">
                         ${fullDataHtml}
                         <div style="margin-top:10px; display:flex; gap:10px;">
-                            <button class="btn btn-secondary text-xs" onclick="alert('Inline editing of registry history coming soon!')"><i class="ph ph-pencil-simple"></i> Edit Result</button>
-                            <button class="btn btn-primary text-xs" onclick="printDirect(event, '${id}', '${h.test}')"><i class="ph ph-printer"></i> Print</button>
+                            <button class="btn btn-secondary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Result</button>
+                            ${isQuickSearch ? `<button class="btn btn-primary text-xs" onclick="printDirect(event, '${id}', '${h.test}')"><i class="ph ph-printer"></i> Print</button>` : ''}
                         </div>
                     </div>
                 </div>`;
             }).join('');
         } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
     } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
+}
+
+async function saveHistoryEdit(patientId, testType, uniqueId) {
+    const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`);
+    let updates = {};
+    inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value);
+    
+    try {
+        const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates });
+        if (res.status === "success") { alert("Past record updated successfully!"); }
+    } catch(e) { alert("Error updating past record: " + e); }
 }
 
 function clearForm() {
@@ -331,10 +358,15 @@ function clearForm() {
     document.getElementById('col-entry').classList.remove('edit-mode-pane');
     document.getElementById('entry-main-header').classList.remove('edit-mode-header');
     document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-user-plus"></i> Patient Entry</h2><button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>`;
-    document.getElementById('entry-right-pane').style.display = 'flex';
-    document.getElementById('save-btn-action').innerHTML = '<i class="ph ph-paper-plane-right"></i> Save Record';
-    document.getElementById('save-btn-action').onclick = finalSubmit; 
-    document.getElementById('save-btn-action').style.background = '';
+    
+    // Restore Tests Area
+    document.getElementById('test-details-area').style.display = 'none'; 
+    document.getElementById('test-buttons-container').style.display = 'grid';
+    
+    const saveBtn = document.getElementById('save-btn-action');
+    saveBtn.innerHTML = '<i class="ph ph-paper-plane-right"></i> Save Record';
+    saveBtn.onclick = finalSubmit; 
+    saveBtn.style.background = '';
 }
 
 async function finalSubmit() {
@@ -369,13 +401,13 @@ async function finalSubmit() {
 }
 
 // ==========================================
-// 6. EDIT PENDING FULL (Aesthetic Update)
+// 6. EDIT PENDING FULL (WITH DYNAMIC TEST FORM)
 // ==========================================
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
     editingPendingId = item.id; isExistingPatient = true; 
     
-    // Apply Soft Lavender Aesthetics
+    // Apply Edit Aesthetics
     document.getElementById('col-entry').classList.add('edit-mode-pane');
     document.getElementById('entry-main-header').classList.add('edit-mode-header');
     document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-pencil-simple"></i> Editing Pending Record</h2><button class="btn-icon" onclick="cancelEditPending()" style="color:white;"><i class="ph ph-x"></i></button>`;
@@ -391,9 +423,30 @@ function editPendingFull(id) {
     
     document.getElementById('new-entry-header').style.display = 'none';
     document.getElementById('profile-header').style.display = 'flex';
+    fetchHistory(item.patientId, 'history-section', 'history-list'); // Load history for context
     
-    const rightPane = document.getElementById('entry-right-pane');
-    rightPane.innerHTML = `<label class="field-label" style="color:var(--sec); margin-bottom:10px; font-size:0.8rem;">Editing Test Specifics: ${item.test}</label><textarea id="edit-pending-details-box" class="form-input" style="min-height: 250px; font-family: monospace; font-size: 0.8rem;">${JSON.stringify(d, null, 2)}</textarea>`;
+    // Transform Right Pane to show the Dynamic Form instead of JSON
+    document.getElementById('test-buttons-container').style.display = 'none'; 
+    const area = document.getElementById('test-details-area'); area.style.display = 'block';
+    
+    // Find matching test config
+    let testKey = Object.keys(availableTests).find(k => availableTests[k].testName.toUpperCase() === item.test.toUpperCase() || availableTests[k].testCode.toUpperCase() === item.test.toUpperCase());
+    let dynamicHtml = testKey ? availableTests[testKey].html : `<textarea id="edit-pending-fallback-box" class="form-input" style="min-height:100px;">${JSON.stringify(d,null,2)}</textarea>`;
+    
+    area.innerHTML = `
+        <div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div>
+        <div id="temp-form-data" class="form-grid grid-1">${dynamicHtml}</div>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button>
+        </div>`;
+        
+    // Auto-fill the dynamic form based on data-keys
+    setTimeout(() => {
+        document.querySelectorAll('#test-details-area [data-key]').forEach(el => {
+            let val = d[el.getAttribute('data-key')];
+            if(val) el.value = val;
+        });
+    }, 100);
     
     const saveBtn = document.getElementById('save-btn-action');
     saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record';
@@ -401,11 +454,20 @@ function editPendingFull(id) {
 }
 
 function cancelEditPending() { clearForm(); } 
+
 async function submitPendingUpdate() {
     if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML;
     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
-    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: document.getElementById('edit-pending-details-box').value }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
+    
+    // Collect updated details
+    let newDetails = {};
+    document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
+    // Merge with old details (to keep Age/Sex/Facility)
+    let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+    let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
+
+    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
 
 // ==========================================
@@ -423,10 +485,18 @@ async function loadPendingData() {
 }
 
 function renderLists() {
-    const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterValue = document.getElementById('test-filter').value;
+    const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
+    
+    // Dynamic Filter Population
+    const uniqueTests = [...new Set(window.pendingData.map(item => item.test.toUpperCase()))];
+    const currentVal = filterSelect.value;
+    filterSelect.innerHTML = '<option value="ALL">All Sections</option>' + uniqueTests.map(t => `<option value="${t}">${t}</option>`).join('');
+    filterSelect.value = currentVal || 'ALL';
+
     const filterFn = (item, isCompleted) => {
-        let t = (item.test || "").toUpperCase(); let typeMatch = (filterValue === "ALL") || t.includes(filterValue) || (filterValue === 'GXP' && t.includes("MTB")) || (filterValue === 'DSSM' && t.includes("AFB")) || (filterValue === 'HEMA' && t.includes("CBC")) || (filterValue === 'CHEM' && t.includes("GLUCOSE"));
+        let t = (item.test || "").toUpperCase(); let filterVal = filterSelect.value;
+        let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
         if (isCompleted) { if (item.isSessionCompleted) return true; const dStr = item.dateResult || item.dateEncoded || item.date; if (dStr && new Date(dStr).toDateString() !== new Date().toDateString()) return false; }
         return true;
@@ -483,10 +553,8 @@ async function saveResult(id, safeId, btn, doPrint) {
       const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
       if (res.status === "success") {
           btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
-          
           let tCodePrint = "DEFAULT"; let t = item.test.toUpperCase();
           if (t.includes("VIRAL")) tCodePrint = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCodePrint = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCodePrint = "DSSM"; else if (t.includes("UA")) tCodePrint = "UA"; else if (t.includes("FA")) tCodePrint = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCodePrint = "HEMA"; else if (t.includes("CHEM")) tCodePrint = "CHEM"; else if (t.includes("GRAM")) tCodePrint = "GRAM"; else if (t.includes("DENGUE")) tCodePrint = "DENGUE"; else if (t.includes("SERO")) tCodePrint = "SERO";
-          
           if(doPrint) { setTimeout(() => { runPrintJob([{ testCode: id, testName: tCodePrint }]); }, 500); }
           const pIndex = window.pendingData.findIndex(p => p.id === id);
           if (pIndex > -1) { const moved = window.pendingData[pIndex]; moved.isSessionCompleted = true; moved.dateResult = TODAY_STR; window.completedData.unshift(moved); window.pendingData.splice(pIndex, 1); renderLists(); }
@@ -497,6 +565,7 @@ async function saveResult(id, safeId, btn, doPrint) {
 function printDirect(e, id, testName) { e.stopPropagation(); runPrintJob([{ testCode: id, testName: testName }]); }
 async function runPrintJob(requests) { try { const res = await apiPost("printFromRegistry", { requests: requests }); if (res.status === "success" && res.data) { const win = window.open('', '_blank'); if (win) { win.document.write(res.data); win.document.close(); } } } catch (e) { alert("Print Error"); } }
 
+// TEMPLATES
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
  const gradings = ["Negative", "Trace", "1+", "2+", "3+", "4+"]; const apps = ["Watery", "Salivary", "Mucosalivary", "Mucopurulent", "Purulent", "Blood-Streaked"];
@@ -521,7 +590,7 @@ function getResultTemplate(code, safeId, item) {
 }
 
 // ==========================================
-// 8. REGISTRY MODALS & LISTS
+// 8. REGISTRY MODALS, FIT & FILTERS
 // ==========================================
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
@@ -535,11 +604,7 @@ async function openRegistryModal(type) {
         if (res.status === "success") {
             window.CURRENT_REGISTRY_HEADERS = res.data.headers; window.CURRENT_REGISTRY_TITLE = res.data.title;
             const hMap = res.data.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
-            
-            const colFilter = document.getElementById('colFilter');
-            colFilter.innerHTML = '<option value="ALL">All Columns</option>';
-            hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
-
+            const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
             const sorted = res.data.rows.sort((a, b) => new Date(a[0]) - new Date(b[0]));
             
             let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
@@ -549,7 +614,7 @@ async function openRegistryModal(type) {
                 html += `<tr><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
-                    let isResCol = c.original.toLowerCase().includes('result code') || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
                     if (isResCol) {
                         let style = "res-gray"; let vU = String(val).toUpperCase();
                         if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
@@ -570,8 +635,7 @@ function filterRegistryTable() {
     const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
     document.querySelectorAll('#regTableBody tr').forEach(tr => { 
         let textToSearch = "";
-        if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase();
-        else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
+        if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
         const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.toLowerCase() : "";
         const matchSearch = textToSearch.includes(s); const matchMonth = m === "" || dateText.includes(m);
         tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
@@ -579,7 +643,7 @@ function filterRegistryTable() {
 }
 
 // ==========================================
-// 9. SETTINGS & REPORTS 
+// 9. SETTINGS & REPORTS (Restored)
 // ==========================================
 async function loadSettingsData() { const uList = document.getElementById('list-users'); if(uList) uList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="ph ph-spinner ph-spin"></i> Loading...</div>'; try { const res = await apiGet("getSettingsData"); if (res.status === "success") renderSettings(res.data); loadStaff(); loadFacilities(); } catch (e) {} }
 function renderSettings(data) { const uList = document.getElementById('list-users'); if (!data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
