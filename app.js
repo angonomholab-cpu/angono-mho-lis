@@ -291,14 +291,6 @@ async function runDirectSearch(q) {
   }, 600); // 600ms debounce
 }
 
-function clearForm() {
-    document.getElementById('regForm').reset();
-    labOrders = {};
-    document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active'));
-    updateSummary();
-    document.getElementById('finalPatientId').value = "";
-    isExistingPatient = false; // Release lock
-}
 
 async function finalSubmit() {
   const btn = document.getElementById('save-btn-action');
@@ -349,6 +341,105 @@ async function loadPendingData() {
       renderLists();
   } catch (e) { } finally { if(icon) icon.classList.remove('ph-spin'); }
 }
+
+// Trigger for Registry Modal
+function showRegistrySelectionModal() {
+    toggleSidebar(); // Hide sidebar
+    document.getElementById('registry-selection-modal').style.display = 'flex';
+}
+
+// Updated Search with History Fetching
+async function runDirectSearch(q) {
+  const box = document.getElementById('direct-results-box');
+  const stat = document.getElementById('search-status');
+  if(q.length < 2) { box.style.display='none'; stat.style.display='none'; return; }
+  
+  stat.style.display='block'; 
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+      try {
+          const res = await apiGet("searchPatients", { query: q });
+          if (res.status === "success" && res.data.length > 0) {
+              box.style.display = 'block'; box.innerHTML = '';
+              res.data.forEach(p => {
+                  const div = document.createElement('div');
+                  div.style.padding = '10px'; div.style.borderBottom = '1px solid var(--border-color)'; div.style.cursor = 'pointer';
+                  div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility}</div>`;
+                  div.onmouseover = () => div.style.backgroundColor = "var(--bg-subtle)";
+                  div.onmouseout = () => div.style.backgroundColor = "transparent";
+                  div.onclick = () => {
+                      isExistingPatient = true; 
+                      document.getElementById('finalPatientId').value = p.id;
+                      document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || "";
+                      document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; 
+                      if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } catch(e){} }
+                      box.style.display = 'none';
+                      
+                      // SWAP UI TO PROFILE MODE
+                      document.getElementById('new-entry-header').style.display = 'none';
+                      document.getElementById('profile-header').style.display = 'flex';
+                      document.getElementById('history-section').style.display = 'block';
+                      
+                      // Fetch History
+                      fetchHistory(p.id);
+                  };
+                  box.appendChild(div);
+              });
+          } else { box.style.display = 'none'; }
+      } catch(e) {} finally { stat.style.display='none'; }
+  }, 600);
+}
+
+// Fetch History Function
+async function fetchHistory(id) {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '<div style="padding:10px; text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Loading records...</div>';
+    try {
+        const res = await apiGet("getPatientHistory", { patientId: id });
+        if (res.status === 'success' && res.data.length > 0) {
+            list.innerHTML = res.data.map(h => `
+                <div class="history-card">
+                    <div>
+                        <div class="h-test">${h.test}</div>
+                        <div class="h-date">${h.date}</div>
+                    </div>
+                    <span class="badge badge-neutral" style="font-size:0.6rem;">${h.result}</span>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = '<div class="text-muted text-xs text-center" style="padding:10px;">No previous lab records found.</div>';
+        }
+    } catch(e) {
+        list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger); padding:10px;">Failed to load history.</div>';
+    }
+}
+
+// Updated Clear Form to Reset UI
+function clearForm() {
+    document.getElementById('regForm').reset();
+    labOrders = {};
+    document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active'));
+    updateSummary();
+    document.getElementById('finalPatientId').value = "";
+    isExistingPatient = false; 
+    
+    // RESET UI TO NEW ENTRY
+    document.getElementById('new-entry-header').style.display = 'flex';
+    document.getElementById('profile-header').style.display = 'none';
+    document.getElementById('history-section').style.display = 'none';
+}
+
+// FIX FOR REGISTRY POPUP CLOSING
+async function openRegistryModal(type) {
+    document.getElementById('registry-selection-modal').style.display = 'none'; // Close modal
+    showPage('registry'); // Navigate
+    
+    document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
+    const cont = document.getElementById('registry-table-content');
+    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
+    // ... [keep the rest of your openRegistryModal code] ...
+}
+
 
 function renderLists() {
     const pList = document.getElementById('list-pending');
