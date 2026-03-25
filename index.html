@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Angono MHO LIS</title>
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -30,18 +30,10 @@
         </div>
         
         <ul class="nav-links">
-            <li class="nav-item active" id="nav-workspace" onclick="showPage('workspace'); toggleSidebar();">
-                <i class="ph ph-desktop"></i> Workspace
-            </li>
-            <li class="nav-item" id="nav-registry" onclick="showRegistrySelectionModal(); toggleSidebar();">
-                <i class="ph ph-books"></i> Lab Registry
-            </li>
-            <li class="nav-item" id="nav-reports" onclick="showPage('reports'); toggleSidebar();">
-                <i class="ph ph-chart-bar"></i> Reports
-            </li>
-            <li class="nav-item" id="nav-settings" onclick="showPage('settings'); toggleSidebar();">
-                <i class="ph ph-gear-six"></i> Settings
-            </li>
+            <li class="nav-item active" id="nav-workspace" onclick="showPage('workspace'); toggleSidebar();"><i class="ph ph-desktop"></i> Workspace</li>
+            <li class="nav-item" id="nav-registry" onclick="showRegistrySelectionModal(); toggleSidebar();"><i class="ph ph-books"></i> Lab Registry</li>
+            <li class="nav-item" id="nav-reports" onclick="showPage('reports'); toggleSidebar();"><i class="ph ph-chart-bar"></i> Reports</li>
+            <li class="nav-item" id="nav-settings" onclick="showPage('settings'); toggleSidebar();"><i class="ph ph-gear-six"></i> Settings</li>
         </ul>
         
         <div style="margin-top: auto; display: flex; justify-content: center; padding-top: 15px;">
@@ -59,7 +51,7 @@
                 <div class="workspace-col" id="col-entry">
                     <div class="workspace-header" id="entry-main-header">
                         <h2><i class="ph ph-user-plus"></i> Patient Entry</h2>
-                        <button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>
+                        <button class="btn-icon" onclick="cancelEditPending()" title="Clear Form"><i class="ph ph-eraser"></i></button>
                     </div>
                     
                     <div class="ap-split">
@@ -141,7 +133,6 @@
                                 <div class="test-btn-vert" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle"></i><span>Dengue NS1 / Duo</span></div>
                                 <div class="test-btn-vert" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
                             </div>
-
                             <div id="test-details-area" style="display:none; background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); margin-bottom:10px; border:1px solid var(--pri);"></div>
                         </div>
                     </div>
@@ -174,23 +165,18 @@
             <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 24px;">
                 <div class="section-header" style="border-bottom: 2px solid var(--pri); padding-bottom:15px; margin-bottom: 15px;">
                     <h2 id="regTitle" style="font-size: 1.2rem;"><i class="ph ph-books" style="color: var(--pri);"></i> Registry</h2>
-                    <div style="display:flex; gap:10px;">
-                        <select id="colFilter" class="form-select" style="width: auto;">
-                            <option value="ALL">All Columns</option>
-                        </select>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <select id="colFilter" class="form-select" style="width: auto;"><option value="ALL">All Columns</option></select>
                         <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 200px;" onkeyup="filterRegistryTable()">
-                        
                         <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto;">
-                            <option value="">All Months</option>
-                            <option value="January">January</option><option value="February">February</option><option value="March">March</option>
-                            <option value="April">April</option><option value="May">May</option><option value="June">June</option>
-                            <option value="July">July</option><option value="August">August</option><option value="September">September</option>
-                            <option value="October">October</option><option value="November">November</option><option value="December">December</option>
+                            <option value="">All Months</option><option value="January">January</option><option value="February">February</option><option value="March">March</option><option value="April">April</option><option value="May">May</option><option value="June">June</option><option value="July">July</option><option value="August">August</option><option value="September">September</option><option value="October">October</option><option value="November">November</option><option value="December">December</option>
                         </select>
                     </div>
                 </div>
-                <div style="flex-grow: 1; overflow: auto;" id="registry-table-content"></div>
-                <div style="padding-top: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                
+                <div class="table-responsive" style="flex-grow: 1; overflow: auto; width: 100%;" id="registry-table-content"></div>
+                
+                <div style="padding-top: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
                     <div class="text-sm font-bold" style="color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
                     <div style="display: flex; gap: 10px;">
                         <button onclick="printRegistryLogbook()" class="btn btn-secondary"><i class="ph ph-notebook"></i> Print Logbook</button>
@@ -201,8 +187,7 @@
         </div>
 
         <div id="page-reports" class="page-area">
-            <div class="workspace-col" style="padding: 0; min-height: 100%;">
-                
+            <div class="report-card" style="padding: 0; display:flex; flex-direction:column; height: 100%;">
                 <div class="rep-header" style="background: linear-gradient(to right, var(--pri-light), var(--bg-surface)); padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
                     <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" class="logo-side" style="width: 70px; height: 70px; object-fit: contain;">
                     <div class="rep-header-text" style="text-align: center; flex-grow: 1;">
@@ -217,24 +202,20 @@
                 <div class="controls-area" style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
                     <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                         <div style="font-weight:700; color:var(--text-main);"><i class="ph ph-sliders"></i> SETTINGS:</div>
-                        
                         <div style="display: flex; gap: 12px; align-items: center;">
                             <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input type="radio" name="rep_type" value="monthly" checked onclick="togglePeriod()"> Monthly</label>
                             <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input type="radio" name="rep_type" value="quarterly" onclick="togglePeriod()"> Quarterly</label>
                             <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input type="radio" name="rep_type" value="annual" onclick="togglePeriod()"> Annually</label>
                         </div>
-                        
                         <select id="rep_month" class="form-select" style="width: auto;">
                             <option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option>
                         </select>
                         <select id="rep_quarter" class="form-select" style="display:none; width: auto;">
                             <option value="1">1st Quarter</option><option value="2">2nd Quarter</option><option value="3">3rd Quarter</option><option value="4">4th Quarter</option>
                         </select>
-                        
                         <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
-                        
-                        <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i class="ph ph-lightning"></i> GENERATE DATA</button>
-                        <button onclick="window.print()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT ACTIVE TAB</button>
+                        <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i class="ph ph-lightning"></i> GENERATE</button>
+                        <button onclick="window.print()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
                     </div>
 
                     <div class="chip-group" style="margin-top: 16px;">
@@ -247,72 +228,70 @@
                     </div>
                 </div>
 
-                <div class="content-area" style="padding: 24px; flex-grow: 1; overflow-y: auto;">
+                <div class="content-area table-responsive" style="padding: 24px; flex-grow: 1; overflow: auto; width: 100%;">
                     
                     <div id="tab-fhsis" class="tab-view" style="display: block;">
                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">FHSIS REPORT - MATERNAL SCREENING <span class="rep-period"></span></h3>
-                        <div style="overflow-x: auto;">
-                            <table class="data-table" style="width: 100%; font-size: 0.75rem;">
-                                <thead>
-                                    <tr>
-                                        <th style="text-align:left;">INDICATORS (Pregnant Only)</th>
-                                        <th>SAN ISIDRO</th><th>SAN VICENTE</th><th>KALAYAAN</th><th>STO. NIÑO</th><th>SAN ROQUE</th><th>MAH. PARANG</th><th>POB. ITAAS</th><th>POB. IBABA</th><th>BAGUMBAYAN</th><th>SAN PEDRO</th><th>RHU I</th>
-                                        <th style="background: var(--bg-body); color: var(--text-main);">TOTAL</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">1. SYPHILIS SCREENING</td></tr>
-                                    <tr class="font-bold"><td style="text-align:left;">1. No. of pregnant women screened for syphilis - Total</td>
-                                        <td id="syp_s_t_SI" class="text-center">0</td><td id="syp_s_t_SV" class="text-center">0</td><td id="syp_s_t_KA" class="text-center">0</td><td id="syp_s_t_SN" class="text-center">0</td><td id="syp_s_t_SR" class="text-center">0</td><td id="syp_s_t_MP" class="text-center">0</td><td id="syp_s_t_PI" class="text-center">0</td><td id="syp_s_t_PB" class="text-center">0</td><td id="syp_s_t_BA" class="text-center">0</td><td id="syp_s_t_SP" class="text-center">0</td><td id="syp_s_t_R1" class="text-center">0</td><td id="syp_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
-                                    </tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">1a. 10-14 years old</td><td id="syp_s_10_SI" class="text-center">0</td><td id="syp_s_10_SV" class="text-center">0</td><td id="syp_s_10_KA" class="text-center">0</td><td id="syp_s_10_SN" class="text-center">0</td><td id="syp_s_10_SR" class="text-center">0</td><td id="syp_s_10_MP" class="text-center">0</td><td id="syp_s_10_PI" class="text-center">0</td><td id="syp_s_10_PB" class="text-center">0</td><td id="syp_s_10_BA" class="text-center">0</td><td id="syp_s_10_SP" class="text-center">0</td><td id="syp_s_10_R1" class="text-center">0</td><td id="syp_s_10_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">1b. 15-19 years old</td><td id="syp_s_15_SI" class="text-center">0</td><td id="syp_s_15_SV" class="text-center">0</td><td id="syp_s_15_KA" class="text-center">0</td><td id="syp_s_15_SN" class="text-center">0</td><td id="syp_s_15_SR" class="text-center">0</td><td id="syp_s_15_MP" class="text-center">0</td><td id="syp_s_15_PI" class="text-center">0</td><td id="syp_s_15_PB" class="text-center">0</td><td id="syp_s_15_BA" class="text-center">0</td><td id="syp_s_15_SP" class="text-center">0</td><td id="syp_s_15_R1" class="text-center">0</td><td id="syp_s_15_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">1c. 20-49 years old</td><td id="syp_s_20_SI" class="text-center">0</td><td id="syp_s_20_SV" class="text-center">0</td><td id="syp_s_20_KA" class="text-center">0</td><td id="syp_s_20_SN" class="text-center">0</td><td id="syp_s_20_SR" class="text-center">0</td><td id="syp_s_20_MP" class="text-center">0</td><td id="syp_s_20_PI" class="text-center">0</td><td id="syp_s_20_PB" class="text-center">0</td><td id="syp_s_20_BA" class="text-center">0</td><td id="syp_s_20_SP" class="text-center">0</td><td id="syp_s_20_R1" class="text-center">0</td><td id="syp_s_20_TOT" class="text-center font-bold">0</td></tr>
+                        <table class="data-table" style="width: 100%; font-size: 0.75rem; min-width: 900px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">INDICATORS (Pregnant Only)</th>
+                                    <th>SAN ISIDRO</th><th>SAN VICENTE</th><th>KALAYAAN</th><th>STO. NIÑO</th><th>SAN ROQUE</th><th>MAH. PARANG</th><th>POB. ITAAS</th><th>POB. IBABA</th><th>BAGUMBAYAN</th><th>SAN PEDRO</th><th>RHU I</th>
+                                    <th style="background: var(--bg-body); color: var(--text-main);">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">1. SYPHILIS SCREENING</td></tr>
+                                <tr class="font-bold"><td style="text-align:left;">1. No. of pregnant women screened for syphilis - Total</td>
+                                    <td id="syp_s_t_SI" class="text-center">0</td><td id="syp_s_t_SV" class="text-center">0</td><td id="syp_s_t_KA" class="text-center">0</td><td id="syp_s_t_SN" class="text-center">0</td><td id="syp_s_t_SR" class="text-center">0</td><td id="syp_s_t_MP" class="text-center">0</td><td id="syp_s_t_PI" class="text-center">0</td><td id="syp_s_t_PB" class="text-center">0</td><td id="syp_s_t_BA" class="text-center">0</td><td id="syp_s_t_SP" class="text-center">0</td><td id="syp_s_t_R1" class="text-center">0</td><td id="syp_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
+                                </tr>
+                                <tr><td style="text-align:left; padding-left:24px;">1a. 10-14 years old</td><td id="syp_s_10_SI" class="text-center">0</td><td id="syp_s_10_SV" class="text-center">0</td><td id="syp_s_10_KA" class="text-center">0</td><td id="syp_s_10_SN" class="text-center">0</td><td id="syp_s_10_SR" class="text-center">0</td><td id="syp_s_10_MP" class="text-center">0</td><td id="syp_s_10_PI" class="text-center">0</td><td id="syp_s_10_PB" class="text-center">0</td><td id="syp_s_10_BA" class="text-center">0</td><td id="syp_s_10_SP" class="text-center">0</td><td id="syp_s_10_R1" class="text-center">0</td><td id="syp_s_10_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td style="text-align:left; padding-left:24px;">1b. 15-19 years old</td><td id="syp_s_15_SI" class="text-center">0</td><td id="syp_s_15_SV" class="text-center">0</td><td id="syp_s_15_KA" class="text-center">0</td><td id="syp_s_15_SN" class="text-center">0</td><td id="syp_s_15_SR" class="text-center">0</td><td id="syp_s_15_MP" class="text-center">0</td><td id="syp_s_15_PI" class="text-center">0</td><td id="syp_s_15_PB" class="text-center">0</td><td id="syp_s_15_BA" class="text-center">0</td><td id="syp_s_15_SP" class="text-center">0</td><td id="syp_s_15_R1" class="text-center">0</td><td id="syp_s_15_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td style="text-align:left; padding-left:24px;">1c. 20-49 years old</td><td id="syp_s_20_SI" class="text-center">0</td><td id="syp_s_20_SV" class="text-center">0</td><td id="syp_s_20_KA" class="text-center">0</td><td id="syp_s_20_SN" class="text-center">0</td><td id="syp_s_20_SR" class="text-center">0</td><td id="syp_s_20_MP" class="text-center">0</td><td id="syp_s_20_PI" class="text-center">0</td><td id="syp_s_20_PB" class="text-center">0</td><td id="syp_s_20_BA" class="text-center">0</td><td id="syp_s_20_SP" class="text-center">0</td><td id="syp_s_20_R1" class="text-center">0</td><td id="syp_s_20_TOT" class="text-center font-bold">0</td></tr>
 
-                                    <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">2. No. of pregnant women tested positive for syphilis - Total</td>
-                                        <td id="syp_p_t_SI" class="text-center">0</td><td id="syp_p_t_SV" class="text-center">0</td><td id="syp_p_t_KA" class="text-center">0</td><td id="syp_p_t_SN" class="text-center">0</td><td id="syp_p_t_SR" class="text-center">0</td><td id="syp_p_t_MP" class="text-center">0</td><td id="syp_p_t_PI" class="text-center">0</td><td id="syp_p_t_PB" class="text-center">0</td><td id="syp_p_t_BA" class="text-center">0</td><td id="syp_p_t_SP" class="text-center">0</td><td id="syp_p_t_R1" class="text-center">0</td><td id="syp_p_t_TOT" class="text-center font-bold">0</td>
-                                    </tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2a. 10-14 years old</td><td id="syp_p_10_SI" class="text-center">0</td><td id="syp_p_10_SV" class="text-center">0</td><td id="syp_p_10_KA" class="text-center">0</td><td id="syp_p_10_SN" class="text-center">0</td><td id="syp_p_10_SR" class="text-center">0</td><td id="syp_p_10_MP" class="text-center">0</td><td id="syp_p_10_PI" class="text-center">0</td><td id="syp_p_10_PB" class="text-center">0</td><td id="syp_p_10_BA" class="text-center">0</td><td id="syp_p_10_SP" class="text-center">0</td><td id="syp_p_10_R1" class="text-center">0</td><td id="syp_p_10_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2b. 15-19 years old</td><td id="syp_p_15_SI" class="text-center">0</td><td id="syp_p_15_SV" class="text-center">0</td><td id="syp_p_15_KA" class="text-center">0</td><td id="syp_p_15_SN" class="text-center">0</td><td id="syp_p_15_SR" class="text-center">0</td><td id="syp_p_15_MP" class="text-center">0</td><td id="syp_p_15_PI" class="text-center">0</td><td id="syp_p_15_PB" class="text-center">0</td><td id="syp_p_15_BA" class="text-center">0</td><td id="syp_p_15_SP" class="text-center">0</td><td id="syp_p_15_R1" class="text-center">0</td><td id="syp_p_15_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2c. 20-49 years old</td><td id="syp_p_20_SI" class="text-center">0</td><td id="syp_p_20_SV" class="text-center">0</td><td id="syp_p_20_KA" class="text-center">0</td><td id="syp_p_20_SN" class="text-center">0</td><td id="syp_p_20_SR" class="text-center">0</td><td id="syp_p_20_MP" class="text-center">0</td><td id="syp_p_20_PI" class="text-center">0</td><td id="syp_p_20_PB" class="text-center">0</td><td id="syp_p_20_BA" class="text-center">0</td><td id="syp_p_20_SP" class="text-center">0</td><td id="syp_p_20_R1" class="text-center">0</td><td id="syp_p_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">2. No. of pregnant women tested positive for syphilis - Total</td>
+                                    <td id="syp_p_t_SI" class="text-center">0</td><td id="syp_p_t_SV" class="text-center">0</td><td id="syp_p_t_KA" class="text-center">0</td><td id="syp_p_t_SN" class="text-center">0</td><td id="syp_p_t_SR" class="text-center">0</td><td id="syp_p_t_MP" class="text-center">0</td><td id="syp_p_t_PI" class="text-center">0</td><td id="syp_p_t_PB" class="text-center">0</td><td id="syp_p_t_BA" class="text-center">0</td><td id="syp_p_t_SP" class="text-center">0</td><td id="syp_p_t_R1" class="text-center">0</td><td id="syp_p_t_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2a. 10-14 years old</td><td id="syp_p_10_SI" class="text-center">0</td><td id="syp_p_10_SV" class="text-center">0</td><td id="syp_p_10_KA" class="text-center">0</td><td id="syp_p_10_SN" class="text-center">0</td><td id="syp_p_10_SR" class="text-center">0</td><td id="syp_p_10_MP" class="text-center">0</td><td id="syp_p_10_PI" class="text-center">0</td><td id="syp_p_10_PB" class="text-center">0</td><td id="syp_p_10_BA" class="text-center">0</td><td id="syp_p_10_SP" class="text-center">0</td><td id="syp_p_10_R1" class="text-center">0</td><td id="syp_p_10_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2b. 15-19 years old</td><td id="syp_p_15_SI" class="text-center">0</td><td id="syp_p_15_SV" class="text-center">0</td><td id="syp_p_15_KA" class="text-center">0</td><td id="syp_p_15_SN" class="text-center">0</td><td id="syp_p_15_SR" class="text-center">0</td><td id="syp_p_15_MP" class="text-center">0</td><td id="syp_p_15_PI" class="text-center">0</td><td id="syp_p_15_PB" class="text-center">0</td><td id="syp_p_15_BA" class="text-center">0</td><td id="syp_p_15_SP" class="text-center">0</td><td id="syp_p_15_R1" class="text-center">0</td><td id="syp_p_15_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2c. 20-49 years old</td><td id="syp_p_20_SI" class="text-center">0</td><td id="syp_p_20_SV" class="text-center">0</td><td id="syp_p_20_KA" class="text-center">0</td><td id="syp_p_20_SN" class="text-center">0</td><td id="syp_p_20_SR" class="text-center">0</td><td id="syp_p_20_MP" class="text-center">0</td><td id="syp_p_20_PI" class="text-center">0</td><td id="syp_p_20_PB" class="text-center">0</td><td id="syp_p_20_BA" class="text-center">0</td><td id="syp_p_20_SP" class="text-center">0</td><td id="syp_p_20_R1" class="text-center">0</td><td id="syp_p_20_TOT" class="text-center font-bold">0</td></tr>
 
-                                    <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">2. HIV SCREENING</td></tr>
-                                    <tr class="font-bold"><td style="text-align:left;">3. No. of pregnant women screened for HIV - Total</td>
-                                        <td id="hiv_s_t_SI" class="text-center">0</td><td id="hiv_s_t_SV" class="text-center">0</td><td id="hiv_s_t_KA" class="text-center">0</td><td id="hiv_s_t_SN" class="text-center">0</td><td id="hiv_s_t_SR" class="text-center">0</td><td id="hiv_s_t_MP" class="text-center">0</td><td id="hiv_s_t_PI" class="text-center">0</td><td id="hiv_s_t_PB" class="text-center">0</td><td id="hiv_s_t_BA" class="text-center">0</td><td id="hiv_s_t_SP" class="text-center">0</td><td id="hiv_s_t_R1" class="text-center">0</td><td id="hiv_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
-                                    </tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">3a. 10-14 years old</td><td id="hiv_s_10_SI" class="text-center">0</td><td id="hiv_s_10_SV" class="text-center">0</td><td id="hiv_s_10_KA" class="text-center">0</td><td id="hiv_s_10_SN" class="text-center">0</td><td id="hiv_s_10_SR" class="text-center">0</td><td id="hiv_s_10_MP" class="text-center">0</td><td id="hiv_s_10_PI" class="text-center">0</td><td id="hiv_s_10_PB" class="text-center">0</td><td id="hiv_s_10_BA" class="text-center">0</td><td id="hiv_s_10_SP" class="text-center">0</td><td id="hiv_s_10_R1" class="text-center">0</td><td id="hiv_s_10_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">3b. 15-19 years old</td><td id="hiv_s_15_SI" class="text-center">0</td><td id="hiv_s_15_SV" class="text-center">0</td><td id="hiv_s_15_KA" class="text-center">0</td><td id="hiv_s_15_SN" class="text-center">0</td><td id="hiv_s_15_SR" class="text-center">0</td><td id="hiv_s_15_MP" class="text-center">0</td><td id="hiv_s_15_PI" class="text-center">0</td><td id="hiv_s_15_PB" class="text-center">0</td><td id="hiv_s_15_BA" class="text-center">0</td><td id="hiv_s_15_SP" class="text-center">0</td><td id="hiv_s_15_R1" class="text-center">0</td><td id="hiv_s_15_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">3c. 20-49 years old</td><td id="hiv_s_20_SI" class="text-center">0</td><td id="hiv_s_20_SV" class="text-center">0</td><td id="hiv_s_20_KA" class="text-center">0</td><td id="hiv_s_20_SN" class="text-center">0</td><td id="hiv_s_20_SR" class="text-center">0</td><td id="hiv_s_20_MP" class="text-center">0</td><td id="hiv_s_20_PI" class="text-center">0</td><td id="hiv_s_20_PB" class="text-center">0</td><td id="hiv_s_20_BA" class="text-center">0</td><td id="hiv_s_20_SP" class="text-center">0</td><td id="hiv_s_20_R1" class="text-center">0</td><td id="hiv_s_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">2. HIV SCREENING</td></tr>
+                                <tr class="font-bold"><td style="text-align:left;">3. No. of pregnant women screened for HIV - Total</td>
+                                    <td id="hiv_s_t_SI" class="text-center">0</td><td id="hiv_s_t_SV" class="text-center">0</td><td id="hiv_s_t_KA" class="text-center">0</td><td id="hiv_s_t_SN" class="text-center">0</td><td id="hiv_s_t_SR" class="text-center">0</td><td id="hiv_s_t_MP" class="text-center">0</td><td id="hiv_s_t_PI" class="text-center">0</td><td id="hiv_s_t_PB" class="text-center">0</td><td id="hiv_s_t_BA" class="text-center">0</td><td id="hiv_s_t_SP" class="text-center">0</td><td id="hiv_s_t_R1" class="text-center">0</td><td id="hiv_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
+                                </tr>
+                                <tr><td style="text-align:left; padding-left:24px;">3a. 10-14 years old</td><td id="hiv_s_10_SI" class="text-center">0</td><td id="hiv_s_10_SV" class="text-center">0</td><td id="hiv_s_10_KA" class="text-center">0</td><td id="hiv_s_10_SN" class="text-center">0</td><td id="hiv_s_10_SR" class="text-center">0</td><td id="hiv_s_10_MP" class="text-center">0</td><td id="hiv_s_10_PI" class="text-center">0</td><td id="hiv_s_10_PB" class="text-center">0</td><td id="hiv_s_10_BA" class="text-center">0</td><td id="hiv_s_10_SP" class="text-center">0</td><td id="hiv_s_10_R1" class="text-center">0</td><td id="hiv_s_10_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td style="text-align:left; padding-left:24px;">3b. 15-19 years old</td><td id="hiv_s_15_SI" class="text-center">0</td><td id="hiv_s_15_SV" class="text-center">0</td><td id="hiv_s_15_KA" class="text-center">0</td><td id="hiv_s_15_SN" class="text-center">0</td><td id="hiv_s_15_SR" class="text-center">0</td><td id="hiv_s_15_MP" class="text-center">0</td><td id="hiv_s_15_PI" class="text-center">0</td><td id="hiv_s_15_PB" class="text-center">0</td><td id="hiv_s_15_BA" class="text-center">0</td><td id="hiv_s_15_SP" class="text-center">0</td><td id="hiv_s_15_R1" class="text-center">0</td><td id="hiv_s_15_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td style="text-align:left; padding-left:24px;">3c. 20-49 years old</td><td id="hiv_s_20_SI" class="text-center">0</td><td id="hiv_s_20_SV" class="text-center">0</td><td id="hiv_s_20_KA" class="text-center">0</td><td id="hiv_s_20_SN" class="text-center">0</td><td id="hiv_s_20_SR" class="text-center">0</td><td id="hiv_s_20_MP" class="text-center">0</td><td id="hiv_s_20_PI" class="text-center">0</td><td id="hiv_s_20_PB" class="text-center">0</td><td id="hiv_s_20_BA" class="text-center">0</td><td id="hiv_s_20_SP" class="text-center">0</td><td id="hiv_s_20_R1" class="text-center">0</td><td id="hiv_s_20_TOT" class="text-center font-bold">0</td></tr>
 
-                                    <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">4. No. of pregnant women screened reactive for HIV - Total</td>
-                                        <td id="hiv_r_t_SI" class="text-center">0</td><td id="hiv_r_t_SV" class="text-center">0</td><td id="hiv_r_t_KA" class="text-center">0</td><td id="hiv_r_t_SN" class="text-center">0</td><td id="hiv_r_t_SR" class="text-center">0</td><td id="hiv_r_t_MP" class="text-center">0</td><td id="hiv_r_t_PI" class="text-center">0</td><td id="hiv_r_t_PB" class="text-center">0</td><td id="hiv_r_t_BA" class="text-center">0</td><td id="hiv_r_t_SP" class="text-center">0</td><td id="hiv_r_t_R1" class="text-center">0</td><td id="hiv_r_t_TOT" class="text-center font-bold">0</td>
-                                    </tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4a. 10-14 years old</td><td id="hiv_r_10_SI" class="text-center">0</td><td id="hiv_r_10_SV" class="text-center">0</td><td id="hiv_r_10_KA" class="text-center">0</td><td id="hiv_r_10_SN" class="text-center">0</td><td id="hiv_r_10_SR" class="text-center">0</td><td id="hiv_r_10_MP" class="text-center">0</td><td id="hiv_r_10_PI" class="text-center">0</td><td id="hiv_r_10_PB" class="text-center">0</td><td id="hiv_r_10_BA" class="text-center">0</td><td id="hiv_r_10_SP" class="text-center">0</td><td id="hiv_r_10_R1" class="text-center">0</td><td id="hiv_r_10_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4b. 15-19 years old</td><td id="hiv_r_15_SI" class="text-center">0</td><td id="hiv_r_15_SV" class="text-center">0</td><td id="hiv_r_15_KA" class="text-center">0</td><td id="hiv_r_15_SN" class="text-center">0</td><td id="hiv_r_15_SR" class="text-center">0</td><td id="hiv_r_15_MP" class="text-center">0</td><td id="hiv_r_15_PI" class="text-center">0</td><td id="hiv_r_15_PB" class="text-center">0</td><td id="hiv_r_15_BA" class="text-center">0</td><td id="hiv_r_15_SP" class="text-center">0</td><td id="hiv_r_15_R1" class="text-center">0</td><td id="hiv_r_15_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4c. 20-49 years old</td><td id="hiv_r_20_SI" class="text-center">0</td><td id="hiv_r_20_SV" class="text-center">0</td><td id="hiv_r_20_KA" class="text-center">0</td><td id="hiv_r_20_SN" class="text-center">0</td><td id="hiv_r_20_SR" class="text-center">0</td><td id="hiv_r_20_MP" class="text-center">0</td><td id="hiv_r_20_PI" class="text-center">0</td><td id="hiv_r_20_PB" class="text-center">0</td><td id="hiv_r_20_BA" class="text-center">0</td><td id="hiv_r_20_SP" class="text-center">0</td><td id="hiv_r_20_R1" class="text-center">0</td><td id="hiv_r_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">4. No. of pregnant women screened reactive for HIV - Total</td>
+                                    <td id="hiv_r_t_SI" class="text-center">0</td><td id="hiv_r_t_SV" class="text-center">0</td><td id="hiv_r_t_KA" class="text-center">0</td><td id="hiv_r_t_SN" class="text-center">0</td><td id="hiv_r_t_SR" class="text-center">0</td><td id="hiv_r_t_MP" class="text-center">0</td><td id="hiv_r_t_PI" class="text-center">0</td><td id="hiv_r_t_PB" class="text-center">0</td><td id="hiv_r_t_BA" class="text-center">0</td><td id="hiv_r_t_SP" class="text-center">0</td><td id="hiv_r_t_R1" class="text-center">0</td><td id="hiv_r_t_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4a. 10-14 years old</td><td id="hiv_r_10_SI" class="text-center">0</td><td id="hiv_r_10_SV" class="text-center">0</td><td id="hiv_r_10_KA" class="text-center">0</td><td id="hiv_r_10_SN" class="text-center">0</td><td id="hiv_r_10_SR" class="text-center">0</td><td id="hiv_r_10_MP" class="text-center">0</td><td id="hiv_r_10_PI" class="text-center">0</td><td id="hiv_r_10_PB" class="text-center">0</td><td id="hiv_r_10_BA" class="text-center">0</td><td id="hiv_r_10_SP" class="text-center">0</td><td id="hiv_r_10_R1" class="text-center">0</td><td id="hiv_r_10_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4b. 15-19 years old</td><td id="hiv_r_15_SI" class="text-center">0</td><td id="hiv_r_15_SV" class="text-center">0</td><td id="hiv_r_15_KA" class="text-center">0</td><td id="hiv_r_15_SN" class="text-center">0</td><td id="hiv_r_15_SR" class="text-center">0</td><td id="hiv_r_15_MP" class="text-center">0</td><td id="hiv_r_15_PI" class="text-center">0</td><td id="hiv_r_15_PB" class="text-center">0</td><td id="hiv_r_15_BA" class="text-center">0</td><td id="hiv_r_15_SP" class="text-center">0</td><td id="hiv_r_15_R1" class="text-center">0</td><td id="hiv_r_15_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4c. 20-49 years old</td><td id="hiv_r_20_SI" class="text-center">0</td><td id="hiv_r_20_SV" class="text-center">0</td><td id="hiv_r_20_KA" class="text-center">0</td><td id="hiv_r_20_SN" class="text-center">0</td><td id="hiv_r_20_SR" class="text-center">0</td><td id="hiv_r_20_MP" class="text-center">0</td><td id="hiv_r_20_PI" class="text-center">0</td><td id="hiv_r_20_PB" class="text-center">0</td><td id="hiv_r_20_BA" class="text-center">0</td><td id="hiv_r_20_SP" class="text-center">0</td><td id="hiv_r_20_R1" class="text-center">0</td><td id="hiv_r_20_TOT" class="text-center font-bold">0</td></tr>
 
-                                    <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">3. HBsAg SCREENING</td></tr>
-                                    <tr class="font-bold"><td style="text-align:left;">5. No. of pregnant women screened for HBsAg - Total</td>
-                                        <td id="hbs_s_t_SI" class="text-center">0</td><td id="hbs_s_t_SV" class="text-center">0</td><td id="hbs_s_t_KA" class="text-center">0</td><td id="hbs_s_t_SN" class="text-center">0</td><td id="hbs_s_t_SR" class="text-center">0</td><td id="hbs_s_t_MP" class="text-center">0</td><td id="hbs_s_t_PI" class="text-center">0</td><td id="hbs_s_t_PB" class="text-center">0</td><td id="hbs_s_t_BA" class="text-center">0</td><td id="hbs_s_t_SP" class="text-center">0</td><td id="hbs_s_t_R1" class="text-center">0</td><td id="hbs_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
-                                    </tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">5a. 10-14 years old</td><td id="hbs_s_10_SI" class="text-center">0</td><td id="hbs_s_10_SV" class="text-center">0</td><td id="hbs_s_10_KA" class="text-center">0</td><td id="hbs_s_10_SN" class="text-center">0</td><td id="hbs_s_10_SR" class="text-center">0</td><td id="hbs_s_10_MP" class="text-center">0</td><td id="hbs_s_10_PI" class="text-center">0</td><td id="hbs_s_10_PB" class="text-center">0</td><td id="hbs_s_10_BA" class="text-center">0</td><td id="hbs_s_10_SP" class="text-center">0</td><td id="hbs_s_10_R1" class="text-center">0</td><td id="hbs_s_10_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">5b. 15-19 years old</td><td id="hbs_s_15_SI" class="text-center">0</td><td id="hbs_s_15_SV" class="text-center">0</td><td id="hbs_s_15_KA" class="text-center">0</td><td id="hbs_s_15_SN" class="text-center">0</td><td id="hbs_s_15_SR" class="text-center">0</td><td id="hbs_s_15_MP" class="text-center">0</td><td id="hbs_s_15_PI" class="text-center">0</td><td id="hbs_s_15_PB" class="text-center">0</td><td id="hbs_s_15_BA" class="text-center">0</td><td id="hbs_s_15_SP" class="text-center">0</td><td id="hbs_s_15_R1" class="text-center">0</td><td id="hbs_s_15_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr><td style="text-align:left; padding-left:24px;">5c. 20-49 years old</td><td id="hbs_s_20_SI" class="text-center">0</td><td id="hbs_s_20_SV" class="text-center">0</td><td id="hbs_s_20_KA" class="text-center">0</td><td id="hbs_s_20_SN" class="text-center">0</td><td id="syp_s_20_SR" class="text-center">0</td><td id="hbs_s_20_MP" class="text-center">0</td><td id="hbs_s_20_PI" class="text-center">0</td><td id="hbs_s_20_PB" class="text-center">0</td><td id="hbs_s_20_BA" class="text-center">0</td><td id="hbs_s_20_SP" class="text-center">0</td><td id="hbs_s_20_R1" class="text-center">0</td><td id="hbs_s_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">3. HBsAg SCREENING</td></tr>
+                                <tr class="font-bold"><td style="text-align:left;">5. No. of pregnant women screened for HBsAg - Total</td>
+                                    <td id="hbs_s_t_SI" class="text-center">0</td><td id="hbs_s_t_SV" class="text-center">0</td><td id="hbs_s_t_KA" class="text-center">0</td><td id="hbs_s_t_SN" class="text-center">0</td><td id="hbs_s_t_SR" class="text-center">0</td><td id="hbs_s_t_MP" class="text-center">0</td><td id="hbs_s_t_PI" class="text-center">0</td><td id="hbs_s_t_PB" class="text-center">0</td><td id="hbs_s_t_BA" class="text-center">0</td><td id="hbs_s_t_SP" class="text-center">0</td><td id="hbs_s_t_R1" class="text-center">0</td><td id="hbs_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
+                                </tr>
+                                <tr><td style="text-align:left; padding-left:24px;">5a. 10-14 years old</td><td id="hbs_s_10_SI" class="text-center">0</td><td id="hbs_s_10_SV" class="text-center">0</td><td id="hbs_s_10_KA" class="text-center">0</td><td id="hbs_s_10_SN" class="text-center">0</td><td id="hbs_s_10_SR" class="text-center">0</td><td id="hbs_s_10_MP" class="text-center">0</td><td id="hbs_s_10_PI" class="text-center">0</td><td id="hbs_s_10_PB" class="text-center">0</td><td id="hbs_s_10_BA" class="text-center">0</td><td id="hbs_s_10_SP" class="text-center">0</td><td id="hbs_s_10_R1" class="text-center">0</td><td id="hbs_s_10_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td style="text-align:left; padding-left:24px;">5b. 15-19 years old</td><td id="hbs_s_15_SI" class="text-center">0</td><td id="hbs_s_15_SV" class="text-center">0</td><td id="hbs_s_15_KA" class="text-center">0</td><td id="hbs_s_15_SN" class="text-center">0</td><td id="hbs_s_15_SR" class="text-center">0</td><td id="hbs_s_15_MP" class="text-center">0</td><td id="hbs_s_15_PI" class="text-center">0</td><td id="hbs_s_15_PB" class="text-center">0</td><td id="hbs_s_15_BA" class="text-center">0</td><td id="hbs_s_15_SP" class="text-center">0</td><td id="hbs_s_15_R1" class="text-center">0</td><td id="hbs_s_15_TOT" class="text-center font-bold">0</td></tr>
+                                <tr><td style="text-align:left; padding-left:24px;">5c. 20-49 years old</td><td id="hbs_s_20_SI" class="text-center">0</td><td id="hbs_s_20_SV" class="text-center">0</td><td id="hbs_s_20_KA" class="text-center">0</td><td id="hbs_s_20_SN" class="text-center">0</td><td id="syp_s_20_SR" class="text-center">0</td><td id="hbs_s_20_MP" class="text-center">0</td><td id="hbs_s_20_PI" class="text-center">0</td><td id="hbs_s_20_PB" class="text-center">0</td><td id="hbs_s_20_BA" class="text-center">0</td><td id="hbs_s_20_SP" class="text-center">0</td><td id="hbs_s_20_R1" class="text-center">0</td><td id="hbs_s_20_TOT" class="text-center font-bold">0</td></tr>
 
-                                    <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">6. No. of pregnant women screened reactive for HBsAg - Total</td>
-                                        <td id="hbs_r_t_SI" class="text-center">0</td><td id="hbs_r_t_SV" class="text-center">0</td><td id="hbs_r_t_KA" class="text-center">0</td><td id="hbs_r_t_SN" class="text-center">0</td><td id="hbs_r_t_SR" class="text-center">0</td><td id="hbs_r_t_MP" class="text-center">0</td><td id="hbs_r_t_PI" class="text-center">0</td><td id="hbs_r_t_PB" class="text-center">0</td><td id="hbs_r_t_BA" class="text-center">0</td><td id="hbs_r_t_SP" class="text-center">0</td><td id="hbs_r_t_R1" class="text-center">0</td><td id="hbs_r_t_TOT" class="text-center font-bold">0</td>
-                                    </tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6a. 10-14 years old</td><td id="hbs_r_10_SI" class="text-center">0</td><td id="hbs_r_10_SV" class="text-center">0</td><td id="hbs_r_10_KA" class="text-center">0</td><td id="hbs_r_10_SN" class="text-center">0</td><td id="hbs_r_10_SR" class="text-center">0</td><td id="hbs_r_10_MP" class="text-center">0</td><td id="hbs_r_10_PI" class="text-center">0</td><td id="hbs_r_10_PB" class="text-center">0</td><td id="hbs_r_10_BA" class="text-center">0</td><td id="hbs_r_10_SP" class="text-center">0</td><td id="hbs_r_10_R1" class="text-center">0</td><td id="hbs_r_10_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6b. 15-19 years old</td><td id="hbs_r_15_SI" class="text-center">0</td><td id="hbs_r_15_SV" class="text-center">0</td><td id="hbs_r_15_KA" class="text-center">0</td><td id="hbs_r_15_SN" class="text-center">0</td><td id="hbs_r_15_SR" class="text-center">0</td><td id="hbs_r_15_MP" class="text-center">0</td><td id="hbs_r_15_PI" class="text-center">0</td><td id="hbs_r_15_PB" class="text-center">0</td><td id="hbs_r_15_BA" class="text-center">0</td><td id="hbs_r_15_SP" class="text-center">0</td><td id="hbs_r_15_R1" class="text-center">0</td><td id="hbs_r_15_TOT" class="text-center font-bold">0</td></tr>
-                                    <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6c. 20-49 years old</td><td id="hbs_r_20_SI" class="text-center">0</td><td id="hbs_r_20_SV" class="text-center">0</td><td id="hbs_r_20_KA" class="text-center">0</td><td id="hbs_r_20_SN" class="text-center">0</td><td id="hbs_r_20_SR" class="text-center">0</td><td id="hbs_r_20_MP" class="text-center">0</td><td id="hbs_r_20_PI" class="text-center">0</td><td id="hbs_r_20_PB" class="text-center">0</td><td id="hbs_r_20_BA" class="text-center">0</td><td id="hbs_r_20_SP" class="text-center">0</td><td id="hbs_r_20_R1" class="text-center">0</td><td id="hbs_r_20_TOT" class="text-center font-bold">0</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">6. No. of pregnant women screened reactive for HBsAg - Total</td>
+                                    <td id="hbs_r_t_SI" class="text-center">0</td><td id="hbs_r_t_SV" class="text-center">0</td><td id="hbs_r_t_KA" class="text-center">0</td><td id="hbs_r_t_SN" class="text-center">0</td><td id="hbs_r_t_SR" class="text-center">0</td><td id="hbs_r_t_MP" class="text-center">0</td><td id="hbs_r_t_PI" class="text-center">0</td><td id="hbs_r_t_PB" class="text-center">0</td><td id="hbs_r_t_BA" class="text-center">0</td><td id="hbs_r_t_SP" class="text-center">0</td><td id="hbs_r_t_R1" class="text-center">0</td><td id="hbs_r_t_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6a. 10-14 years old</td><td id="hbs_r_10_SI" class="text-center">0</td><td id="hbs_r_10_SV" class="text-center">0</td><td id="hbs_r_10_KA" class="text-center">0</td><td id="hbs_r_10_SN" class="text-center">0</td><td id="hbs_r_10_SR" class="text-center">0</td><td id="hbs_r_10_MP" class="text-center">0</td><td id="hbs_r_10_PI" class="text-center">0</td><td id="hbs_r_10_PB" class="text-center">0</td><td id="hbs_r_10_BA" class="text-center">0</td><td id="hbs_r_10_SP" class="text-center">0</td><td id="hbs_r_10_R1" class="text-center">0</td><td id="hbs_r_10_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6b. 15-19 years old</td><td id="hbs_r_15_SI" class="text-center">0</td><td id="hbs_r_15_SV" class="text-center">0</td><td id="hbs_r_15_KA" class="text-center">0</td><td id="hbs_r_15_SN" class="text-center">0</td><td id="hbs_r_15_SR" class="text-center">0</td><td id="hbs_r_15_MP" class="text-center">0</td><td id="hbs_r_15_PI" class="text-center">0</td><td id="hbs_r_15_PB" class="text-center">0</td><td id="hbs_r_15_BA" class="text-center">0</td><td id="hbs_r_15_SP" class="text-center">0</td><td id="hbs_r_15_R1" class="text-center">0</td><td id="hbs_r_15_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6c. 20-49 years old</td><td id="hbs_r_20_SI" class="text-center">0</td><td id="hbs_r_20_SV" class="text-center">0</td><td id="hbs_r_20_KA" class="text-center">0</td><td id="hbs_r_20_SN" class="text-center">0</td><td id="hbs_r_20_SR" class="text-center">0</td><td id="hbs_r_20_MP" class="text-center">0</td><td id="hbs_r_20_PI" class="text-center">0</td><td id="hbs_r_20_PB" class="text-center">0</td><td id="hbs_r_20_BA" class="text-center">0</td><td id="hbs_r_20_SP" class="text-center">0</td><td id="hbs_r_20_R1" class="text-center">0</td><td id="hbs_r_20_TOT" class="text-center font-bold">0</td></tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <div id="tab-hiv" class="tab-view" style="display: none;">
                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">HIV CENSUS <span class="rep-period"></span></h3>
-                        <table class="data-table" style="width: 100%;">
+                        <table class="data-table" style="width: 100%; min-width: 800px;">
                             <thead>
                                 <tr><th rowspan="3" style="text-align:left;">CATEGORY</th><th colspan="5" class="text-center">MALE (Age)</th><th colspan="6" class="text-center">FEMALE (Age)</th><th colspan="5" class="text-center">KAP</th><th rowspan="3" class="text-center">TB<br>PT</th><th rowspan="3" class="text-center">TOTAL</th></tr>
                                 <tr><th class="text-center"><15</th><th class="text-center">15-24</th><th class="text-center">25-34</th><th class="text-center">35-49</th><th class="text-center">>50</th><th class="text-center"><15</th><th class="text-center">15-24</th><th class="text-center">25-34</th><th class="text-center">35-49</th><th class="text-center">>50</th><th class="text-center">PREG</th><th class="text-center">MSM</th><th class="text-center">TGW</th><th class="text-center">MSW</th><th class="text-center">FSW</th><th class="text-center">PWID</th></tr>
@@ -321,7 +300,7 @@
                         </table>
                         
                         <h4 style="color:var(--danger); margin-top:32px; text-align:center;">REACTIVE PATIENTS (CONFIDENTIAL)</h4>
-                        <table class="data-table" style="width: 100%;">
+                        <table class="data-table" style="width: 100%; min-width: 800px;">
                             <thead style="background:var(--danger-bg); color:var(--danger);">
                                 <tr><th rowspan="2" style="background:var(--danger-bg); color:var(--danger);">REACTIVE</th><th colspan="5" class="text-center" style="background:var(--danger-bg); color:var(--danger);">MALE</th><th colspan="6" class="text-center" style="background:var(--danger-bg); color:var(--danger);">FEMALE</th><th colspan="5" class="text-center" style="background:var(--danger-bg); color:var(--danger);">KAP</th><th rowspan="2" class="text-center" style="background:var(--danger-bg); color:var(--danger);">TB PT</th><th rowspan="2" class="text-center" style="background:var(--danger-bg); color:var(--danger);">TOTAL</th></tr>
                                 <tr><th class="text-center" style="background:var(--danger-bg); color:var(--danger);"><15</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">>50</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);"><15</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">>50</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PREG</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSM</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">TGW</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSW</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">FSW</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PWID</th></tr>
@@ -332,7 +311,7 @@
 
                     <div id="tab-sti" class="tab-view" style="display: none;">
                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">STI / HIV / HEPATITIS B SUMMARY <span class="rep-period"></span></h3>
-                        <table class="data-table" style="width:80%; margin:0 auto;">
+                        <table class="data-table" style="width:100%; min-width: 600px;">
                             <thead><tr><th width="20%">TEST</th><th width="20%">RESULT</th><th width="15%" class="text-center">MALE</th><th width="15%" class="text-center">FEMALE</th><th width="15%" class="text-center">PREGNANT</th><th width="15%" class="text-center">TOTAL</th></tr></thead>
                             <tbody id="sti-body"><tr><td colspan="6" class="text-center text-muted">No data generated yet.</td></tr></tbody>
                         </table>
@@ -340,17 +319,17 @@
 
                     <div id="tab-tb" class="tab-view" style="display: none;">
                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">NATIONAL TB PROGRAM (NTP) <span class="rep-period"></span></h3>
-                        <div style="display:flex; justify-content:center; gap:24px; margin-bottom:24px;">
-                            <table class="data-table" style="width:45%;">
+                        <div style="display:flex; justify-content:center; gap:24px; margin-bottom:24px; flex-wrap:wrap;">
+                            <table class="data-table" style="flex:1; min-width: 300px;">
                                 <thead><tr><th>EXAMINED</th><th class="text-center">NEW</th><th class="text-center">RETREAT</th></tr></thead>
                                 <tbody id="tb-exam-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
                             </table>
-                            <table class="data-table" style="width:50%;">
+                            <table class="data-table" style="flex:1; min-width: 300px;">
                                 <thead><tr><th>RESULT</th><th class="text-center">NEW</th><th class="text-center">RETREAT</th></tr></thead>
                                 <tbody id="tb-res-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
                             </table>
                         </div>
-                        <div style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); width:50%; margin:0 auto; border-radius:var(--radius-lg);">
+                        <div style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:400px; margin:0 auto; border-radius:var(--radius-lg);">
                             <span class="text-muted font-bold text-sm">TOTAL CARTRIDGES USED</span><br>
                             <span id="tb-cart" style="color:var(--pri); font-size:2.5rem; font-weight:800;">0</span>
                         </div>
@@ -358,7 +337,7 @@
 
                     <div id="tab-dengue" class="tab-view" style="display: none;">
                          <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">DENGUE NS1 SURVEILLANCE <span class="rep-period"></span></h3>
-                         <div style="width:60%; margin:0 auto;">
+                         <div style="max-width:400px; margin:0 auto;">
                              <table class="data-table">
                                  <thead><tr><th>RESULT CATEGORY</th><th class="text-center">TOTAL COUNT</th></tr></thead>
                                  <tbody id="dengue-body"><tr><td colspan="2" class="text-center text-muted">Waiting...</td></tr></tbody>
@@ -368,7 +347,7 @@
 
                     <div id="tab-summary" class="tab-view" style="display: none;">
                          <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">TOTAL LABORATORY CENSUS <span class="rep-period"></span></h3>
-                         <div style="width:60%; margin:0 auto;">
+                         <div style="max-width:500px; margin:0 auto;">
                             <table class="data-table">
                                 <thead><tr><th>LABORATORY SECTION</th><th class="text-center">PATIENTS SERVED</th></tr></thead>
                                 <tbody id="workload-body"><tr><td colspan="2" class="text-center text-muted">Waiting...</td></tr></tbody>
@@ -536,7 +515,7 @@
                 <div id="quick-search-results" class="search-results-container"></div>
             </div>
             
-            <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1;">
+            <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1; padding-right: 5px;">
                 <div style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <h3 id="qs-name" style="color:var(--pri); font-size:1.1rem; margin:0;"></h3>
