@@ -59,11 +59,11 @@
                 <div class="workspace-col" id="col-entry">
                     <div class="workspace-header" id="entry-main-header">
                         <h2><i class="ph ph-user-plus"></i> Patient Entry</h2>
-                        <button class="btn-icon" onclick="cancelEditPending()" title="Clear Form"><i class="ph ph-eraser"></i></button>
+                        <button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>
                     </div>
                     
                     <div class="ap-split">
-                                               <div class="ap-left" id="entry-left-pane">
+                        <div class="ap-left" id="entry-left-pane">
                             <div id="new-entry-header" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
                                 <h3 style="font-size: 0.9rem; color: var(--text-main);"><i class="ph ph-user-plus" style="color: var(--pri);"></i> New Entry Form</h3>
                             </div>
@@ -73,7 +73,6 @@
                             </div>
 
                             <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 12px;">
-                                
                                 <div style="position: relative; z-index: 105;">
                                     <label class="field-label">Full Name (Type to Auto-Search)</label>
                                     <div style="position: relative; margin-top: 4px;">
@@ -153,8 +152,7 @@
                         <h2><i class="ph ph-hourglass-medium"></i> Pending <span id="count-pending" style="color:var(--pri); margin-left:5px;">(0)</span></h2>
                         <div style="display: flex; gap: 6px;">
                             <select id="test-filter" onchange="renderLists()" class="form-select" style="width: auto; padding: 4px 8px; min-height: 0; font-size: 0.75rem; font-weight: bold;">
-                                <option value="ALL">All Sections</option><option value="GXP">GeneXpert</option><option value="DSSM">DSSM / AFB</option>
-                                <option value="HEMA">Hematology</option><option value="CHEM">Chemistry</option><option value="SERO">Serology</option>
+                                <option value="ALL">All Sections</option>
                             </select>
                             <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon" class="ph ph-arrows-clockwise"></i></button>
                         </div>
@@ -172,54 +170,16 @@
             </div>
         </div>
 
-        <div id="registry-selection-modal" class="modal-backdrop" style="display:none;">
-            <div class="auth-card" style="width: 500px; padding: 25px; text-align: left;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h2 style="font-size: 1.1rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
-                    <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                    <div class="test-btn-vert" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
-                    <div class="test-btn-vert" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="quick-search-modal" class="modal-backdrop" style="display:none;">
-            <div class="auth-card" style="width: 500px; padding: 25px; text-align: left; max-height: 90vh; overflow-y: auto;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h2 style="font-size: 1.1rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Quick Search</h2>
-                    <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
-                </div>
-                <div style="position: relative; margin-bottom: 15px;">
-                    <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search..." onkeyup="runQuickSearch(this.value)">
-                    <div id="quick-search-results" class="search-results-container"></div>
-                </div>
-                <div id="quick-profile-view" style="display:none;">
-                    <div style="background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
-                        <h3 id="qs-name" style="color:var(--pri); font-size:1rem; margin-bottom:4px;"></h3>
-                        <div id="qs-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;"></div>
-                    </div>
-                    <h4 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Laboratory History</h4>
-                    <div id="qs-history-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-                </div>
-            </div>
-        </div>
-
-
         <div id="page-registry" class="page-area">
             <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 24px;">
                 <div class="section-header" style="border-bottom: 2px solid var(--pri); padding-bottom:15px; margin-bottom: 15px;">
-                    <h2 id="regTitle"><i class="ph ph-books" style="color: var(--pri);"></i> Registry</h2>
+                    <h2 id="regTitle" style="font-size: 1.2rem;"><i class="ph ph-books" style="color: var(--pri);"></i> Registry</h2>
                     <div style="display:flex; gap:10px;">
+                        <select id="colFilter" class="form-select" style="width: auto;">
+                            <option value="ALL">All Columns</option>
+                        </select>
+                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 200px;" onkeyup="filterRegistryTable()">
+                        
                         <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto;">
                             <option value="">All Months</option>
                             <option value="January">January</option><option value="February">February</option><option value="March">March</option>
@@ -227,13 +187,10 @@
                             <option value="July">July</option><option value="August">August</option><option value="September">September</option>
                             <option value="October">October</option><option value="November">November</option><option value="December">December</option>
                         </select>
-                        <input type="text" id="regSearch" class="form-input" placeholder="Search records..." style="width: 250px;" onkeyup="filterRegistryTable()">
                     </div>
                 </div>
-                
                 <div style="flex-grow: 1; overflow: auto;" id="registry-table-content"></div>
-                
-                <div style="padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div style="padding-top: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                     <div class="text-sm font-bold" style="color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
                     <div style="display: flex; gap: 10px;">
                         <button onclick="printRegistryLogbook()" class="btn btn-secondary"><i class="ph ph-notebook"></i> Print Logbook</button>
@@ -244,20 +201,20 @@
         </div>
 
         <div id="page-reports" class="page-area">
-            <div class="report-card" style="padding: 0;">
+            <div class="workspace-col" style="padding: 0; min-height: 100%;">
                 
-                <div style="background: linear-gradient(to right, var(--pri-light), var(--bg-surface)); padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                    <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" style="width: 70px; height: 70px; object-fit: contain;">
-                    <div style="text-align: center; flex-grow: 1;">
+                <div class="rep-header" style="background: linear-gradient(to right, var(--pri-light), var(--bg-surface)); padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                    <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" class="logo-side" style="width: 70px; height: 70px; object-fit: contain;">
+                    <div class="rep-header-text" style="text-align: center; flex-grow: 1;">
                         <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000" style="width: 40px; height: 40px; margin-bottom: 5px;">
                         <h3 style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Republic of the Philippines<br>Province of Rizal<br>Municipality of Angono</h3>
                         <h1 style="font-size: 1.4rem; color: var(--pri); margin: 4px 0;">MUNICIPAL HEALTH OFFICE</h1>
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p>
                     </div>
-                    <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" style="width: 70px; height: 70px; object-fit: contain;">
+                    <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" class="logo-side" style="width: 70px; height: 70px; object-fit: contain;">
                 </div>
 
-                <div style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
+                <div class="controls-area" style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
                     <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                         <div style="font-weight:700; color:var(--text-main);"><i class="ph ph-sliders"></i> SETTINGS:</div>
                         
@@ -280,7 +237,7 @@
                         <button onclick="window.print()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT ACTIVE TAB</button>
                     </div>
 
-                    <div style="display: flex; gap: 8px; margin-top: 16px; overflow-x: auto;">
+                    <div class="chip-group" style="margin-top: 16px;">
                         <button class="chip active" onclick="switchTab('fhsis')" id="tab-btn-fhsis">FHSIS REPORT</button>
                         <button class="chip" onclick="switchTab('hiv')" id="tab-btn-hiv">HIV CENSUS</button>
                         <button class="chip" onclick="switchTab('sti')" id="tab-btn-sti">STI SUMMARY</button>
@@ -290,10 +247,10 @@
                     </div>
                 </div>
 
-                <div style="padding: 24px; min-height: 400px; overflow-y: auto;">
+                <div class="content-area" style="padding: 24px; flex-grow: 1; overflow-y: auto;">
                     
                     <div id="tab-fhsis" class="tab-view" style="display: block;">
-                        <h3 class="text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">FHSIS REPORT - MATERNAL SCREENING <span class="rep-period"></span></h3>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">FHSIS REPORT - MATERNAL SCREENING <span class="rep-period"></span></h3>
                         <div style="overflow-x: auto;">
                             <table class="data-table" style="width: 100%; font-size: 0.75rem;">
                                 <thead>
@@ -354,10 +311,10 @@
                     </div>
 
                     <div id="tab-hiv" class="tab-view" style="display: none;">
-                        <h3 class="text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">HIV CENSUS <span class="rep-period"></span></h3>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">HIV CENSUS <span class="rep-period"></span></h3>
                         <table class="data-table" style="width: 100%;">
                             <thead>
-                                <tr><th rowspan="3" style="text-align:left;">CATEGORY</th><th colspan="5" style="text-align:center;">MALE (Age)</th><th colspan="6" style="text-align:center;">FEMALE (Age)</th><th colspan="5" style="text-align:center;">KAP</th><th rowspan="3" style="text-align:center;">TB<br>PT</th><th rowspan="3" style="text-align:center;">TOTAL</th></tr>
+                                <tr><th rowspan="3" style="text-align:left;">CATEGORY</th><th colspan="5" class="text-center">MALE (Age)</th><th colspan="6" class="text-center">FEMALE (Age)</th><th colspan="5" class="text-center">KAP</th><th rowspan="3" class="text-center">TB<br>PT</th><th rowspan="3" class="text-center">TOTAL</th></tr>
                                 <tr><th class="text-center"><15</th><th class="text-center">15-24</th><th class="text-center">25-34</th><th class="text-center">35-49</th><th class="text-center">>50</th><th class="text-center"><15</th><th class="text-center">15-24</th><th class="text-center">25-34</th><th class="text-center">35-49</th><th class="text-center">>50</th><th class="text-center">PREG</th><th class="text-center">MSM</th><th class="text-center">TGW</th><th class="text-center">MSW</th><th class="text-center">FSW</th><th class="text-center">PWID</th></tr>
                             </thead>
                             <tbody id="hiv-test-body"><tr><td colspan="19" class="text-center text-muted">No data generated yet.</td></tr></tbody>
@@ -374,7 +331,7 @@
                     </div>
 
                     <div id="tab-sti" class="tab-view" style="display: none;">
-                        <h3 class="text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">STI / HIV / HEPATITIS B SUMMARY <span class="rep-period"></span></h3>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">STI / HIV / HEPATITIS B SUMMARY <span class="rep-period"></span></h3>
                         <table class="data-table" style="width:80%; margin:0 auto;">
                             <thead><tr><th width="20%">TEST</th><th width="20%">RESULT</th><th width="15%" class="text-center">MALE</th><th width="15%" class="text-center">FEMALE</th><th width="15%" class="text-center">PREGNANT</th><th width="15%" class="text-center">TOTAL</th></tr></thead>
                             <tbody id="sti-body"><tr><td colspan="6" class="text-center text-muted">No data generated yet.</td></tr></tbody>
@@ -382,8 +339,7 @@
                     </div>
 
                     <div id="tab-tb" class="tab-view" style="display: none;">
-                        <h3 class="text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">NATIONAL TB PROGRAM (NTP) <span class="rep-period"></span></h3>
-                        
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">NATIONAL TB PROGRAM (NTP) <span class="rep-period"></span></h3>
                         <div style="display:flex; justify-content:center; gap:24px; margin-bottom:24px;">
                             <table class="data-table" style="width:45%;">
                                 <thead><tr><th>EXAMINED</th><th class="text-center">NEW</th><th class="text-center">RETREAT</th></tr></thead>
@@ -394,7 +350,6 @@
                                 <tbody id="tb-res-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
                             </table>
                         </div>
-                        
                         <div style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); width:50%; margin:0 auto; border-radius:var(--radius-lg);">
                             <span class="text-muted font-bold text-sm">TOTAL CARTRIDGES USED</span><br>
                             <span id="tb-cart" style="color:var(--pri); font-size:2.5rem; font-weight:800;">0</span>
@@ -402,7 +357,7 @@
                     </div>
 
                     <div id="tab-dengue" class="tab-view" style="display: none;">
-                         <h3 class="text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">DENGUE NS1 SURVEILLANCE <span class="rep-period"></span></h3>
+                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">DENGUE NS1 SURVEILLANCE <span class="rep-period"></span></h3>
                          <div style="width:60%; margin:0 auto;">
                              <table class="data-table">
                                  <thead><tr><th>RESULT CATEGORY</th><th class="text-center">TOTAL COUNT</th></tr></thead>
@@ -412,7 +367,7 @@
                     </div>
 
                     <div id="tab-summary" class="tab-view" style="display: none;">
-                         <h3 class="text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">TOTAL LABORATORY CENSUS <span class="rep-period"></span></h3>
+                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">TOTAL LABORATORY CENSUS <span class="rep-period"></span></h3>
                          <div style="width:60%; margin:0 auto;">
                             <table class="data-table">
                                 <thead><tr><th>LABORATORY SECTION</th><th class="text-center">PATIENTS SERVED</th></tr></thead>
@@ -422,7 +377,7 @@
                     </div>
                 </div>
 
-                <div style="background: var(--bg-body); padding: 16px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid var(--border-color);">
+                <div class="rep-footer" style="background: var(--bg-body); padding: 16px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid var(--border-color);">
                     <div>
                         <p style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 8px; line-height: 1.4; text-align: justify;"><strong style="text-transform: uppercase;">System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.</p>
                         <p style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;"><strong style="text-transform: uppercase;">Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</p>
@@ -438,17 +393,15 @@
         <div id="page-settings" class="page-area">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
 
-                <div class="report-card" style="padding:0;">
-                    <div class="section-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                <div class="workspace-col" style="padding:0;">
+                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
                         <div style="display:flex; gap:8px;">
                             <button onclick="loadSettingsData()" class="btn-icon"><i class="ph ph-arrows-clockwise"></i></button>
                             <button onclick="toggleForm('user-form')" class="btn-icon" style="color: var(--pri);"><i class="ph ph-plus-circle"></i></button>
                         </div>
                     </div>
-
                     <div id="list-users" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
-
                     <div id="user-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
                         <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD NEW USER</h4>
                         <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
@@ -467,14 +420,12 @@
                     </div>
                 </div>
 
-                <div class="report-card" style="padding:0;">
-                    <div class="section-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                <div class="workspace-col" style="padding:0;">
+                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-buildings" style="color:var(--sec);"></i> Facilities</h3>
                         <button onclick="toggleForm('fac-form')" class="btn-icon" style="color: var(--sec);"><i class="ph ph-plus-circle"></i></button>
                     </div>
-
                     <div id="list-facilities" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
-
                     <div id="fac-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
                         <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD FACILITY</h4>
                         <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
@@ -486,14 +437,12 @@
                     </div>
                 </div>
 
-                <div class="report-card" style="padding:0;">
-                    <div class="section-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                <div class="workspace-col" style="padding:0;">
+                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-identification-badge" style="color:var(--success);"></i> Staff & Licenses</h3>
                         <button onclick="toggleForm('staff-form')" class="btn-icon" style="color: var(--success);"><i class="ph ph-plus-circle"></i></button>
                     </div>
-
                     <div id="staffListContainer" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
-
                     <div id="staff-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
                         <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD STAFF</h4>
                         <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
@@ -517,8 +466,8 @@
 
     </main>
 
-    <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100vh; background:var(--bg-body); z-index:99999; display:flex; justify-content:center; align-items:center;">
-        <div id="login-card" style="background:var(--bg-surface); padding:40px; border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:350px; text-align:center; border:1px solid var(--border-color); backdrop-filter: var(--blur-effect);">
+    <div id="login-overlay" class="modal-backdrop">
+        <div id="login-card" class="auth-card">
             <div style="width:60px; height:60px; background:var(--pri-light); color:var(--pri); border-radius:50%; margin:0 auto 20px auto; display:flex; align-items:center; justify-content:center; font-size:2rem;"><i class="ph ph-flask"></i></div>
             <h2 style="margin-bottom:20px;">Lab Access</h2>
             <input type="text" id="login_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
@@ -527,47 +476,28 @@
             <p id="login-error" style="color:var(--danger); margin-top:15px; display:none; font-size:0.85rem; font-weight:bold;"></p>
             <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('login-card').style.display='none'; document.getElementById('register-card').style.display='block';">Request Account</div>
         </div>
-   <div id="registry-selection-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(5px);">
-        <div class="auth-card" style="width: 550px; max-width: 90%; text-align: left; padding: 30px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-size: 1.2rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
-                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
-            </div>
-            
-            <div class="test-selector-grid" style="grid-template-columns: repeat(4, 1fr);">
-                <div class="test-card-big" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
-                <div class="test-card-big" onclick="openTestDetails('sero')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background" style="color:#9E9EA7;"></i><span>Gram Stain</span></div>
-            </div>
-        </div>
-    </div>
 
-
-        <div id="register-card" style="display:none; background:var(--bg-surface); padding:40px; border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:350px; text-align:center; border:1px solid var(--border-color); backdrop-filter: var(--blur-effect);">
+        <div id="register-card" class="auth-card" style="display:none;">
             <h2 style="margin-bottom:20px;">Register</h2>
             <input type="text" id="reg_name" class="form-input" placeholder="Full Name" style="margin-bottom:12px;">
             <input type="text" id="reg_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
             <input type="password" id="reg_pass" class="form-input" placeholder="Password" style="margin-bottom:12px;">
-            <select id="reg_fac" class="form-select" style="margin-bottom:20px;"><option value="Angono RHU I">Angono RHU I</option><option value="San Isidro">San Isidro</option></select>
+            <select id="reg_fac" class="form-select" style="margin-bottom:20px;">
+                <option value="Angono RHU I">Angono RHU I</option>
+                <option value="San Isidro">San Isidro</option>
+            </select>
             <button class="btn btn-primary full-width" onclick="submitRegister()">Submit Request</button>
             <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('register-card').style.display='none'; document.getElementById('login-card').style.display='block';">Back to Login</div>
         </div>
     </div>
 
-    <div id="app-loader" style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-body); z-index:99999; display:flex; justify-content:center; align-items:center; flex-direction:column;">
-        <i class="ph ph-circle-notch ph-spin" style="font-size: 2.5rem; color: var(--pri);"></i>
-        <p style="margin-top:16px; color:var(--text-muted); font-weight:500;">Loading Workspace...</p>
+    <div id="app-loader" class="modal-backdrop" style="flex-direction:column; background:var(--bg-body);">
+        <i class="ph ph-circle-notch ph-spin" style="font-size: 3rem; color: var(--pri);"></i>
+        <p style="margin-top:16px; color:var(--text-muted); font-weight:600;">Loading System...</p>
     </div>
 
-    <div id="logout-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-        <div style="background:var(--bg-surface); padding:30px; border-radius:var(--radius-lg); width:300px; text-align:center; box-shadow:var(--shadow-md);">
+    <div id="logout-modal" class="modal-backdrop" style="display:none;">
+        <div class="auth-card" style="width:300px;">
             <i class="ph ph-sign-out" style="font-size: 2.5rem; color: var(--pri); margin-bottom: 10px;"></i>
             <h3 style="margin:0 0 10px 0;">Log Out?</h3>
             <div style="display:flex; gap:10px; margin-top:20px;">
@@ -577,8 +507,8 @@
         </div>
     </div>
 
-    <div id="edit-user-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-        <div style="background:var(--bg-surface); padding:30px; border-radius:var(--radius-lg); width:350px; border:1px solid var(--border-color);">
+    <div id="edit-user-modal" class="modal-backdrop" style="display:none;">
+        <div class="auth-card" style="width:350px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="margin:0;">Manage User</h3>
                 <button onclick="closeEditModal()" class="btn-icon"><i class="ph ph-x"></i></button>
@@ -594,28 +524,62 @@
         </div>
     </div>
 
-       <div id="registry-selection-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(5px);">
-        <div class="auth-card" style="width: 550px; max-width: 90%; text-align: left; padding: 30px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-size: 1.2rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
-                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+    <div id="quick-search-modal" class="modal-backdrop" style="display:none;">
+        <div class="auth-card" style="text-align: left; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
+                <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central Search</h2>
+                <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
             </div>
-            <div class="test-selector-grid" style="grid-template-columns: repeat(4, 1fr);">
-                <div class="test-card-big" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
-                <div class="test-card-big" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background" style="color:#9E9EA7;"></i><span>Gram Stain</span></div>
+            
+            <div style="position: relative; margin-bottom: 15px;">
+                <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search masterlist..." onkeyup="runQuickSearch(this.value)">
+                <div id="quick-search-results" class="search-results-container"></div>
+            </div>
+            
+            <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1;">
+                <div style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 id="qs-name" style="color:var(--pri); font-size:1.1rem; margin:0;"></h3>
+                        <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
+                    </div>
+                    <div id="qs-meta" style="font-size:0.8rem; color:var(--text-main); font-weight:500; display:flex; flex-wrap:wrap; gap:10px;"></div>
+                    
+                    <div id="qs-edit-form" style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                        <div class="form-grid grid-2">
+                            <div class="field-group full-width"><label class="field-label">Name</label><input type="text" id="qs_edit_name" class="form-input"></div>
+                            <div class="field-group"><label class="field-label">Age</label><input type="text" id="qs_edit_age" class="form-input"></div>
+                            <div class="field-group"><label class="field-label">Facility</label><input type="text" id="qs_edit_fac" class="form-input"></div>
+                        </div>
+                        <button class="btn btn-primary text-xs" onclick="savePatientDemographicsQS()">Save Changes</button>
+                    </div>
+                </div>
+
+                <h4 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i class="ph ph-clock-counter-clockwise"></i> Complete Laboratory History</h4>
+                <div id="qs-history-list" style="display:flex; flex-direction:column; gap:10px;"></div>
             </div>
         </div>
     </div>
 
-
+    <div id="registry-selection-modal" class="modal-backdrop" style="display:none;">
+        <div class="auth-card" style="width: 500px; padding: 25px; text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-size: 1.1rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
+                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                <div class="test-btn-vert" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
