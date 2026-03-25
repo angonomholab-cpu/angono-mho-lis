@@ -369,10 +369,26 @@
             </div>
         </div>
 
-        <div id="page-settings" class="page-area">
+               <div id="page-settings" class="page-area">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
 
                 <div class="workspace-col" style="padding:0;">
+                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-gear" style="color:var(--pri);"></i> System Preferences</h3>
+                    </div>
+                    <div style="padding: 16px; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle);">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong style="font-size:0.85rem; color:var(--text-main);">Limited Test Menu Mode</strong>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Only show GXP, DSSM, Gram Stain, Dengue, Serology</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggle-limited-mode" onchange="toggleLimitedMode()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
                     <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
                         <div style="display:flex; gap:8px;">
@@ -442,6 +458,8 @@
                 </div>
             </div>
         </div>
+
+
 
     </main>
 
