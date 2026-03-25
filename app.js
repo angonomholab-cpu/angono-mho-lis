@@ -12,26 +12,26 @@ let editingPendingId = null;
 let currentQuickPatient = null;
 let searchTimeout; 
 let editModeIds = new Set();
-window.CURRENT_TEST_TYPE = ""; // For Registry Batch Print
+window.CURRENT_TEST_TYPE = ""; 
 
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
-async function apiGet(action, params = {}) {
-    let url = new URL(SCRIPT_URL); url.searchParams.append('action', action);
-    for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]);
-    try { const res = await fetch(url); return await res.json(); } catch (e) { throw e; }
-}
-
-async function apiPost(action, payload) {
-    try { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); } catch (e) { throw e; }
-}
+async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); try { const res = await fetch(url); return await res.json(); } catch (e) { throw e; } }
+async function apiPost(action, payload) { try { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); } catch (e) { throw e; } }
 
 // ==========================================
-// 2. SYSTEM STARTUP & ANDROID MENU
+// 2. SYSTEM STARTUP & LIMITED MODE
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
+    
+    // Check Limited Mode Setting
+    const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
+    const toggleLimit = document.getElementById('toggle-limited-mode');
+    if(toggleLimit) toggleLimit.checked = isLimited;
+    applyLimitedMode(isLimited);
+
     const savedUser = localStorage.getItem('labUser');
     if (savedUser) {
         try {
@@ -41,55 +41,63 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('display-full-name').innerText = currentUser.fullName || currentUser.username;
             document.getElementById('display-role-facility').innerText = `${currentUser.role} | ${currentUser.facility}`;
             document.getElementById('pill-avatar').innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
-            applyPermissions();
-            document.getElementById('app-loader').style.display = 'none';
+            applyPermissions(); document.getElementById('app-loader').style.display = 'none';
             if(currentUser.role === 'VIEWER') showPage('registry'); else showPage('workspace');
         } catch (e) { localStorage.removeItem('labUser'); document.getElementById('app-loader').style.display = 'none'; }
     } else { document.getElementById('app-loader').style.display = 'none'; }
 });
 
-function toggleSidebar() {
-    const sidebar = document.getElementById('main-sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (sidebar.classList.contains('show')) {
-        sidebar.classList.remove('show');
-        overlay.style.display = 'none'; overlay.style.opacity = '0';
-    } else {
-        sidebar.classList.add('show');
-        overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10);
-    }
+function toggleLimitedMode() {
+    const isChecked = document.getElementById('toggle-limited-mode').checked;
+    localStorage.setItem('mho-limited-mode', isChecked);
+    applyLimitedMode(isChecked);
 }
 
-// ==========================================
-// 3. AUTHENTICATION & PERMISSIONS
-// ==========================================
-async function attemptLogin() {
-    const u = document.getElementById('login_user').value.trim();
-    const p = document.getElementById('login_pass').value.trim();
-    const btn = document.getElementById('btn-login');
-    const err = document.getElementById('login-error');
+function applyLimitedMode(isLimited) {
+    const hiddenTests = ['btn-viral', 'btn-hema', 'btn-chem', 'btn-uria', 'btn-feca'];
+    const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
+    
+    hiddenTests.forEach(id => {
+        const btn = document.getElementById(id);
+        if(btn) {
+            if(isLimited) btn.classList.add('disabled-test');
+            else btn.classList.remove('disabled-test');
+        }
+    });
 
+    // Hide inside registry modal
+    document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+        const onclickAttr = card.getAttribute('onclick');
+        if(onclickAttr) {
+            let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r));
+            if(isLimited && isHidden) card.style.display = 'none';
+            else card.style.display = 'flex';
+        }
+    });
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } 
+    else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); }
+}
+
+async function attemptLogin() {
+    const u = document.getElementById('login_user').value.trim(); const p = document.getElementById('login_pass').value.trim();
+    const btn = document.getElementById('btn-login'); const err = document.getElementById('login-error');
     if (!u || !p) { err.style.display = 'block'; err.innerText = "Enter credentials."; return; }
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
-
     try {
         const res = await apiGet("loginUser", { username: u, password: p });
-        if (res.status === "SUCCESS") {
-            currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName };
-            localStorage.setItem('labUser', JSON.stringify(currentUser));              
-            window.location.reload();
-        } else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } 
-        else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
+        if (res.status === "SUCCESS") { currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
+        else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
     } catch (e) { alert("Server Error. Check connection."); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
-
 function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; toggleSidebar(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
-
 function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-    const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text');
+    document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text');
     if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } 
     else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; }
 }
@@ -98,10 +106,8 @@ function showPage(targetId) {
     const elId = 'page-' + targetId; const role = (currentUser.role || "VIEWER").toUpperCase();
     if (role === 'VIEWER' && (targetId === 'workspace' || targetId === 'settings')) return;
     if (role === 'ENCODER' && targetId === 'settings') return;
-
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
-
     document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); if (item.id === 'nav-' + targetId) item.classList.add('active'); });
     if (targetId === 'workspace' && role !== 'ENCODER') loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
@@ -111,9 +117,7 @@ function applyPermissions() {
     const role = (currentUser.role || "VIEWER").toUpperCase();
     const navWork = document.getElementById('nav-workspace'); const navReg = document.getElementById('nav-registry'); const navRep = document.getElementById('nav-reports'); const navSet = document.getElementById('nav-settings');
     const panePending = document.getElementById('col-pending'); const paneCompleted = document.getElementById('col-completed');
-
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
-
     if (role === 'ADMIN' || role === 'STAFF') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; if(panePending) panePending.style.display = 'flex'; if(paneCompleted) paneCompleted.style.display = 'flex';
@@ -156,8 +160,7 @@ function confirmDetail(id) {
    document.querySelectorAll('#test-details-area [data-key]').forEach(el => { details[el.getAttribute('data-key')] = el.value; });
    if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
    else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { alert("Select at least one test."); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); }
-   labOrders[id] = { details: details, subTests: subSelected }; 
-   document.getElementById('btn-'+id).classList.add('active'); updateSummary(); cancelDetail(); 
+   labOrders[id] = { details: details, subTests: subSelected }; document.getElementById('btn-'+id).classList.add('active'); updateSummary(); cancelDetail(); 
 }
 
 function toggleSimple(id) { const btn = document.getElementById('btn-'+id); if(labOrders[id]) { delete labOrders[id]; btn.classList.remove('active'); } else { labOrders[id] = { details: {}, subTests: [] }; btn.classList.add('active'); } updateSummary(); }
@@ -180,7 +183,7 @@ async function runDirectSearch(q) {
               box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
               res.data.forEach(p => {
                   const div = document.createElement('div'); div.className = "search-item";
-                  div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+                  div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
                   div.onclick = () => {
                       isExistingPatient = true; document.getElementById('finalPatientId').value = p.id;
                       document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || "";
@@ -188,8 +191,7 @@ async function runDirectSearch(q) {
                       setSelectValue('p_sex', p.sex); setSelectValue('p_facility', p.facility || p.Facility);
                       if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } catch(e){} }
                       box.style.display = 'none'; 
-                      document.getElementById('new-entry-header').style.display = 'none';
-                      document.getElementById('profile-header').style.display = 'flex';
+                      document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
                       fetchHistory(p.id, 'history-section', 'history-list'); 
                   };
                   box.appendChild(div);
@@ -198,6 +200,7 @@ async function runDirectSearch(q) {
       } catch(e) {} finally { stat.style.display='none'; }
   }, 600);
 }
+
 // ==========================================
 // 5. HISTORY & QUICK SEARCH LOGIC
 // ==========================================
@@ -306,10 +309,7 @@ function toggleHistoryEdit(id) {
 async function saveHistoryEdit(patientId, testType, uniqueId) {
     const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {};
     inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value);
-    try {
-        const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates });
-        if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); }
-    } catch(e) { alert("Error updating past record: " + e); }
+    try { const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates }); if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); } } catch(e) { alert("Error updating past record: " + e); }
 }
 
 function clearForm() {
@@ -364,7 +364,7 @@ async function finalSubmit() {
 }
 
 // ==========================================
-// 6. EDIT PENDING FULL (WITH DYNAMIC TEST FORM)
+// 6. EDIT PENDING FULL
 // ==========================================
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
@@ -381,8 +381,7 @@ function editPendingFull(id) {
     setSelectValue('p_sex', d.sex || d.Sex); setSelectValue('p_facility', d.facility || d.Facility);
     if(d.bday || d.Bday) { try { const bd = new Date(d.bday||d.Bday); document.getElementById('p_bday').value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; } catch(e){} }
     
-    document.getElementById('new-entry-header').style.display = 'none';
-    document.getElementById('profile-header').style.display = 'flex';
+    document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
     fetchHistory(item.patientId, 'history-section', 'history-list'); 
     
     document.getElementById('test-buttons-container').style.display = 'none'; 
@@ -392,16 +391,14 @@ function editPendingFull(id) {
     let dynamicHtml = testKey ? availableTests[testKey].html : `<textarea id="edit-pending-fallback-box" class="form-input" style="min-height:100px;">${JSON.stringify(d,null,2)}</textarea>`;
     
     area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div><div id="temp-form-data" class="form-grid grid-1">${dynamicHtml}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
-        
     setTimeout(() => { document.querySelectorAll('#test-details-area [data-key]').forEach(el => { let val = d[el.getAttribute('data-key')]; if(val) el.value = val; }); }, 100);
     
     const saveBtn = document.getElementById('save-btn-action');
     saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record';
-    saveBtn.onclick = submitPendingUpdate; saveBtn.style.background = 'var(--sec)'; saveBtn.style.color = 'white';
+    saveBtn.onclick = submitPendingUpdate; saveBtn.style.background = 'var(--warning)'; saveBtn.style.color = 'white';
 }
 
 function cancelEditPending() { clearForm(); } 
-
 async function submitPendingUpdate() {
     if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML;
@@ -431,14 +428,27 @@ function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
     
-    // Dynamic Filter Population (Only shows tests that are currently in pending)
+    // Check if Limited Mode is ON
+    const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
+    const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
+
     const uniqueTests = [...new Set(window.pendingData.map(item => item.test.toUpperCase()))];
     const currentVal = filterSelect.value;
-    filterSelect.innerHTML = '<option value="ALL">All Sections</option>' + uniqueTests.map(t => `<option value="${t}">${t}</option>`).join('');
+    
+    // Filter dropdown based on limited mode
+    let dropHtml = '<option value="ALL">All Sections</option>';
+    uniqueTests.forEach(t => {
+        let tCode = getTestCodeFromName(t);
+        if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; }
+    });
+    filterSelect.innerHTML = dropHtml;
     filterSelect.value = currentVal || 'ALL';
 
     const filterFn = (item, isCompleted) => {
         let t = (item.test || "").toUpperCase(); let filterVal = filterSelect.value;
+        let tCode = getTestCodeFromName(t);
+        
+        if(isLimited && !allowedTests.includes(tCode)) return false; // Hide from pending if limited
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
         if (isCompleted) { if (item.isSessionCompleted) return true; const dStr = item.dateResult || item.dateEncoded || item.date; if (dStr && new Date(dStr).toDateString() !== new Date().toDateString()) return false; }
@@ -448,8 +458,7 @@ function renderLists() {
     const fPending = window.pendingData.filter(i => filterFn(i, false)); const fComp = window.completedData.filter(i => filterFn(i, true));
 
     pList.innerHTML = fPending.map(item => {
-        const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = "DEFAULT"; let t = item.test.toUpperCase();
-        if (t.includes("VIRAL")) tCode = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCode = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCode = "DSSM"; else if (t.includes("UA")) tCode = "UA"; else if (t.includes("FA")) tCode = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCode = "HEMA"; else if (t.includes("CHEM")) tCode = "CHEM"; else if (t.includes("GRAM")) tCode = "GRAM"; else if (t.includes("DENGUE")) tCode = "DENGUE"; else if (t.includes("SERO")) tCode = "SERO";
+        const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch(e){}
         return `
         <div class="pending-card" id="card-${safeId}">
@@ -474,8 +483,7 @@ function renderLists() {
     }).join('');
 
     cList.innerHTML = fComp.map(item => {
-        let tCodePrint = "DEFAULT"; let t = item.test.toUpperCase();
-        if (t.includes("VIRAL")) tCodePrint = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCodePrint = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCodePrint = "DSSM"; else if (t.includes("UA")) tCodePrint = "UA"; else if (t.includes("FA")) tCodePrint = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCodePrint = "HEMA"; else if (t.includes("CHEM")) tCodePrint = "CHEM"; else if (t.includes("GRAM")) tCodePrint = "GRAM"; else if (t.includes("DENGUE")) tCodePrint = "DENGUE"; else if (t.includes("SERO")) tCodePrint = "SERO";
+        let tCodePrint = getTestCodeFromName(item.test);
         return `<div class="completed-card" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" title="Click to print"><div style="overflow:hidden;"><div class="pc-name">${item.name}</div><div class="pc-meta">${item.test}</div></div><i class="ph ph-printer" style="color: var(--success); font-size: 1.2rem;"></i></div>`;
     }).join('');
     document.getElementById('count-pending').innerText = `(${fPending.length})`;
@@ -486,11 +494,9 @@ async function deleteEntry(id) { if(!confirm("Delete entry?")) return; try { awa
 
 async function saveResult(id, safeId, btn, doPrint) {
   let printWin = null;
-  // FIX 1: Direct Open window immediately to avoid pop-up blockers
   if (doPrint) { printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Document... Please wait.</h2>'); }
   
-  const inputs = document.querySelectorAll('.res-' + safeId);
-  const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+  const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
   let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
   let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
   let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
@@ -500,9 +506,7 @@ async function saveResult(id, safeId, btn, doPrint) {
       const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
       if (res.status === "success") {
           btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
-          
-          let tCodePrint = "DEFAULT"; let t = item.test.toUpperCase();
-          if (t.includes("VIRAL")) tCodePrint = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCodePrint = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCodePrint = "DSSM"; else if (t.includes("UA")) tCodePrint = "UA"; else if (t.includes("FA")) tCodePrint = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCodePrint = "HEMA"; else if (t.includes("CHEM")) tCodePrint = "CHEM"; else if (t.includes("GRAM")) tCodePrint = "GRAM"; else if (t.includes("DENGUE")) tCodePrint = "DENGUE"; else if (t.includes("SERO")) tCodePrint = "SERO";
+          let tCodePrint = getTestCodeFromName(item.test);
           
           if(doPrint) { 
               const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}] });
@@ -514,10 +518,21 @@ async function saveResult(id, safeId, btn, doPrint) {
   } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
 }
 
+function getTestCodeFromName(name) {
+    const t = name.toUpperCase();
+    if (t.includes("VIRAL")) return "GXVL"; if (t.includes("GXP")||t.includes("MTB")) return "GXP";
+    if (t.includes("DSSM")||t.includes("AFB")) return "DSSM"; if (t.includes("UA") || t.includes("URINALYSIS")) return "UA";
+    if (t.includes("FA") || t.includes("FECALYSIS")) return "FA"; if (t.includes("HEMA")||t.includes("CBC")) return "HEMA";
+    if (t.includes("CHEM")) return "CHEM"; if (t.includes("GRAM")) return "GRAM";
+    if (t.includes("DENGUE")) return "DENGUE"; if (t.includes("SERO")) return "SERO";
+    return "DEFAULT";
+}
+
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName);
     const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
-    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: testName}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
 }
 
 // TEMPLATES
@@ -551,7 +566,7 @@ function showRegistrySelectionModal() { document.getElementById('registry-select
 
 async function openRegistryModal(type) {
     document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
-    window.CURRENT_TEST_TYPE = type; // Needed for Batch Print
+    window.CURRENT_TEST_TYPE = type; 
     document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
     const cont = document.getElementById('registry-table-content');
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
@@ -563,11 +578,13 @@ async function openRegistryModal(type) {
             
             const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
 
+            const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
+            
             let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
-            res.data.rows.forEach(row => {
-                html += `<tr><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+            sorted.forEach((row, rIndex) => {
+                html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
                     let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
@@ -587,97 +604,55 @@ async function openRegistryModal(type) {
     } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
 }
 
-// FIX 6: Smarter Month Filtering using JavaScript Date object
 function filterRegistryTable() {
-    const s = document.getElementById('regSearch').value.toLowerCase(); 
-    const m = document.getElementById('monthFilter').value.toLowerCase(); 
-    const colIdx = document.getElementById('colFilter').value; 
-    
+    const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
     document.querySelectorAll('#regTableBody tr').forEach(tr => { 
         let textToSearch = "";
         if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
-        
-        const dateCell = tr.querySelectorAll('td')[1]; // Assume Date Received/Exam is 2nd column
-        const dateText = dateCell ? dateCell.textContent.trim() : "";
+        const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.trim() : "";
         let matchMonth = true;
-        
-        if (m !== "") {
-            const d = new Date(dateText);
-            if (!isNaN(d)) {
-                const monthName = d.toLocaleString('default', { month: 'long' });
-                matchMonth = monthName.toLowerCase() === m;
-            } else { matchMonth = dateText.toLowerCase().includes(m); }
-        }
-        
-        const matchSearch = textToSearch.includes(s); 
-        tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
+        if (m !== "") { const d = new Date(dateText); if (!isNaN(d)) { const monthName = d.toLocaleString('default', { month: 'long' }); matchMonth = monthName.toLowerCase() === m; } else { matchMonth = dateText.toLowerCase().includes(m); } }
+        const matchSearch = textToSearch.includes(s); tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
     });
 }
 
-function printRegistryLogbook() { window.print(); }
-
-async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked');
-    if(checked.length === 0) { alert("Select at least one record."); return; }
-    let requests = [];
-    checked.forEach(chk => {
-        const rowData = JSON.parse(decodeURIComponent(chk.value));
-        const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID'));
-        const pid = rowData[idCol];
-        requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE });
-    });
-    runPrintJob(requests);
-}
-// A4 PRINT LOGIC (10 rows per page, Custom hidden columns)
+// FIX 5 & 7: PERFECT A4 REGISTRY PRINT LOGIC
 function printRegistryLogbook() {
     const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
     if (checkedBoxes.length === 0) { alert("Please select at least one record to print."); return; }
 
-    let rowsData = [];
-    checkedBoxes.forEach(chk => {
-        rowsData.push(JSON.parse(decodeURIComponent(chk.value)));
-    });
+    let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
 
     let excludeCols = ["PATIENT ID", "ID"]; 
+    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST", "X-RAY RESULT");
+    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
 
-    // Specific exclusion per test type
-    if (window.CURRENT_TEST_TYPE === 'GXP') {
-        excludeCols.push("SOURCE OF REQUEST", "X-RAY RESULT");
-    } else if (window.CURRENT_TEST_TYPE === 'GRAM') {
-        excludeCols.push("VERIFIED BY");
-    }
-
-    let printHeaders = [];
-    let headerIndices = [];
+    let printHeaders = []; let headerIndices = [];
     window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
         const upperH = h.toUpperCase();
-        if (excludeCols.some(ex => upperH.includes(ex))) return; // Hide excluded
-        if (h.includes("{") || h.includes("}")) return; // Hide system columns
-        printHeaders.push(h.replace("Date ", "").replace("Patient ", ""));
-        headerIndices.push(idx);
+        if (excludeCols.some(ex => upperH === ex)) return; 
+        if (h.includes("{") || h.includes("}")) return; 
+        printHeaders.push(h.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
     });
 
     if (window.CURRENT_TEST_TYPE === 'SERO') {
         const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
-        if (kapIdx > -1) {
-            rowsData.forEach(row => {
-                if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = "";
-            });
-        }
+        if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
 
     let html = `<html><head><title>Registry Logbook</title>
         <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 10px; color: #000; }
+            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 9px; color: #000; }
             .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;}
             .page:last-child { page-break-after: auto; }
-            .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; }
             .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
             .header p { margin: 2px 0; font-size: 10px; font-weight: bold;}
-            table { width: 100%; border-collapse: collapse; table-layout: fixed; word-wrap: break-word; }
-            th, td { border: 1px solid #000; padding: 6px; text-align: center; overflow: hidden; }
-            th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
-            .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 8px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;}
+            table { width: 100%; border-collapse: collapse; table-layout: auto; }
+            th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;}
+            tr { height: 6vh; } /* Force distribute height across 10 rows */
+            th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: auto;}
+            .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;}
             .footer-col { flex: 1; }
         </style>
     </head><body>`;
@@ -685,92 +660,29 @@ function printRegistryLogbook() {
     const chunk = 10; 
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
-        
-        html += `<div class="page">
-            <div class="header">
-                <h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2>
-                <p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p>
-            </div>
-            <table><thead><tr>`;
-        
-        printHeaders.forEach(h => html += `<th>${h}</th>`);
-        html += `</tr></thead><tbody>`;
-
-        pageRows.forEach(row => {
-            html += `<tr>`;
-            headerIndices.forEach(idx => {
-                let val = row[idx] || '';
-                html += `<td>${val}</td>`;
-            });
-            html += `</tr>`;
-        });
-
+        html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
+        printHeaders.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
+        pageRows.forEach(row => { html += `<tr>`; headerIndices.forEach(idx => { html += `<td>${row[idx] || ''}</td>`; }); html += `</tr>`; });
         html += `</tbody></table>
             <div class="footer">
-                <div class="footer-col">
-                    <strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br>
-                    <strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.
-                </div>
-                <div class="footer-col">
-                    <strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br>
-                    <strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.
-                </div>
-            </div>
-        </div>`;
+                <div class="footer-col"><strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br><strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</div>
+                <div class="footer-col"><strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br><strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</div>
+            </div></div>`;
     }
-
     html += `</body></html>`;
-    const printWin = window.open('', '_blank');
-    printWin.document.write(html);
-    printWin.document.close();
-    setTimeout(() => { printWin.print(); }, 500);
-}
-
-// FIX FOR QUICK SEARCH "DOCUMENT NOT FOUND"
-function getTestCodeFromName(name) {
-    const t = name.toUpperCase();
-    if (t.includes("VIRAL")) return "GXVL";
-    if (t.includes("GXP")||t.includes("MTB")) return "GXP";
-    if (t.includes("DSSM")||t.includes("AFB")) return "DSSM";
-    if (t.includes("UA") || t.includes("URINALYSIS")) return "UA";
-    if (t.includes("FA") || t.includes("FECALYSIS")) return "FA";
-    if (t.includes("HEMA")||t.includes("CBC")) return "HEMA";
-    if (t.includes("CHEM")) return "CHEM";
-    if (t.includes("GRAM")) return "GRAM";
-    if (t.includes("DENGUE")) return "DENGUE";
-    if (t.includes("SERO")) return "SERO";
-    return "DEFAULT";
-}
-
-// Map the correct code before calling the API in history
-function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName);
-    runPrintJob([{ testCode: id, testName: correctCode }]); 
+    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); setTimeout(() => { printWin.print(); }, 500);
 }
 
 async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked');
-    if(checked.length === 0) { alert("Select at least one record."); return; }
-    let requests = [];
-    checked.forEach(chk => {
-        const rowData = JSON.parse(decodeURIComponent(chk.value));
-        const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID'));
-        const pid = rowData[idCol];
-        requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE });
-    });
+    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { alert("Select at least one record."); return; }
+    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
     runPrintJob(requests);
 }
 
-
-
 // ==========================================
-// 9. SETTINGS & REPORTS (Admin Loader)
+// 9. SETTINGS & REPORTS 
 // ==========================================
-async function loadSettingsData() { 
-    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
-    loadStaff(); loadFacilities(); 
-}
+async function loadSettingsData() { apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e)); loadStaff(); loadFacilities(); }
 function renderSettings(data) { const uList = document.getElementById('list-users'); if (!data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
 let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { if(!confirm(action + " access for " + username + "?")) return; try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} } async function saveUser() { const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_user').value }; if(!user.u || !user.p || !user.role) { alert("Please fill all fields."); return; } const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; try { await apiPost("saveNewUser", { data: { username: user.u, password: user.p, facility: user.fac, role: user.role, fullName: user.name, roleCheck: currentUser.role }}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } }
 let globalFacilityList = []; async function loadFacilities() { try { const res = await apiGet("getFacilityList"); globalFacilityList = res.data || []; renderFacilityList(); } catch(e) {} } function renderFacilityList() { const container = document.getElementById('list-facilities'); const dropdown = document.getElementById('u_facility'); if(dropdown) { while (dropdown.options.length > 1) { dropdown.remove(1); } } if(container) { container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteFacility(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } globalFacilityList.forEach(f => { if(dropdown) { let o = document.createElement('option'); o.value = f.name; o.innerText = f.name; dropdown.appendChild(o); } }); } let editingFacilityIndex = -1; async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } function deleteFacility(index) { if(!confirm("Remove facility?")) return; globalFacilityList.splice(index, 1); renderFacilityList(); } function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
@@ -785,6 +697,4 @@ function renderHIV(h) { const buildRow = (grid) => `<tr><td style="font-weight:6
 function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style="font-weight:700; vertical-align:middle;">${name}</td><td>NON-REACTIVE</td><td class="text-center">${d.m - d.m_r}</td><td class="text-center">${d.f - d.f_r}</td><td class="text-center">${d.mat - d.mat_r}</td><td class="text-center">${d.total - d.react}</td></tr><tr style="color:var(--danger); font-weight:600;"><td>REACTIVE</td><td class="text-center">${d.m_r}</td><td class="text-center">${d.f_r}</td><td class="text-center">${d.mat_r}</td><td class="text-center">${d.react}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.m}</td><td class="text-center">${d.f}</td><td class="text-center">${d.mat}</td><td class="text-center">${d.total}</td></tr>`; document.getElementById('sti-body').innerHTML = buildSTI("HIV", s.hiv) + buildSTI("SYPHILIS", s.syph) + buildSTI("HBsAg", s.hbsag); }
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
-
-
 
