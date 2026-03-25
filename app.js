@@ -12,6 +12,7 @@ let editingPendingId = null;
 let currentQuickPatient = null;
 let searchTimeout; 
 let editModeIds = new Set();
+window.CURRENT_TEST_TYPE = ""; // For Registry Batch Print
 
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings'];
 const TODAY_STR = new Date().toLocaleDateString(); 
@@ -77,13 +78,9 @@ async function attemptLogin() {
             currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName };
             localStorage.setItem('labUser', JSON.stringify(currentUser));              
             window.location.reload();
-        } else if (res.status === "PENDING") {
-            err.style.display = 'block'; err.innerHTML = "Account Pending Approval.";
-        } else {
-            err.style.display = 'block'; err.innerHTML = "Invalid credentials";
-        }
-    } catch (e) { alert("Server Error. Check connection."); } 
-    finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
+        } else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } 
+        else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
+    } catch (e) { alert("Server Error. Check connection."); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
 function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; toggleSidebar(); }
@@ -92,74 +89,44 @@ function confirmLogout() { localStorage.removeItem('labUser'); window.location.r
 
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
-    const icon = document.getElementById('theme-icon');
-    const text = document.getElementById('theme-text');
-    if (document.body.classList.contains('dark-mode')) {
-        localStorage.setItem('mho-theme', 'dark');
-        if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun');
-        if(text) text.innerText = "Light Mode";
-    } else {
-        localStorage.setItem('mho-theme', 'light');
-        if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars');
-        if(text) text.innerText = "Dark Mode";
-    }
+    const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text');
+    if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } 
+    else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; }
 }
 
 function showPage(targetId) {
-    const elId = 'page-' + targetId;
-    const role = (currentUser.role || "VIEWER").toUpperCase();
-    
+    const elId = 'page-' + targetId; const role = (currentUser.role || "VIEWER").toUpperCase();
     if (role === 'VIEWER' && (targetId === 'workspace' || targetId === 'settings')) return;
     if (role === 'ENCODER' && targetId === 'settings') return;
 
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-    const target = document.getElementById(elId);
-    if (target) target.style.display = 'block';
+    const target = document.getElementById(elId); if (target) target.style.display = 'block';
 
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.id === 'nav-' + targetId) item.classList.add('active');
-    });
-
+    document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); if (item.id === 'nav-' + targetId) item.classList.add('active'); });
     if (targetId === 'workspace' && role !== 'ENCODER') loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
 
 function applyPermissions() {
     const role = (currentUser.role || "VIEWER").toUpperCase();
-    const navWork = document.getElementById('nav-workspace');
-    const navReg = document.getElementById('nav-registry');
-    const navRep = document.getElementById('nav-reports');
-    const navSet = document.getElementById('nav-settings');
-    const panePending = document.getElementById('col-pending');
-    const paneCompleted = document.getElementById('col-completed');
+    const navWork = document.getElementById('nav-workspace'); const navReg = document.getElementById('nav-registry'); const navRep = document.getElementById('nav-reports'); const navSet = document.getElementById('nav-settings');
+    const panePending = document.getElementById('col-pending'); const paneCompleted = document.getElementById('col-completed');
 
-    if(navWork) navWork.style.display = 'none';
-    if(navReg) navReg.style.display = 'none';
-    if(navRep) navRep.style.display = 'none';
-    if(navSet) navSet.style.display = 'none';
+    if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
 
     if (role === 'ADMIN' || role === 'STAFF') {
-        if(navWork) navWork.style.display = 'flex'; 
-        if(navReg) navReg.style.display = 'flex';
-        if(navRep) navRep.style.display = 'flex';
-        if(role === 'ADMIN' && navSet) navSet.style.display = 'flex';
-        if(panePending) panePending.style.display = 'flex';
-        if(paneCompleted) paneCompleted.style.display = 'flex';
+        if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
+        if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; if(panePending) panePending.style.display = 'flex'; if(paneCompleted) paneCompleted.style.display = 'flex';
     } else if (role === 'ENCODER') {
-        if(navWork) navWork.style.display = 'flex'; 
-        if(navReg) navReg.style.display = 'flex';
-        if(panePending) panePending.style.display = 'none';
-        if(paneCompleted) paneCompleted.style.display = 'none';
+        if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
+        if(panePending) panePending.style.display = 'none'; if(paneCompleted) paneCompleted.style.display = 'none';
     } else {
-        if(navReg) navReg.style.display = 'flex';
-        const floatBtns = document.querySelector('.float-actions');
-        if (floatBtns) floatBtns.style.display = 'none'; 
+        if(navReg) navReg.style.display = 'flex'; const floatBtns = document.querySelector('.float-actions'); if (floatBtns) floatBtns.style.display = 'none'; 
     }
 }
 
 // ==========================================
-// 4. ADD PATIENT LOGIC & CONFIGURATIONS
+// 4. ADD PATIENT LOGIC
 // ==========================================
 const availableTests = {
     "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select" data-key="History of Treatment"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" data-key="Source of Request" class="form-input" placeholder="e.g. Dr. Cruz"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" data-key="X-Ray Result" class="form-input" placeholder="e.g. Normal"></div>`},
@@ -190,8 +157,7 @@ function confirmDetail(id) {
    if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
    else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { alert("Select at least one test."); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); }
    labOrders[id] = { details: details, subTests: subSelected }; 
-   document.getElementById('btn-'+id).classList.add('active'); 
-   updateSummary(); cancelDetail(); 
+   document.getElementById('btn-'+id).classList.add('active'); updateSummary(); cancelDetail(); 
 }
 
 function toggleSimple(id) { const btn = document.getElementById('btn-'+id); if(labOrders[id]) { delete labOrders[id]; btn.classList.remove('active'); } else { labOrders[id] = { details: {}, subTests: [] }; btn.classList.add('active'); } updateSummary(); }
@@ -214,7 +180,7 @@ async function runDirectSearch(q) {
               box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
               res.data.forEach(p => {
                   const div = document.createElement('div'); div.className = "search-item";
-                  div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
+                  div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
                   div.onclick = () => {
                       isExistingPatient = true; document.getElementById('finalPatientId').value = p.id;
                       document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || "";
@@ -232,17 +198,14 @@ async function runDirectSearch(q) {
       } catch(e) {} finally { stat.style.display='none'; }
   }, 600);
 }
-
 // ==========================================
 // 5. HISTORY & QUICK SEARCH LOGIC
 // ==========================================
 function openQuickSearch() { 
     document.getElementById('quick-search-modal').style.display='flex'; 
     const input = document.getElementById('quick-search-input');
-    input.value = '';
-    document.getElementById('quick-search-results').style.display = 'none';
-    document.getElementById('quick-profile-view').style.display = 'none';
-    input.focus(); 
+    input.value = ''; document.getElementById('quick-search-results').style.display = 'none';
+    document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); 
 }
 
 async function runQuickSearch(q) {
@@ -257,8 +220,7 @@ async function runQuickSearch(q) {
               res.data.forEach(p => {
                   const div = document.createElement('div'); div.className = "search-item";
                   div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
-                  div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; };
-                  box.appendChild(div);
+                  div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
               });
           } else { box.style.display = 'none'; }
       } catch(e) {}
@@ -266,9 +228,7 @@ async function runQuickSearch(q) {
 }
 
 async function viewQuickProfile(p) {
-    currentQuickPatient = p;
-    document.getElementById('quick-profile-view').style.display = 'flex';
-    document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
     document.getElementById('qs-name').innerText = p.name;
     document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true); 
@@ -276,13 +236,12 @@ async function viewQuickProfile(p) {
 
 function editPatientDemographicsQS() {
     if(!currentQuickPatient) return;
-    document.getElementById('qs-edit-form').style.display = 'block';
-    document.getElementById('qs_edit_name').value = currentQuickPatient.name;
-    document.getElementById('qs_edit_age').value = currentQuickPatient.age;
-    document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility;
+    document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name;
+    document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility;
 }
 function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
 
+// COMPACT SUMMARY HISTORY WITH EDIT MODE
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId);
@@ -295,37 +254,42 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                 const uniqueId = `hist-${listId}-${i}`;
                 const dateStr = new Date(h.date).toLocaleDateString();
                 
-                let fullDataHtml = '';
+                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">';
+                let editInputsHtml = '<div class="form-grid grid-2">';
+
                 if(h.fullData) {
                     for (const [key, value] of Object.entries(h.fullData)) {
-                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE") {
-                           fullDataHtml += `
-                           <div style="margin-bottom:6px;">
-                               <label class="field-label" style="font-size:0.6rem;">${key}</label>
-                               <input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}" style="padding:6px; font-size:0.75rem;">
-                           </div>`;
+                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
+                           summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
+                           editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
                         }
                     }
                 }
+                summaryHtml += '</div>'; editInputsHtml += '</div>';
                 
                 return `
                 <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
                     <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
-                        <div>
-                            <div class="h-test" style="color:var(--pri);">${h.test}</div>
-                            <div class="h-date">${dateStr}</div>
-                        </div>
+                        <div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
-                            <i class="ph ph-caret-down" style="color:var(--text-muted);"></i>
+                            <button class="btn-icon" onclick="printDirect(event, '${id}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>
+                            <i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i>
                         </div>
                     </div>
                     <div id="${uniqueId}" class="h-expanded-details">
-                        <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
-                        ${fullDataHtml}
-                        <div style="margin-top:10px; display:flex; gap:10px;">
-                            <button class="btn btn-secondary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>
-                            ${isQuickSearch ? `<button class="btn btn-primary text-xs" onclick="printDirect(event, '${id}', '${h.test}')"><i class="ph ph-printer"></i> Print</button>` : ''}
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                            <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>
+                            <button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>
+                        </div>
+                        <div id="summary-view-${uniqueId}">${summaryHtml}</div>
+                        <div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);">
+                            <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
+                            ${editInputsHtml}
+                            <div style="margin-top:10px; display:flex; gap:10px;">
+                                <button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>
+                                <button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -334,13 +298,17 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
 }
 
+function toggleHistoryEdit(id) {
+    const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id);
+    if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; }
+}
+
 async function saveHistoryEdit(patientId, testType, uniqueId) {
-    const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`);
-    let updates = {};
+    const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {};
     inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value);
     try {
         const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates });
-        if (res.status === "success") { alert("Record updated successfully!"); }
+        if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); }
     } catch(e) { alert("Error updating past record: " + e); }
 }
 
@@ -362,8 +330,7 @@ function clearForm() {
     
     const saveBtn = document.getElementById('save-btn-action');
     saveBtn.innerHTML = '<i class="ph ph-paper-plane-right"></i> Save Record';
-    saveBtn.onclick = finalSubmit; 
-    saveBtn.style.background = '';
+    saveBtn.onclick = finalSubmit; saveBtn.style.background = '';
 }
 
 async function finalSubmit() {
@@ -390,15 +357,14 @@ async function finalSubmit() {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") {
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
-          clearForm(); 
-          if (currentUser.role !== 'ENCODER') loadPendingData(); // Auto refresh
+          clearForm(); if (currentUser.role !== 'ENCODER') loadPendingData();
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000);
       } else { throw new Error(res.message); }
   } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
 // ==========================================
-// 6. EDIT PENDING FULL
+// 6. EDIT PENDING FULL (WITH DYNAMIC TEST FORM)
 // ==========================================
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
@@ -411,9 +377,7 @@ function editPendingFull(id) {
     document.getElementById('finalPatientId').value = item.patientId;
     document.getElementById('p_name').value = item.name || "";
     let d = {}; try { d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; } catch(e){}
-    document.getElementById('p_age').value = d.age || d.Age || "";
-    document.getElementById('p_address').value = d.address || d.Address || "";
-    document.getElementById('p_contact').value = d.contact || d.Contact || "";
+    document.getElementById('p_age').value = d.age || d.Age || ""; document.getElementById('p_address').value = d.address || d.Address || ""; document.getElementById('p_contact').value = d.contact || d.Contact || "";
     setSelectValue('p_sex', d.sex || d.Sex); setSelectValue('p_facility', d.facility || d.Facility);
     if(d.bday || d.Bday) { try { const bd = new Date(d.bday||d.Bday); document.getElementById('p_bday').value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; } catch(e){} }
     
@@ -427,10 +391,7 @@ function editPendingFull(id) {
     let testKey = Object.keys(availableTests).find(k => availableTests[k].testName.toUpperCase() === item.test.toUpperCase() || availableTests[k].testCode.toUpperCase() === item.test.toUpperCase());
     let dynamicHtml = testKey ? availableTests[testKey].html : `<textarea id="edit-pending-fallback-box" class="form-input" style="min-height:100px;">${JSON.stringify(d,null,2)}</textarea>`;
     
-    area.innerHTML = `
-        <div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div>
-        <div id="temp-form-data" class="form-grid grid-1">${dynamicHtml}</div>
-        <div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
+    area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div><div id="temp-form-data" class="form-grid grid-1">${dynamicHtml}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
         
     setTimeout(() => { document.querySelectorAll('#test-details-area [data-key]').forEach(el => { let val = d[el.getAttribute('data-key')]; if(val) el.value = val; }); }, 100);
     
@@ -445,7 +406,6 @@ async function submitPendingUpdate() {
     if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML;
     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
-    
     let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
     let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
     let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
@@ -471,6 +431,7 @@ function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
     
+    // Dynamic Filter Population (Only shows tests that are currently in pending)
     const uniqueTests = [...new Set(window.pendingData.map(item => item.test.toUpperCase()))];
     const currentVal = filterSelect.value;
     filterSelect.innerHTML = '<option value="ALL">All Sections</option>' + uniqueTests.map(t => `<option value="${t}">${t}</option>`).join('');
@@ -524,6 +485,10 @@ function toggleExpand(safeId) { const el = document.getElementById('expand-' + s
 async function deleteEntry(id) { if(!confirm("Delete entry?")) return; try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
 
 async function saveResult(id, safeId, btn, doPrint) {
+  let printWin = null;
+  // FIX 1: Direct Open window immediately to avoid pop-up blockers
+  if (doPrint) { printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Document... Please wait.</h2>'); }
+  
   const inputs = document.querySelectorAll('.res-' + safeId);
   const item = window.pendingData.find(d => String(d.id) === String(id).trim());
   let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
@@ -539,15 +504,21 @@ async function saveResult(id, safeId, btn, doPrint) {
           let tCodePrint = "DEFAULT"; let t = item.test.toUpperCase();
           if (t.includes("VIRAL")) tCodePrint = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCodePrint = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCodePrint = "DSSM"; else if (t.includes("UA")) tCodePrint = "UA"; else if (t.includes("FA")) tCodePrint = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCodePrint = "HEMA"; else if (t.includes("CHEM")) tCodePrint = "CHEM"; else if (t.includes("GRAM")) tCodePrint = "GRAM"; else if (t.includes("DENGUE")) tCodePrint = "DENGUE"; else if (t.includes("SERO")) tCodePrint = "SERO";
           
-          if(doPrint) { setTimeout(() => { runPrintJob([{ testCode: id, testName: tCodePrint }]); }, 500); }
+          if(doPrint) { 
+              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}] });
+              if(printRes.status === "success" && printRes.data) { printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; }
+          }
           const pIndex = window.pendingData.findIndex(p => p.id === id);
           if (pIndex > -1) { const moved = window.pendingData[pIndex]; moved.isSessionCompleted = true; moved.dateResult = TODAY_STR; window.completedData.unshift(moved); window.pendingData.splice(pIndex, 1); renderLists(); }
       }
-  } catch (err) { btn.disabled = false; btn.innerHTML = "Save Only"; }
+  } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
 }
 
-function printDirect(e, id, testName) { if(e) e.stopPropagation(); runPrintJob([{ testCode: id, testName: testName }]); }
-async function runPrintJob(requests) { try { const res = await apiPost("printFromRegistry", { requests: requests }); if (res.status === "success" && res.data) { const win = window.open('', '_blank'); if (win) { win.document.write(res.data); win.document.close(); } } } catch (e) { alert("Print Error"); } }
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); 
+    const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
+    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: testName}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+}
 
 // TEMPLATES
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
@@ -580,6 +551,7 @@ function showRegistrySelectionModal() { document.getElementById('registry-select
 
 async function openRegistryModal(type) {
     document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
+    window.CURRENT_TEST_TYPE = type; // Needed for Batch Print
     document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
     const cont = document.getElementById('registry-table-content');
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
@@ -591,17 +563,10 @@ async function openRegistryModal(type) {
             
             const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
 
-            // Sort Oldest to Newest based on Date Column (index 0 usually)
-            const sorted = res.data.rows.sort((a, b) => {
-                let d1 = new Date(a[0]); let d2 = new Date(b[0]);
-                if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0);
-                return d1 - d2; 
-            });
-            
             let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
-            sorted.forEach(row => {
+            res.data.rows.forEach(row => {
                 html += `<tr><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
@@ -622,22 +587,53 @@ async function openRegistryModal(type) {
     } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
 }
 
+// FIX 6: Smarter Month Filtering using JavaScript Date object
 function filterRegistryTable() {
-    const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
+    const s = document.getElementById('regSearch').value.toLowerCase(); 
+    const m = document.getElementById('monthFilter').value.toLowerCase(); 
+    const colIdx = document.getElementById('colFilter').value; 
+    
     document.querySelectorAll('#regTableBody tr').forEach(tr => { 
         let textToSearch = "";
         if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
-        const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.toLowerCase() : "";
-        const matchSearch = textToSearch.includes(s); const matchMonth = m === "" || dateText.includes(m);
+        
+        const dateCell = tr.querySelectorAll('td')[1]; // Assume Date Received/Exam is 2nd column
+        const dateText = dateCell ? dateCell.textContent.trim() : "";
+        let matchMonth = true;
+        
+        if (m !== "") {
+            const d = new Date(dateText);
+            if (!isNaN(d)) {
+                const monthName = d.toLocaleString('default', { month: 'long' });
+                matchMonth = monthName.toLowerCase() === m;
+            } else { matchMonth = dateText.toLowerCase().includes(m); }
+        }
+        
+        const matchSearch = textToSearch.includes(s); 
         tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
     });
 }
 
+function printRegistryLogbook() { window.print(); }
+
+async function batchPrint() {
+    const checked = document.querySelectorAll('.chk-reg:checked');
+    if(checked.length === 0) { alert("Select at least one record."); return; }
+    let requests = [];
+    checked.forEach(chk => {
+        const rowData = JSON.parse(decodeURIComponent(chk.value));
+        const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID'));
+        const pid = rowData[idCol];
+        requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE });
+    });
+    runPrintJob(requests);
+}
+
 // ==========================================
-// 9. SETTINGS & REPORTS
+// 9. SETTINGS & REPORTS (Admin Loader)
 // ==========================================
 async function loadSettingsData() { 
-    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>{});
+    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
     loadStaff(); loadFacilities(); 
 }
 function renderSettings(data) { const uList = document.getElementById('list-users'); if (!data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
@@ -654,4 +650,6 @@ function renderHIV(h) { const buildRow = (grid) => `<tr><td style="font-weight:6
 function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style="font-weight:700; vertical-align:middle;">${name}</td><td>NON-REACTIVE</td><td class="text-center">${d.m - d.m_r}</td><td class="text-center">${d.f - d.f_r}</td><td class="text-center">${d.mat - d.mat_r}</td><td class="text-center">${d.total - d.react}</td></tr><tr style="color:var(--danger); font-weight:600;"><td>REACTIVE</td><td class="text-center">${d.m_r}</td><td class="text-center">${d.f_r}</td><td class="text-center">${d.mat_r}</td><td class="text-center">${d.react}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.m}</td><td class="text-center">${d.f}</td><td class="text-center">${d.mat}</td><td class="text-center">${d.total}</td></tr>`; document.getElementById('sti-body').innerHTML = buildSTI("HIV", s.hiv) + buildSTI("SYPHILIS", s.syph) + buildSTI("HBsAg", s.hbsag); }
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
+
+
 
