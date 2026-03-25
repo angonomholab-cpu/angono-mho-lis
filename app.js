@@ -1,7 +1,7 @@
 // ==========================================
 // 1. API CONNECTION & GLOBALS
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBXVsHQGAqTz8jE-VKkXgdMeUiYGKocxT03Fe3z1ExDgynyO35sR2kQGd0rS2LHWvq/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyi-_47wK4wntFiZloAEM9FHsSUk9lyGVLLymt_oRjdTh-McYkyIXcMK3N71as3TV_-w/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -186,16 +186,9 @@ function cancelDetail() { document.getElementById('test-details-area').style.dis
 
 function confirmDetail(id) {
    let details = {}; let subSelected = [];
-   
    document.querySelectorAll('#test-details-area [data-key]').forEach(el => { details[el.getAttribute('data-key')] = el.value; });
-
    if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
-   else if(['sero','hema','chem'].includes(id)) { 
-       const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); 
-       if(activeBtns.length === 0) { alert("Select at least one test."); return; } 
-       subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); 
-   }
-   
+   else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { alert("Select at least one test."); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); }
    labOrders[id] = { details: details, subTests: subSelected }; 
    document.getElementById('btn-'+id).classList.add('active'); 
    updateSummary(); cancelDetail(); 
@@ -209,9 +202,6 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
-// ==========================================
-// 5. SEARCH & FULL HISTORY LOGIC
-// ==========================================
 async function runDirectSearch(q) {
   const box = document.getElementById('direct-results-box'); const stat = document.getElementById('search-status');
   if(q.length < 2) { box.style.display='none'; stat.style.display='none'; return; }
@@ -243,7 +233,9 @@ async function runDirectSearch(q) {
   }, 600);
 }
 
-// QUICK SEARCH
+// ==========================================
+// 5. HISTORY & QUICK SEARCH LOGIC
+// ==========================================
 function openQuickSearch() { 
     document.getElementById('quick-search-modal').style.display='flex'; 
     const input = document.getElementById('quick-search-input');
@@ -264,7 +256,7 @@ async function runQuickSearch(q) {
               box.style.display = 'block'; box.innerHTML = '';
               res.data.forEach(p => {
                   const div = document.createElement('div'); div.className = "search-item";
-                  div.innerHTML = `<div style="font-weight:600; font-size:1.1rem;">${p.name}</div><div style="font-size:0.85rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+                  div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
                   div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; };
                   box.appendChild(div);
               });
@@ -276,16 +268,25 @@ async function runQuickSearch(q) {
 async function viewQuickProfile(p) {
     currentQuickPatient = p;
     document.getElementById('quick-profile-view').style.display = 'flex';
+    document.getElementById('quick-profile-view').style.flexDirection = 'column';
     document.getElementById('qs-name').innerText = p.name;
     document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true); 
 }
 
-// HISTORY RENDER ENGINE (Generates the beautiful grid)
+function editPatientDemographicsQS() {
+    if(!currentQuickPatient) return;
+    document.getElementById('qs-edit-form').style.display = 'block';
+    document.getElementById('qs_edit_name').value = currentQuickPatient.name;
+    document.getElementById('qs_edit_age').value = currentQuickPatient.age;
+    document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility;
+}
+function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
+
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId);
-    list.innerHTML = '<div style="text-align:center; color:var(--pri); padding: 20px;"><i class="ph ph-spinner ph-spin" style="font-size:1.5rem;"></i><br>Retrieving full records...</div>';
+    list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
     
     try {
         const res = await apiGet("getPatientHistory", { patientId: id });
@@ -294,45 +295,43 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                 const uniqueId = `hist-${listId}-${i}`;
                 const dateStr = new Date(h.date).toLocaleDateString();
                 
-                // Formulate Editable Inputs for History
-                let fullDataHtml = '<div class="hist-details-grid">';
+                let fullDataHtml = '';
                 if(h.fullData) {
                     for (const [key, value] of Object.entries(h.fullData)) {
-                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && value && String(value).trim() !== "") {
+                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE") {
                            fullDataHtml += `
-                           <div class="hist-detail-item">
-                               <span class="hist-detail-lbl">${key}</span>
-                               <input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}" style="padding:4px 8px; font-size:0.75rem; border:none; border-bottom:1px solid var(--border-color); background:transparent; border-radius:0;">
+                           <div style="margin-bottom:6px;">
+                               <label class="field-label" style="font-size:0.6rem;">${key}</label>
+                               <input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}" style="padding:6px; font-size:0.75rem;">
                            </div>`;
                         }
                     }
                 }
-                fullDataHtml += '</div>';
                 
                 return `
                 <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
                     <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
                         <div>
-                            <div class="h-test" style="color:var(--pri); font-size: 0.9rem;">${h.test}</div>
+                            <div class="h-test" style="color:var(--pri);">${h.test}</div>
                             <div class="h-date">${dateStr}</div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span class="res-badge res-gray" style="font-size:0.75rem;">${h.result}</span>
-                            <i class="ph ph-caret-down" style="color:var(--text-muted); font-size:1.2rem;"></i>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
+                            <i class="ph ph-caret-down" style="color:var(--text-muted);"></i>
                         </div>
                     </div>
                     <div id="${uniqueId}" class="h-expanded-details">
-                        <div style="margin-bottom:10px; font-size:0.7rem; color:var(--sec); font-weight:bold;"><i class="ph ph-pencil-simple"></i> COMPLETE TEST DETAILS:</div>
+                        <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
                         ${fullDataHtml}
                         <div style="margin-top:10px; display:flex; gap:10px;">
-                            <button class="btn btn-secondary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Result</button>
-                            ${isQuickSearch ? `<button class="btn btn-primary text-xs" onclick="printDirect(event, '${id}', '${h.test}')"><i class="ph ph-printer"></i> Print Certificate</button>` : ''}
+                            <button class="btn btn-secondary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>
+                            ${isQuickSearch ? `<button class="btn btn-primary text-xs" onclick="printDirect(event, '${id}', '${h.test}')"><i class="ph ph-printer"></i> Print</button>` : ''}
                         </div>
                     </div>
                 </div>`;
             }).join('');
-        } else { list.innerHTML = '<div class="text-muted text-xs text-center" style="padding:20px;">No lab records found.</div>'; }
-    } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger); padding:20px;">Failed to load history.</div>'; }
+        } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
+    } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
 }
 
 async function saveHistoryEdit(patientId, testType, uniqueId) {
@@ -496,10 +495,10 @@ function renderLists() {
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                <div style="flex-grow:1; cursor:pointer;" onclick="toggleExpand('${safeId}')">
                   <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span></div>
-                  <div class="pc-meta">${item.test} • Encoded by: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div>
+                  <div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div>
                </div>
                <div style="display:flex; gap:5px;">
-                    <button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Profile & Details"><i class="ph ph-pencil-simple"></i></button>
+                    <button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button>
                     <button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button>
                </div>
             </div>
@@ -525,13 +524,6 @@ function toggleExpand(safeId) { const el = document.getElementById('expand-' + s
 async function deleteEntry(id) { if(!confirm("Delete entry?")) return; try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
 
 async function saveResult(id, safeId, btn, doPrint) {
-  let printWin = null;
-  if (doPrint) { 
-      // FIX POPUP BLOCKER: Open window BEFORE async call!
-      printWin = window.open('', '_blank'); 
-      printWin.document.write('<div style="font-family:sans-serif; padding:50px; text-align:center;"><h2>Saving and Generating Document... Please wait.</h2><p>Do not close this window.</p></div>'); 
-  }
-  
   const inputs = document.querySelectorAll('.res-' + safeId);
   const item = window.pendingData.find(d => String(d.id) === String(id).trim());
   let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
@@ -547,22 +539,15 @@ async function saveResult(id, safeId, btn, doPrint) {
           let tCodePrint = "DEFAULT"; let t = item.test.toUpperCase();
           if (t.includes("VIRAL")) tCodePrint = "GXVL"; else if (t.includes("GXP")||t.includes("MTB")) tCodePrint = "GXP"; else if (t.includes("DSSM")||t.includes("AFB")) tCodePrint = "DSSM"; else if (t.includes("UA")) tCodePrint = "UA"; else if (t.includes("FA")) tCodePrint = "FA"; else if (t.includes("HEMA")||t.includes("CBC")) tCodePrint = "HEMA"; else if (t.includes("CHEM")) tCodePrint = "CHEM"; else if (t.includes("GRAM")) tCodePrint = "GRAM"; else if (t.includes("DENGUE")) tCodePrint = "DENGUE"; else if (t.includes("SERO")) tCodePrint = "SERO";
           
-          if(doPrint) { 
-              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}] });
-              if(printRes.status === "success" && printRes.data) { printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "<h2>Error generating print view. No data found.</h2>"; }
-          }
+          if(doPrint) { setTimeout(() => { runPrintJob([{ testCode: id, testName: tCodePrint }]); }, 500); }
           const pIndex = window.pendingData.findIndex(p => p.id === id);
           if (pIndex > -1) { const moved = window.pendingData[pIndex]; moved.isSessionCompleted = true; moved.dateResult = TODAY_STR; window.completedData.unshift(moved); window.pendingData.splice(pIndex, 1); renderLists(); }
       }
-  } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
+  } catch (err) { btn.disabled = false; btn.innerHTML = "Save Only"; }
 }
 
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    // FIX POPUP BLOCKER
-    const win = window.open('', '_blank'); win.document.write('<div style="font-family:sans-serif; padding:50px; text-align:center;"><h2>Loading Document...</h2></div>');
-    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: testName}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
-}
+function printDirect(e, id, testName) { if(e) e.stopPropagation(); runPrintJob([{ testCode: id, testName: testName }]); }
+async function runPrintJob(requests) { try { const res = await apiPost("printFromRegistry", { requests: requests }); if (res.status === "success" && res.data) { const win = window.open('', '_blank'); if (win) { win.document.write(res.data); win.document.close(); } } } catch (e) { alert("Print Error"); } }
 
 // TEMPLATES
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
@@ -606,8 +591,67 @@ async function openRegistryModal(type) {
             
             const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
 
-            // Sort Oldest to Newest
-            const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
+            // Sort Oldest to Newest based on Date Column (index 0 usually)
+            const sorted = res.data.rows.sort((a, b) => {
+                let d1 = new Date(a[0]); let d2 = new Date(b[0]);
+                if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0);
+                return d1 - d2; 
+            });
             
-            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll
+            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
+            
+            sorted.forEach(row => {
+                html += `<tr><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                hMap.forEach(c => {
+                    let val = row[c.index];
+                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    if (isResCol) {
+                        let style = "res-gray"; let vU = String(val).toUpperCase();
+                        if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
+                        else if (vU==="N" || vU.includes("NON") || vU.includes("NEG")) style = "res-negative";
+                        else if (vU==="RR" || vU.includes("RESISTANT")) style = "res-dark-red"; 
+                        else if (vU==="TT"||vU==="TI") style = "res-warning";
+                        else if (vU==="I" || vU.includes("ERR")) style = "res-black";
+                        html += `<td><span class="res-badge ${style}">${val||''}</span></td>`;
+                    } else { html += `<td>${val||''}</td>`; }
+                }); html += `</tr>`;
+            });
+            cont.innerHTML = html + `</tbody></table>`;
+        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
+    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
+}
+
+function filterRegistryTable() {
+    const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
+    document.querySelectorAll('#regTableBody tr').forEach(tr => { 
+        let textToSearch = "";
+        if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
+        const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.toLowerCase() : "";
+        const matchSearch = textToSearch.includes(s); const matchMonth = m === "" || dateText.includes(m);
+        tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
+    });
+}
+
+// ==========================================
+// 9. SETTINGS & REPORTS
+// ==========================================
+async function loadSettingsData() { 
+    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>{});
+    loadStaff(); loadFacilities(); 
+}
+function renderSettings(data) { const uList = document.getElementById('list-users'); if (!data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
+let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { if(!confirm(action + " access for " + username + "?")) return; try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} } async function saveUser() { const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_user').value }; if(!user.u || !user.p || !user.role) { alert("Please fill all fields."); return; } const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; try { await apiPost("saveNewUser", { data: { username: user.u, password: user.p, facility: user.fac, role: user.role, fullName: user.name, roleCheck: currentUser.role }}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } }
+let globalFacilityList = []; async function loadFacilities() { try { const res = await apiGet("getFacilityList"); globalFacilityList = res.data || []; renderFacilityList(); } catch(e) {} } function renderFacilityList() { const container = document.getElementById('list-facilities'); const dropdown = document.getElementById('u_facility'); if(dropdown) { while (dropdown.options.length > 1) { dropdown.remove(1); } } if(container) { container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteFacility(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } globalFacilityList.forEach(f => { if(dropdown) { let o = document.createElement('option'); o.value = f.name; o.innerText = f.name; dropdown.appendChild(o); } }); } let editingFacilityIndex = -1; async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } function deleteFacility(index) { if(!confirm("Remove facility?")) return; globalFacilityList.splice(index, 1); renderFacilityList(); } function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
+let globalStaffList = []; let editingStaffIndex = -1; async function loadStaff() { try { const res = await apiGet("getStaffList"); globalStaffList = res.data || []; renderStaffList(); } catch(e) {} } function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteStaff(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); } function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; } async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } function editStaff(index) { const s = globalStaffList[index]; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sigUrl || ""; editingStaffIndex = index; document.getElementById('staff-form').style.display = 'block'; } async function deleteStaff(index) { if(!confirm("Remove staff?")) return; globalStaffList.splice(index, 1); renderStaffList(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); } catch(e) {} } function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffIndex = -1; } function toggleForm(id) { const el = document.getElementById(id); if(el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
+
+function switchTab(id) { document.querySelectorAll('.tab-view').forEach(el => el.style.display = 'none'); document.querySelectorAll('.chip').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + id).style.display = 'block'; const btn = document.getElementById('tab-btn-' + id); if(btn) btn.classList.add('active'); }
+function togglePeriod() { const type = document.querySelector('input[name="rep_type"]:checked').value; document.getElementById('rep_month').style.display = (type === 'monthly') ? 'inline-block' : 'none'; document.getElementById('rep_quarter').style.display = (type === 'quarterly') ? 'inline-block' : 'none'; }
+async function generateReport() { const type = document.querySelector('input[name="rep_type"]:checked').value; const year = document.getElementById('rep_year').value; let targetFacility = "ALL"; let userRole = "VIEWER"; try { if (typeof currentUser !== 'undefined') { userRole = (currentUser.role || "VIEWER").toUpperCase(); if (userRole === 'VIEWER' || userRole === 'ENCODER') { targetFacility = currentUser.facility || "ALL"; } } } catch (e) {} let val = 0; let text = ""; if (type === 'monthly') { const sel = document.getElementById('rep_month'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else if (type === 'quarterly') { const sel = document.getElementById('rep_quarter'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else { val = 0; text = "ANNUAL REPORT " + year; } let facLabel = (targetFacility === "ALL") ? "(CONSOLIDATED)" : `(${targetFacility})`; document.querySelectorAll('.rep-period').forEach(el => el.innerText = `- ${text} ${facLabel}`); const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; try { const res = await apiGet("getReportData", { type: type, value: val, year: year, facility: targetFacility }); if (res.status === "success") { const d = res.data; renderTB(d.tb); renderHIV(d.hiv); renderSTI(d.sti); renderDengue(d.dengue); renderWorkload(d.workload); if (d.fhsis_maternal) renderFHSIS(d.fhsis_maternal); } } catch (err) {} finally { btn.innerHTML = oldHtml; btn.disabled = false; } }
+function renderFHSIS(data) { if (!data) return; const facMap = { "SAN ISIDRO": "SI", "SAN VICENTE": "SV", "KALAYAAN": "KA", "STO. NIÑO": "SN", "SAN ROQUE": "SR", "MAHABANG PARANG": "MP", "POB. ITAAS": "PI", "POB. IBABA": "PB", "BAGUMBAYAN": "BA", "SAN PEDRO": "SP", "ANGONO RHU I": "R1" }; const keys = [ "syp_s_t", "syp_s_10", "syp_s_15", "syp_s_20", "syp_p_t", "syp_p_10", "syp_p_15", "syp_p_20", "hiv_s_t", "hiv_s_10", "hiv_s_15", "hiv_s_20", "hiv_r_t", "hiv_r_10", "hiv_r_15", "hiv_r_20", "hbs_s_t", "hbs_s_10", "hbs_s_15", "hbs_s_20", "hbs_r_t", "hbs_r_10", "hbs_r_15", "hbs_r_20" ]; keys.forEach(key => { let rowTotal = 0; Object.keys(facMap).forEach(facName => { let val = (data[facName] && data[facName][key]) ? data[facName][key] : 0; let cellId = key + "_" + facMap[facName]; let cell = document.getElementById(cellId); if (cell) { cell.innerText = val; rowTotal += val; } }); let totalCell = document.getElementById(key + "_TOT"); if (totalCell) totalCell.innerText = rowTotal; }); }
+function renderTB(tb) { const row = (lbl, n, r) => `<tr><td style="font-weight:600; text-align:left;">${lbl}</td><td class="text-center">${n || 0}</td><td class="text-center">${r || 0}</td></tr>`; document.getElementById('tb-exam-body').innerHTML = row("EXAMINED", tb.exam.new, tb.exam.ret) + row("INVALID / ERROR", tb.invalid.new, tb.invalid.ret) + row("INITIAL RESULT", tb.initial.new, tb.initial.ret); document.getElementById('tb-res-body').innerHTML = row("MTB DETECTED", tb.pos.new, tb.pos.ret) + row(" > RIF RESISTANT", tb.rr.new, tb.rr.ret) + row(" > TRACE DETECTED", tb.tt.new, tb.tt.ret) + row(" > INDETERMINATE", tb.ti.new, tb.ti.ret) + row(" > SENSITIVE", tb.t.new, tb.t.ret) + row("MTB NOT DETECTED", tb.n.new, tb.n.ret); document.getElementById('tb-cart').innerText = tb.cartridges || 0; }
+function renderHIV(h) { const buildRow = (grid) => `<tr><td style="font-weight:600; text-align:left;">ANGONO</td><td class="text-center">${grid.m.c15}</td><td class="text-center">${grid.m.c1524}</td><td class="text-center">${grid.m.c2534}</td><td class="text-center">${grid.m.c3549}</td><td class="text-center">${grid.m.c50}</td><td class="text-center">${grid.f.c15}</td><td class="text-center">${grid.f.c1524}</td><td class="text-center">${grid.f.c2534}</td><td class="text-center">${grid.f.c3549}</td><td class="text-center">${grid.f.c50}</td><td class="text-center" style="color:var(--danger); font-weight:700;">${grid.f.mat}</td><td class="text-center">${grid.kap.msm}</td><td class="text-center">${grid.kap.tgw}</td><td class="text-center">${grid.kap.msw}</td><td class="text-center">${grid.kap.fsw}</td><td class="text-center">${grid.kap.pwid}</td><td class="text-center" style="font-weight:700; color:var(--text-main); background:var(--warning-bg);">${grid.kap.tb}</td><td class="text-center font-bold" style="background:var(--bg-subtle);">${grid.total}</td></tr>`; document.getElementById('hiv-test-body').innerHTML = buildRow(h.tested); document.getElementById('hiv-react-body').innerHTML = buildRow(h.reactive); }
+function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style="font-weight:700; vertical-align:middle;">${name}</td><td>NON-REACTIVE</td><td class="text-center">${d.m - d.m_r}</td><td class="text-center">${d.f - d.f_r}</td><td class="text-center">${d.mat - d.mat_r}</td><td class="text-center">${d.total - d.react}</td></tr><tr style="color:var(--danger); font-weight:600;"><td>REACTIVE</td><td class="text-center">${d.m_r}</td><td class="text-center">${d.f_r}</td><td class="text-center">${d.mat_r}</td><td class="text-center">${d.react}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.m}</td><td class="text-center">${d.f}</td><td class="text-center">${d.mat}</td><td class="text-center">${d.total}</td></tr>`; document.getElementById('sti-body').innerHTML = buildSTI("HIV", s.hiv) + buildSTI("SYPHILIS", s.syph) + buildSTI("HBsAg", s.hbsag); }
+function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
+function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
 
