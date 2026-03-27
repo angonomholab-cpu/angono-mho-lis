@@ -26,7 +26,6 @@ async function apiPost(action, payload) { try { const res = await fetch(SCRIPT_U
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
     
-    // Check Limited Mode Setting
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const toggleLimit = document.getElementById('toggle-limited-mode');
     if(toggleLimit) toggleLimit.checked = isLimited;
@@ -42,45 +41,31 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('display-role-facility').innerText = `${currentUser.role} | ${currentUser.facility}`;
             document.getElementById('pill-avatar').innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
             applyPermissions(); document.getElementById('app-loader').style.display = 'none';
-            if(currentUser.role === 'VIEWER') showPage('registry'); else showPage('workspace');
+            
+            const r = String(currentUser.role).toUpperCase();
+            if(r === 'NTP_CHECKER' || r === 'DOH_TB') showPage('registry'); 
+            else showPage('workspace');
         } catch (e) { localStorage.removeItem('labUser'); document.getElementById('app-loader').style.display = 'none'; }
     } else { document.getElementById('app-loader').style.display = 'none'; }
 });
 
-function toggleLimitedMode() {
-    const isChecked = document.getElementById('toggle-limited-mode').checked;
-    localStorage.setItem('mho-limited-mode', isChecked);
-    applyLimitedMode(isChecked);
-}
+function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 
 function applyLimitedMode(isLimited) {
     const hiddenTests = ['btn-viral', 'btn-hema', 'btn-chem', 'btn-uria', 'btn-feca'];
     const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
     
-    hiddenTests.forEach(id => {
-        const btn = document.getElementById(id);
-        if(btn) {
-            if(isLimited) btn.classList.add('disabled-test');
-            else btn.classList.remove('disabled-test');
-        }
-    });
-
-    // Hide inside registry modal
+    hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
     document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
         const onclickAttr = card.getAttribute('onclick');
         if(onclickAttr) {
             let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r));
-            if(isLimited && isHidden) card.style.display = 'none';
-            else card.style.display = 'flex';
+            if(isLimited && isHidden) card.classList.add('disabled-test'); else card.classList.remove('disabled-test');
         }
     });
 }
 
-function toggleSidebar() {
-    const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay');
-    if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } 
-    else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); }
-}
+function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
 
 async function attemptLogin() {
     const u = document.getElementById('login_user').value.trim(); const p = document.getElementById('login_pass').value.trim();
@@ -96,36 +81,52 @@ async function attemptLogin() {
 function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; toggleSidebar(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
-function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text');
-    if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } 
-    else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; }
-}
+function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
 
 function showPage(targetId) {
     const elId = 'page-' + targetId; const role = (currentUser.role || "VIEWER").toUpperCase();
-    if (role === 'VIEWER' && (targetId === 'workspace' || targetId === 'settings')) return;
+    if (role === 'VIEWER' && targetId === 'settings') return;
     if (role === 'ENCODER' && targetId === 'settings') return;
+    if ((role === 'NTP_CHECKER' || role === 'DOH_TB') && targetId !== 'registry') return;
+
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
     document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); if (item.id === 'nav-' + targetId) item.classList.add('active'); });
-    if (targetId === 'workspace' && role !== 'ENCODER') loadPendingData();
+    
+    if (targetId === 'workspace' && (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER' || role === 'VIEWER')) loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
 
 function applyPermissions() {
     const role = (currentUser.role || "VIEWER").toUpperCase();
     const navWork = document.getElementById('nav-workspace'); const navReg = document.getElementById('nav-registry'); const navRep = document.getElementById('nav-reports'); const navSet = document.getElementById('nav-settings');
-    const panePending = document.getElementById('col-pending'); const paneCompleted = document.getElementById('col-completed');
+    const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed');
+    const floatBtns = document.querySelector('.float-actions');
+
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
+    if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none';
+    if(floatBtns) floatBtns.style.display = 'none';
+
     if (role === 'ADMIN' || role === 'STAFF') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
-        if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; if(panePending) panePending.style.display = 'flex'; if(paneCompleted) paneCompleted.style.display = 'flex';
+        if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
+        if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
+        if(floatBtns) floatBtns.style.display = 'flex';
     } else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
-        if(panePending) panePending.style.display = 'none'; if(paneCompleted) paneCompleted.style.display = 'none';
-    } else {
-        if(navReg) navReg.style.display = 'flex'; const floatBtns = document.querySelector('.float-actions'); if (floatBtns) floatBtns.style.display = 'none'; 
+        if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
+        if(floatBtns) floatBtns.style.display = 'flex';
+    } else if (role === 'VIEWER') {
+        if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
+        if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; // No Patient Entry
+        if(floatBtns) floatBtns.style.display = 'flex';
+        
+        // Hide GXVL from Viewer
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+            if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none';
+        });
+    } else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
+        if(navReg) navReg.style.display = 'flex';
     }
 }
 
@@ -200,7 +201,6 @@ async function runDirectSearch(q) {
       } catch(e) {} finally { stat.style.display='none'; }
   }, 600);
 }
-
 // ==========================================
 // 5. HISTORY & QUICK SEARCH LOGIC
 // ==========================================
@@ -251,7 +251,7 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
     
     try {
-        const res = await apiGet("getPatientHistory", { patientId: id });
+        const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
         if (res.status === 'success' && res.data.length > 0) {
             list.innerHTML = res.data.map((h, i) => {
                 const uniqueId = `hist-${listId}-${i}`;
@@ -411,7 +411,7 @@ async function submitPendingUpdate() {
 }
 
 // ==========================================
-// 7. PENDING CARDS & RESULTS LOGIC
+// 7. PENDING CARDS (READ-ONLY FOR VIEWERS)
 // ==========================================
 async function loadPendingData() {
   const icon = document.getElementById('refresh-icon'); if(icon) icon.classList.add('ph-spin');
@@ -428,27 +428,20 @@ function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
     
-    // Check if Limited Mode is ON
+    const role = String(currentUser.role || "VIEWER").toUpperCase();
+    const isViewer = (role === 'VIEWER');
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
 
     const uniqueTests = [...new Set(window.pendingData.map(item => item.test.toUpperCase()))];
     const currentVal = filterSelect.value;
-    
-    // Filter dropdown based on limited mode
     let dropHtml = '<option value="ALL">All Sections</option>';
-    uniqueTests.forEach(t => {
-        let tCode = getTestCodeFromName(t);
-        if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; }
-    });
-    filterSelect.innerHTML = dropHtml;
-    filterSelect.value = currentVal || 'ALL';
+    uniqueTests.forEach(t => { let tCode = getTestCodeFromName(t); if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; } });
+    filterSelect.innerHTML = dropHtml; filterSelect.value = currentVal || 'ALL';
 
     const filterFn = (item, isCompleted) => {
-        let t = (item.test || "").toUpperCase(); let filterVal = filterSelect.value;
-        let tCode = getTestCodeFromName(t);
-        
-        if(isLimited && !allowedTests.includes(tCode)) return false; // Hide from pending if limited
+        let t = (item.test || "").toUpperCase(); let filterVal = filterSelect.value; let tCode = getTestCodeFromName(t);
+        if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
         if (isCompleted) { if (item.isSessionCompleted) return true; const dStr = item.dateResult || item.dateEncoded || item.date; if (dStr && new Date(dStr).toDateString() !== new Date().toDateString()) return false; }
@@ -460,26 +453,12 @@ function renderLists() {
     pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch(e){}
-        return `
-        <div class="pending-card" id="card-${safeId}">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-               <div style="flex-grow:1; cursor:pointer;" onclick="toggleExpand('${safeId}')">
-                  <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span></div>
-                  <div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div>
-               </div>
-               <div style="display:flex; gap:5px;">
-                    <button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button>
-                    <button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button>
-               </div>
-            </div>
-            <div id="expand-${safeId}" class="pc-expand-area">
-                <div style="display:flex; gap:10px; margin-bottom: 16px;">
-                    <button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button>
-                    <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button>
-                </div>
-                <div>${getResultTemplate(tCode, safeId, item)}</div>
-            </div>
-        </div>`;
+        
+        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
+        let clickAttr = isViewer ? '' : `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
+        let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
+        
+        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span></div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
 
     cList.innerHTML = fComp.map(item => {
@@ -529,8 +508,7 @@ function getTestCodeFromName(name) {
 }
 
 async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName);
+    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName);
     const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
     try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
 }
@@ -616,7 +594,6 @@ function filterRegistryTable() {
     });
 }
 
-// FIX 5 & 7: PERFECT A4 REGISTRY PRINT LOGIC
 function printRegistryLogbook() {
     const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
     if (checkedBoxes.length === 0) { alert("Please select at least one record to print."); return; }
@@ -650,7 +627,7 @@ function printRegistryLogbook() {
             .header p { margin: 2px 0; font-size: 10px; font-weight: bold;}
             table { width: 100%; border-collapse: collapse; table-layout: auto; }
             th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;}
-            tr { height: 6vh; } /* Force distribute height across 10 rows */
+            tr { height: 6vh; } 
             th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: auto;}
             .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;}
             .footer-col { flex: 1; }
@@ -680,10 +657,21 @@ async function batchPrint() {
 }
 
 // ==========================================
-// 9. SETTINGS & REPORTS 
+// 9. SETTINGS & REPORTS (FIXED TABS)
 // ==========================================
-async function loadSettingsData() { apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e)); loadStaff(); loadFacilities(); }
-function renderSettings(data) { const uList = document.getElementById('list-users'); if (!data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
+async function loadSettingsData() { 
+    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
+    loadStaff(); loadFacilities(); 
+}
+function renderSettings(data) { 
+    if (typeof data === 'string') data = JSON.parse(data);
+    const uList = document.getElementById('list-users'); 
+    if (!uList) return;
+    if (!data || !data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } 
+    const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; 
+    const isAdmin = (myRole === 'ADMIN'); 
+    uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); 
+}
 let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { if(!confirm(action + " access for " + username + "?")) return; try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} } async function saveUser() { const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_user').value }; if(!user.u || !user.p || !user.role) { alert("Please fill all fields."); return; } const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; try { await apiPost("saveNewUser", { data: { username: user.u, password: user.p, facility: user.fac, role: user.role, fullName: user.name, roleCheck: currentUser.role }}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } }
 let globalFacilityList = []; async function loadFacilities() { try { const res = await apiGet("getFacilityList"); globalFacilityList = res.data || []; renderFacilityList(); } catch(e) {} } function renderFacilityList() { const container = document.getElementById('list-facilities'); const dropdown = document.getElementById('u_facility'); if(dropdown) { while (dropdown.options.length > 1) { dropdown.remove(1); } } if(container) { container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteFacility(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } globalFacilityList.forEach(f => { if(dropdown) { let o = document.createElement('option'); o.value = f.name; o.innerText = f.name; dropdown.appendChild(o); } }); } let editingFacilityIndex = -1; async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } function deleteFacility(index) { if(!confirm("Remove facility?")) return; globalFacilityList.splice(index, 1); renderFacilityList(); } function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
 let globalStaffList = []; let editingStaffIndex = -1; async function loadStaff() { try { const res = await apiGet("getStaffList"); globalStaffList = res.data || []; renderStaffList(); } catch(e) {} } function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteStaff(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); } function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; } async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } function editStaff(index) { const s = globalStaffList[index]; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sigUrl || ""; editingStaffIndex = index; document.getElementById('staff-form').style.display = 'block'; } async function deleteStaff(index) { if(!confirm("Remove staff?")) return; globalStaffList.splice(index, 1); renderStaffList(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); } catch(e) {} } function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffIndex = -1; } function toggleForm(id) { const el = document.getElementById(id); if(el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
