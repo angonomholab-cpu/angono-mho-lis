@@ -220,4 +220,17 @@ input:checked + .slider:before { transform: translateX(20px); }
     .rep-footer { margin-top: 20px; border-top: 1px solid #000; padding-top: 5px; display: flex !important; page-break-inside: avoid;}
     .rep-footer p { font-size: 6pt !important; line-height: 1.1 !important; color: #333 !important; } 
 }
+/* ========================================= */
+/* 9. DISABLED & GREY-OUT LOGIC              */
+/* ========================================= */
+.disabled-test { 
+    opacity: 0.3 !important; 
+    pointer-events: none !important; 
+    filter: grayscale(100%) !important; 
+    background: var(--bg-body) !important; 
+    border-color: var(--border-color) !important; 
+    box-shadow: none !important;
+}
+.disabled-test * { color: var(--text-muted) !important; }
+
 
