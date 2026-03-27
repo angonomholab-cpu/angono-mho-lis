@@ -40,10 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('display-full-name').innerText = currentUser.fullName || currentUser.username;
             document.getElementById('display-role-facility').innerText = `${currentUser.role} | ${currentUser.facility}`;
             document.getElementById('pill-avatar').innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
-            applyPermissions(); document.getElementById('app-loader').style.display = 'none';
             
-            const r = String(currentUser.role).toUpperCase();
-            if(r === 'NTP_CHECKER' || r === 'DOH_TB') showPage('registry'); 
+            applyPermissions(); 
+            document.getElementById('app-loader').style.display = 'none';
+            
+            const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
+            if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
             else showPage('workspace');
         } catch (e) { localStorage.removeItem('labUser'); document.getElementById('app-loader').style.display = 'none'; }
     } else { document.getElementById('app-loader').style.display = 'none'; }
@@ -56,7 +58,9 @@ function applyLimitedMode(isLimited) {
     const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
     
     hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
-    document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+    
+    // Grey out registry options
+    document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => {
         const onclickAttr = card.getAttribute('onclick');
         if(onclickAttr) {
             let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r));
@@ -83,14 +87,23 @@ function closeLogoutModal() { document.getElementById('logout-modal').style.disp
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
 
+// ==========================================
+// 3. NAVIGATION & PERMISSIONS
+// ==========================================
 function showPage(targetId) {
-    const elId = 'page-' + targetId; const role = (currentUser.role || "VIEWER").toUpperCase();
+    const elId = 'page-' + targetId; 
+    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
+    
     if (role === 'VIEWER' && targetId === 'settings') return;
     if (role === 'ENCODER' && targetId === 'settings') return;
-    if ((role === 'NTP_CHECKER' || role === 'DOH_TB') && targetId !== 'registry') return;
+    
+    // NTP CHECKER strict routing
+    if (role === 'NTP_CHECKER' && (targetId !== 'registry' && targetId !== 'reports')) return;
+    if (role === 'DOH_TB' && targetId !== 'registry') return;
 
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
+    
     document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); if (item.id === 'nav-' + targetId) item.classList.add('active'); });
     
     if (targetId === 'workspace' && (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER' || role === 'VIEWER')) loadPendingData();
@@ -98,11 +111,13 @@ function showPage(targetId) {
 }
 
 function applyPermissions() {
-    const role = (currentUser.role || "VIEWER").toUpperCase();
+    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
+    
     const navWork = document.getElementById('nav-workspace'); const navReg = document.getElementById('nav-registry'); const navRep = document.getElementById('nav-reports'); const navSet = document.getElementById('nav-settings');
     const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed');
     const floatBtns = document.querySelector('.float-actions');
 
+    // Default Hidden
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none';
     if(floatBtns) floatBtns.style.display = 'none';
@@ -112,24 +127,47 @@ function applyPermissions() {
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
-    } else if (role === 'ENCODER') {
+    } 
+    else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
-    } else if (role === 'VIEWER') {
+    } 
+    else if (role === 'VIEWER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
-        if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; // No Patient Entry
+        if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
         
-        // Hide GXVL from Viewer
         document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
             if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none';
         });
-    } else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
+    } 
+    else if (role === 'NTP_CHECKER') {
+        if(navReg) navReg.style.display = 'flex'; 
+        if(navRep) navRep.style.display = 'flex';
+        if(floatBtns) floatBtns.style.display = 'flex';
+        
+        // Hide non-TB Registries
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+            const attr = card.getAttribute('onclick') || '';
+            if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none';
+        });
+        // Hide non-TB Reports
+        document.querySelectorAll('.chip-group .chip').forEach(chip => {
+            if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none';
+        });
+        switchTab('tb'); // Auto open TB tab
+    }
+    else if (role === 'DOH_TB') {
         if(navReg) navReg.style.display = 'flex';
+        if(floatBtns) floatBtns.style.display = 'flex';
+        
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+            const attr = card.getAttribute('onclick') || '';
+            if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none';
+        });
     }
 }
-
 // ==========================================
 // 4. ADD PATIENT LOGIC
 // ==========================================
@@ -201,9 +239,7 @@ async function runDirectSearch(q) {
       } catch(e) {} finally { stat.style.display='none'; }
   }, 600);
 }
-// ==========================================
-// 5. HISTORY & QUICK SEARCH LOGIC
-// ==========================================
+
 function openQuickSearch() { 
     document.getElementById('quick-search-modal').style.display='flex'; 
     const input = document.getElementById('quick-search-input');
@@ -244,7 +280,6 @@ function editPatientDemographicsQS() {
 }
 function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
 
-// COMPACT SUMMARY HISTORY WITH EDIT MODE
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId);
@@ -272,12 +307,12 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                 
                 return `
                 <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'">
                         <div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
                             <button class="btn-icon" onclick="printDirect(event, '${id}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>
-                            <i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i>
+                            <i class="ph ph-caret-down" style="color:var(--text-muted);"></i>
                         </div>
                     </div>
                     <div id="${uniqueId}" class="h-expanded-details">
@@ -363,9 +398,6 @@ async function finalSubmit() {
   } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
-// ==========================================
-// 6. EDIT PENDING FULL
-// ==========================================
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
     editingPendingId = item.id; isExistingPatient = true; 
@@ -410,9 +442,6 @@ async function submitPendingUpdate() {
     try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
 
-// ==========================================
-// 7. PENDING CARDS (READ-ONLY FOR VIEWERS)
-// ==========================================
 async function loadPendingData() {
   const icon = document.getElementById('refresh-icon'); if(icon) icon.classList.add('ph-spin');
   try {
@@ -428,7 +457,7 @@ function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
     
-    const role = String(currentUser.role || "VIEWER").toUpperCase();
+    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     const isViewer = (role === 'VIEWER');
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
@@ -513,7 +542,6 @@ async function printDirect(e, id, testName) {
     try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found."; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
 }
 
-// TEMPLATES
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
  const gradings = ["Negative", "Trace", "1+", "2+", "3+", "4+"]; const apps = ["Watery", "Salivary", "Mucosalivary", "Mucopurulent", "Purulent", "Blood-Streaked"];
@@ -537,9 +565,6 @@ function getResultTemplate(code, safeId, item) {
  }
 }
 
-// ==========================================
-// 8. REGISTRY MODALS, FIT & FILTERS
-// ==========================================
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
 async function openRegistryModal(type) {
@@ -556,16 +581,14 @@ async function openRegistryModal(type) {
             
             const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
 
-            const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
-            
             let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
-            sorted.forEach((row, rIndex) => {
+            res.data.rows.forEach((row, rIndex) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
-                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    let isResCol = c.original.toLowerCase().includes('result code') || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
                     if (isResCol) {
                         let style = "res-gray"; let vU = String(val).toUpperCase();
                         if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
@@ -656,9 +679,6 @@ async function batchPrint() {
     runPrintJob(requests);
 }
 
-// ==========================================
-// 9. SETTINGS & REPORTS (FIXED TABS)
-// ==========================================
 async function loadSettingsData() { 
     apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
     loadStaff(); loadFacilities(); 
