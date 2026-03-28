@@ -280,16 +280,23 @@ async function finalSubmit() {
   // PAYLOAD WITH EMAIL AND PASSWORD
   const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
-  try {
+ try {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") { 
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
-          clearForm(); if (currentUser.role !== 'ENCODER') await loadPendingData(); 
-          if(pEmail && generatedPassword) alert(`Patient Portal Access Created!\nEmail: ${pEmail}\nGenerated Password: ${generatedPassword}\n(Please inform the patient to check their email for login details)`);
+          clearForm(); 
+          if (currentUser.role !== 'ENCODER') await loadPendingData(); 
+          
+          // ALERT NA GALING MISMO SA COLUMN K NG GOOGLE SHEETS
+          const savedEmail = res.data.email;
+          const savedPass = res.data.generatedPassword;
+          if(savedEmail && savedPass) {
+              alert(`Patient Portal Credentials:\nEmail: ${savedEmail}\nPassword: ${savedPass}\n\n(Tell the patient to use these to log in)`);
+          }
+          
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000); 
       } else { throw new Error(res.message); }
   } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
-}
 
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
