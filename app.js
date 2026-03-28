@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxf-iqsqABRHjhexJl3wIBiuWIKvQZZXk7kcw0TLWfedQgv2pbu5yvtbc7x_sR4we13NQ/exec"; // <-- IBALIK MO YUNG URL MO RITO
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwJeZ3ljs9YSeVyqRB0iCwNln6NLMDD_eFE4DOnyrTZ2ebRLrgbTw0dCQPlD1aJXdOnoQ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -8,65 +8,47 @@ let isExistingPatient = false;
 let editingPendingId = null;
 let currentQuickPatient = null;
 let searchTimeout; 
-let confirmActionCallback = null; // Para sa custom confirm
+let confirmActionCallback = null; 
 window.CURRENT_TEST_TYPE = ""; 
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
-// ==========================================
-// NEW CUSTOM MODALS LOGIC
-// ==========================================
-function closeCustomAlert() {
-    document.getElementById('custom-alert').style.display = 'none';
-}
-
+// --- Custom Alerts ---
+function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
-    const titleEl = document.getElementById('custom-alert-title');
-    const msgEl = document.getElementById('custom-alert-msg');
+    document.getElementById('custom-alert-title').innerText = title;
+    document.getElementById('custom-alert-msg').innerText = message;
     const iconEl = document.getElementById('custom-alert-icon');
-    
-    titleEl.innerText = title;
-    msgEl.innerText = message;
-    
-    if(type === 'success') {
-        iconEl.className = 'ph ph-check-circle';
-        iconEl.style.color = 'var(--success)';
-    } else if(type === 'error') {
-        iconEl.className = 'ph ph-warning-circle';
-        iconEl.style.color = 'var(--danger)';
-    } else {
-        iconEl.className = 'ph ph-info';
-        iconEl.style.color = 'var(--pri)';
-    }
+    if(type === 'success') { iconEl.className = 'ph ph-check-circle'; iconEl.style.color = 'var(--success)'; } 
+    else if(type === 'error') { iconEl.className = 'ph ph-warning-circle'; iconEl.style.color = 'var(--danger)'; } 
+    else { iconEl.className = 'ph ph-info'; iconEl.style.color = 'var(--pri)'; }
     modal.style.display = 'flex';
 }
-
 function customConfirm(message, callback) {
     document.getElementById('custom-confirm-msg').innerText = message;
     document.getElementById('custom-confirm').style.display = 'flex';
     confirmActionCallback = callback;
 }
-
 function closeCustomConfirm(isConfirmed) {
     document.getElementById('custom-confirm').style.display = 'none';
-    if (isConfirmed && confirmActionCallback) {
-        confirmActionCallback();
-    }
+    if (isConfirmed && confirmActionCallback) confirmActionCallback();
     confirmActionCallback = null;
 }
+window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
-// Override ang default browser alert
-window.alert = function(message) {
-    showAppAlert("Notice", message, "info");
-};
+// --- API Functions ---
+async function apiGet(action, params = {}) { 
+    let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); 
+    for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); 
+    const res = await fetch(url); return await res.json(); 
+}
+async function apiPost(action, payload) { 
+    const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); 
+    return await res.json(); 
+}
 
-// ==========================================
-// CORE API & STARTUP
-// ==========================================
-async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); try { const res = await fetch(url); return await res.json(); } catch (e) { throw e; } }
-async function apiPost(action, payload) { try { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); } catch (e) { throw e; } }
-
+// --- Startup ---
 document.addEventListener('DOMContentLoaded', () => {
     try {
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
@@ -80,10 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(savedUser);
             if (!currentUser.username) throw new Error("Invalid");
             
-            const overlay = document.getElementById('login-overlay'); if(overlay) overlay.style.display = 'none';
-            const dispName = document.getElementById('display-full-name'); if(dispName) dispName.innerText = currentUser.fullName || currentUser.username;
-            const dispRole = document.getElementById('display-role-facility'); if(dispRole) dispRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
-            const avatar = document.getElementById('pill-avatar'); if(avatar) avatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('display-full-name').innerText = currentUser.fullName || currentUser.username;
+            document.getElementById('display-role-facility').innerText = `${currentUser.role} | ${currentUser.facility}`;
+            document.getElementById('pill-avatar').innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
             
             applyPermissions(); 
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
@@ -93,12 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) { 
         localStorage.removeItem('labUser'); 
-        const overlay = document.getElementById('login-overlay'); if(overlay) overlay.style.display = 'flex';
+        document.getElementById('login-overlay').style.display = 'flex';
     } finally {
-        const loader = document.getElementById('app-loader'); if(loader) loader.style.display = 'none';
+        document.getElementById('app-loader').style.display = 'none';
     }
 });
 
+// --- UI Toggles ---
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 function applyLimitedMode(isLimited) {
     const hiddenTests = ['btn-viral', 'btn-hema', 'btn-chem', 'btn-uria', 'btn-feca'];
@@ -109,6 +92,7 @@ function applyLimitedMode(isLimited) {
 function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
 
+// --- Modals & Login ---
 function switchLoginTab(type) {
     if(type === 'staff') {
         document.getElementById('staff-login-form').style.display = 'block'; document.getElementById('patient-login-form').style.display = 'none';
@@ -153,14 +137,19 @@ async function resendPatientPassword() {
     if(!email) return showAppAlert("Required", "Please enter your email.", "error"); 
     const btn = document.querySelector('#patient-resend-card .btn-primary'); 
     const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; 
-    try { await apiPost("resendPatientPassword", { email: email }); showAppAlert("Success", "If registered, your password has been sent to your email.", "success"); backToLoginFromPatient(); } 
-    catch(e) { showAppAlert("Success", "If registered, your password has been sent to your email.", "success"); backToLoginFromPatient(); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
+    try { await apiPost("resendPatientPassword", { email: email }); showAppAlert("Success", "If registered, your password has been sent.", "success"); backToLoginFromPatient(); } 
+    catch(e) { showAppAlert("Success", "If registered, your password has been sent.", "success"); backToLoginFromPatient(); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
 }
 
-function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const sidebar = document.getElementById('main-sidebar'); if (sidebar && sidebar.classList.contains('show')) toggleSidebar(); }
-function closeLogoutModal() { const modal = document.getElementById('logout-modal'); if(modal) modal.style.display = 'none'; }
+function logoutUser() { 
+    const modal = document.getElementById('logout-modal'); 
+    if (modal) modal.style.display = 'flex'; 
+    const sidebar = document.getElementById('main-sidebar'); 
+    if (sidebar && sidebar.classList.contains('show')) toggleSidebar(); 
+}
+function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
-function showRegistrySelectionModal() { const modal = document.getElementById('registry-selection-modal'); if(modal) modal.style.display = 'flex'; }
+function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
 function showPage(targetId) {
     const elId = 'page-' + targetId; const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
@@ -261,7 +250,13 @@ async function runDirectSearch(q) {
   }, 600);
 }
 
-function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
+function openQuickSearch() { 
+    document.getElementById('quick-search-modal').style.display='flex'; 
+    const input = document.getElementById('quick-search-input'); 
+    input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; 
+    document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); 
+}
+
 async function runQuickSearch(q) {
   const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
   clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
@@ -280,24 +275,49 @@ async function runQuickSearch(q) {
 }
 
 async function viewQuickProfile(p) {
-    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    currentQuickPatient = p; 
+    document.getElementById('quick-profile-view').style.display = 'flex'; 
+    document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; 
+    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true, false); 
 }
 
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
-function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
+function editPatientDemographicsQS() { 
+    if(!currentQuickPatient) return; 
+    document.getElementById('qs-edit-form').style.display = 'block'; 
+    document.getElementById('qs_edit_name').value = currentQuickPatient.name; 
+    document.getElementById('qs_edit_age').value = currentQuickPatient.age; 
+    document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; 
+}
+function savePatientDemographicsQS() { 
+    showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); 
+    document.getElementById('qs-edit-form').style.display = 'none'; 
+}
 
 async function loadPatientResults() {
-    const histContainer = document.getElementById('my-portal-history'); if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
+    const histContainer = document.getElementById('my-portal-history'); 
+    if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
     const nameEl = document.getElementById('my-portal-name'); if(nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
     const metaEl = document.getElementById('my-portal-meta'); if(metaEl) metaEl.innerText = `Patient ID: ${currentUser.username}`;
     fetchHistory(currentUser.username, null, 'my-portal-history', false, true); 
 }
 
-// ==========================================
-// HISTORY & RESULT PRINTING FIXES
-// ==========================================
+function getTestCodeFromName(name) {
+    const t = String(name).toUpperCase();
+    if (t.includes("VIRAL") || t.includes("VL")) return "GXVL"; 
+    if (t.includes("GXP") || t.includes("MTB") || t.includes("GENEXPERT")) return "GXP";
+    if (t.includes("DSSM") || t.includes("AFB")) return "DSSM"; 
+    if (t.includes("UA") || t.includes("URINALYSIS")) return "UA";
+    if (t.includes("FA") || t.includes("FECALYSIS")) return "FA"; 
+    if (t.includes("HEMA") || t.includes("CBC")) return "HEMA";
+    if (t.includes("CHEM") || t.includes("BLOOD CHEM")) return "CHEM"; 
+    if (t.includes("GRAM")) return "GRAM";
+    if (t.includes("DENGUE") || t.includes("NS1")) return "DENGUE"; 
+    if (t.includes("SERO") || t.includes("HIV") || t.includes("SYPHILIS") || t.includes("HBSAG")) return "SERO";
+    return t; 
+}
+
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPatientPortal = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
@@ -307,7 +327,6 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
             list.innerHTML = res.data.map((h, i) => {
                 const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
                 let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
-                
                 let testCodeForPrint = id; 
 
                 if(h.fullData) {
@@ -320,7 +339,6 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                     }
                 }
                 summaryHtml += '</div>'; editInputsHtml += '</div>';
-                
                 let editBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>` : '';
                 let printBtnHtml = (isQuickSearch || isPatientPortal) ? `<button class="btn-icon" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>` : '';
                 let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
@@ -552,16 +570,6 @@ async function saveResult(id, safeId, btn, doPrint) {
           await loadPendingData(); 
       }
   } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
-}
-
-function getTestCodeFromName(name) {
-    const t = name.toUpperCase();
-    if (t.includes("VIRAL")) return "GXVL"; if (t.includes("GXP")||t.includes("MTB")) return "GXP";
-    if (t.includes("DSSM")||t.includes("AFB")) return "DSSM"; if (t.includes("UA") || t.includes("URINALYSIS")) return "UA";
-    if (t.includes("FA") || t.includes("FECALYSIS")) return "FA"; if (t.includes("HEMA")||t.includes("CBC")) return "HEMA";
-    if (t.includes("CHEM")) return "CHEM"; if (t.includes("GRAM")) return "GRAM";
-    if (t.includes("DENGUE")) return "DENGUE"; if (t.includes("SERO")) return "SERO";
-    return "DEFAULT";
 }
 
 async function printDirect(e, id, testName) { 
