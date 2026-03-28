@@ -135,12 +135,28 @@ function backToLoginFromPatient() { document.getElementById('patient-resend-card
 async function resendPatientPassword() { 
     const email = document.getElementById('resend_pat_email').value.trim(); 
     if(!email) return showAppAlert("Required", "Please enter your email.", "error"); 
+    
     const btn = document.querySelector('#patient-resend-card .btn-primary'); 
-    const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; 
-    try { await apiPost("resendPatientPassword", { email: email }); showAppAlert("Success", "If registered, your password has been sent.", "success"); backToLoginFromPatient(); } 
-    catch(e) { showAppAlert("Success", "If registered, your password has been sent.", "success"); backToLoginFromPatient(); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
+    const oldText = btn.innerHTML; 
+    btn.innerHTML = "Sending..."; 
+    btn.disabled = true; 
+    
+    try { 
+        const res = await apiPost("resendPatientPassword", { email: email }); 
+        if (res.status === "success") {
+            showAppAlert("Success", res.data, "success"); 
+            backToLoginFromPatient();
+        } else {
+            // LALABAS DITO KUNG "NOT FOUND" O "GOOGLE FAILED"
+            showAppAlert("Failed to Send", res.message, "error"); 
+        }
+    } catch(e) { 
+        showAppAlert("Connection Error", String(e), "error"); 
+    } finally { 
+        btn.innerHTML = oldText; 
+        btn.disabled = false; 
+    } 
 }
-
 function logoutUser() { 
     const modal = document.getElementById('logout-modal'); 
     if (modal) modal.style.display = 'flex'; 
