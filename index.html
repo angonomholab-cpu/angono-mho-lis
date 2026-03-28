@@ -567,6 +567,63 @@
             <button onclick="saveUserChanges()" id="btn-save-user" class="btn btn-primary full-width">Save Changes</button>
         </div>
     </div>
+   <div id="quick-search-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+        <div class="auth-card" style="text-align: left; overflow: visible; min-height: 250px; width: 400px; max-width: 95%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
+                <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central Search</h2>
+                <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <div style="position: relative; margin-bottom: 15px;">
+                <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search masterlist..." onkeyup="runQuickSearch(this.value)">
+                <div id="quick-search-results" class="search-results-container" style="position: absolute; width: 100%; z-index: 9999; max-height: 300px; overflow-y: auto; box-shadow: var(--shadow-float);"></div>
+            </div>
+            
+            <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1; padding-right: 5px;">
+                <div style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 id="qs-name" style="color:var(--pri); font-size:1.1rem; margin:0;"></h3>
+                        <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
+                    </div>
+                    <div id="qs-meta" style="font-size:0.8rem; color:var(--text-main); font-weight:500; display:flex; flex-wrap:wrap; gap:10px;"></div>
+                    
+                    <div id="qs-edit-form" style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                        <div class="form-grid grid-2">
+                            <div class="field-group full-width"><label class="field-label">Name</label><input type="text" id="qs_edit_name" class="form-input"></div>
+                            <div class="field-group"><label class="field-label">Age</label><input type="text" id="qs_edit_age" class="form-input"></div>
+                            <div class="field-group"><label class="field-label">Facility</label><input type="text" id="qs_edit_fac" class="form-input"></div>
+                        </div>
+                        <button class="btn btn-primary text-xs" onclick="savePatientDemographicsQS()">Save Changes</button>
+                    </div>
+                </div>
+
+                <h4 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i class="ph ph-clock-counter-clockwise"></i> Complete Laboratory History</h4>
+                <div id="qs-history-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="registry-selection-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+        <div class="auth-card" style="width: 500px; padding: 25px; text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-size: 1.1rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
+                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                <div class="test-btn-vert" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
+                <div class="test-btn-vert" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="app.js"></script>
     <script>
