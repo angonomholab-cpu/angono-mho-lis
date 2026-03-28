@@ -58,8 +58,6 @@ function applyLimitedMode(isLimited) {
     const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
     
     hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
-    
-    // Grey out registry options
     document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => {
         const onclickAttr = card.getAttribute('onclick');
         if(onclickAttr) {
@@ -96,10 +94,7 @@ function showPage(targetId) {
     
     if (role === 'VIEWER' && targetId === 'settings') return;
     if (role === 'ENCODER' && targetId === 'settings') return;
-    
-    // NTP CHECKER strict routing
-    if (role === 'NTP_CHECKER' && (targetId !== 'registry' && targetId !== 'reports')) return;
-    if (role === 'DOH_TB' && targetId !== 'registry') return;
+    if ((role === 'NTP_CHECKER' || role === 'DOH_TB') && (targetId !== 'registry' && targetId !== 'reports')) return;
 
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
@@ -117,7 +112,6 @@ function applyPermissions() {
     const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed');
     const floatBtns = document.querySelector('.float-actions');
 
-    // Default Hidden
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none';
     if(floatBtns) floatBtns.style.display = 'none';
@@ -137,35 +131,17 @@ function applyPermissions() {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
-        
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
-            if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none';
-        });
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none'; });
     } 
     else if (role === 'NTP_CHECKER') {
-        if(navReg) navReg.style.display = 'flex'; 
-        if(navRep) navRep.style.display = 'flex';
-        if(floatBtns) floatBtns.style.display = 'flex';
-        
-        // Hide non-TB Registries
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
-            const attr = card.getAttribute('onclick') || '';
-            if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none';
-        });
-        // Hide non-TB Reports
-        document.querySelectorAll('.chip-group .chip').forEach(chip => {
-            if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none';
-        });
-        switchTab('tb'); // Auto open TB tab
+        if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex';
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
+        document.querySelectorAll('.chip-group .chip').forEach(chip => { if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; });
+        switchTab('tb');
     }
     else if (role === 'DOH_TB') {
-        if(navReg) navReg.style.display = 'flex';
-        if(floatBtns) floatBtns.style.display = 'flex';
-        
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
-            const attr = card.getAttribute('onclick') || '';
-            if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none';
-        });
+        if(navReg) navReg.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex';
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
     }
 }
 // ==========================================
@@ -381,7 +357,7 @@ async function submitPendingUpdate() {
     try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
 // ==========================================
-// 7. PENDING CARDS (READ-ONLY FOR VIEWERS)
+// 7. PENDING CARDS & RESULTS LOGIC
 // ==========================================
 async function loadPendingData() {
   const icon = document.getElementById('refresh-icon'); if(icon) icon.classList.add('ph-spin');
@@ -422,18 +398,40 @@ function renderLists() {
 
     pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
-        let subTxt = ""; try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch(e){}
+        
+        // REPEAT/INITIAL BADGE LOGIC
+        let subTxt = ""; let repeatBadge = ""; 
+        try { 
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
+            if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
+            let rpt = d.Repeat || d["Test Type"];
+            if(rpt && String(rpt).toUpperCase() !== 'STANDARD' && String(rpt).toUpperCase() !== 'NEW') {
+                let bColor = String(rpt).toUpperCase().includes('INITIAL') ? 'badge-warning' : 'badge-danger';
+                repeatBadge = `<span class="badge ${bColor}" style="margin-left:4px; font-size:0.55rem;">${String(rpt).toUpperCase()}</span>`;
+            }
+        } catch(e){}
         
         let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         let clickAttr = isViewer ? '' : `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
         let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         
-        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span></div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
+        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
 
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test);
-        return `<div class="completed-card" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" title="Click to print"><div style="overflow:hidden;"><div class="pc-name">${item.name}</div><div class="pc-meta">${item.test}</div></div><i class="ph ph-printer" style="color: var(--success); font-size: 1.2rem;"></i></div>`;
+        
+        let repeatBadge = ""; 
+        try { 
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
+            let rpt = d.Repeat || d["Test Type"];
+            if(rpt && String(rpt).toUpperCase() !== 'STANDARD' && String(rpt).toUpperCase() !== 'NEW') {
+                let bColor = String(rpt).toUpperCase().includes('INITIAL') ? 'badge-warning' : 'badge-danger';
+                repeatBadge = `<span class="badge ${bColor}" style="margin-left:4px; font-size:0.55rem;">${String(rpt).toUpperCase()}</span>`;
+            }
+        } catch(e){}
+
+        return `<div class="completed-card" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" title="Click to print"><div style="overflow:hidden;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta">${item.test}</div></div><i class="ph ph-printer" style="color: var(--success); font-size: 1.2rem;"></i></div>`;
     }).join('');
     document.getElementById('count-pending').innerText = `(${fPending.length})`;
 }
@@ -493,7 +491,7 @@ function getResultTemplate(code, safeId, item) {
  const rem = `<div class="field-group full-width" style="margin-top:10px;"><label class="field-label">Remarks</label><input type="text" class="res-${safeId} form-input" data-key="Remarks"></div>`;
  
  switch (code) {
-     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
+     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL', 'REPEAT'])}</div></div>${rem}`;
      case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
      case 'DSSM': return `<div class="form-grid grid-2">${[1,2].map(n=>`<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
      case 'CHEM': return `<div class="form-grid grid-3">${input('FBS','FBS',['FBS','GLUCOSE'])}${input('RBS','RBS',['RBS'])}${input('HbA1c','HbA1c',['HBA1C'])}${input('Cholesterol','Chol',['CHOLESTEROL','LIPID'])}${input('Triglycerides','Trig',['TRIGLYCERIDES','LIPID'])}${input('HDL','HDL',['HDL','LIPID'])}${input('LDL','LDL',['LDL','LIPID'])}${input('BUN','BUN',['BUN'])}${input('Creatinine','Crea',['CREA'])}${input('Uric Acid','Uric',['URIC'])}${input('SGOT','SGOT',['SGOT','AST'])}${input('SGPT','SGPT',['SGPT','ALT'])}</div>${rem}`;
@@ -508,7 +506,7 @@ function getResultTemplate(code, safeId, item) {
 }
 
 // ==========================================
-// 8. REGISTRY MODALS & REGISTRY TABLE
+// 8. REGISTRY MODALS, FIT & FILTERS
 // ==========================================
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
@@ -535,7 +533,7 @@ async function openRegistryModal(type) {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
-                    let isResCol = c.original.toLowerCase().includes('result code') || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
                     if (isResCol) {
                         let style = "res-gray"; let vU = String(val).toUpperCase();
                         if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
