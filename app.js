@@ -350,14 +350,20 @@ async function finalSubmit() {
 
   const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
-  try {
+   try {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") { 
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
-          clearForm(); if (currentUser.role !== 'ENCODER') await loadPendingData(); 
-          if(res.data && res.data.email && res.data.generatedPassword) {
-              alert(`Patient Portal Credentials:\nEmail: ${res.data.email}\nPassword: ${res.data.generatedPassword}\n\n(Tell the patient to use these to log in)`);
+          clearForm(); 
+          if (currentUser.role !== 'ENCODER') await loadPendingData(); 
+          
+          // Kukuha ng data galing sa backend response
+          const savedEmail = res.data.email;
+          const savedPass = res.data.generatedPassword;
+          if(savedEmail && savedPass) {
+              alert(`Patient Portal Credentials:\nEmail: ${savedEmail}\nPassword: ${savedPass}\n\n(An email has been sent to the patient, or they can use these to log in.)`);
           }
+          
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000); 
       } else { throw new Error(res.message); }
   } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
