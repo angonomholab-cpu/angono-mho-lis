@@ -520,12 +520,18 @@
             <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="backToLoginFromPatient()">Back to Login</div>
         </div>
 
-        <div id="patient-info-card" class="auth-card" style="display:none; padding-top:20px;">
+               <div id="patient-info-card" class="auth-card" style="display:none; padding-top:20px;">
             <h2 style="margin-bottom:10px; color:var(--pri);"><i class="ph ph-user-plus"></i> New Patient?</h2>
-            <p style="font-size:0.85rem; color:var(--text-main); margin-bottom:20px; line-height:1.5;">Patient accounts are <strong>automatically generated</strong> during your first laboratory visit.<br><br>Please provide a valid email address at the reception to receive your secure login credentials and access your results online.</p>
-            <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Got it, back to Login</button>
+            <p style="font-size:0.8rem; color:var(--text-main); margin-bottom:15px; line-height:1.5;">Patient accounts are <strong>automatically generated</strong> during your first laboratory visit.</p>
+            <div style="background:var(--bg-subtle); padding:15px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:20px;">
+                <p style="margin:0 0 5px 0; font-size:0.75rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Need Help or No Account?</p>
+                <p style="margin:0; font-size:0.85rem; color:var(--text-main);">Chat with us on our Facebook Messenger for assistance:</p>
+                <div style="margin-top:10px; font-weight:bold; color:#0084FF; font-size:1rem;"><i class="ph ph-messenger-logo"></i> Angono MHO Laboratory</div>
+            </div>
+            <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
         </div>
-    </div>
+
+
 
     <div id="app-loader" class="modal-backdrop" style="flex-direction:column; background:var(--bg-body);">
         <i class="ph ph-circle-notch ph-spin" style="font-size: 3rem; color: var(--pri);"></i>
