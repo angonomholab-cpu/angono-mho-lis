@@ -58,6 +58,8 @@ function applyLimitedMode(isLimited) {
     const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
     
     hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
+    
+    // Grey out registry options
     document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => {
         const onclickAttr = card.getAttribute('onclick');
         if(onclickAttr) {
@@ -94,7 +96,10 @@ function showPage(targetId) {
     
     if (role === 'VIEWER' && targetId === 'settings') return;
     if (role === 'ENCODER' && targetId === 'settings') return;
-    if ((role === 'NTP_CHECKER' || role === 'DOH_TB') && (targetId !== 'registry' && targetId !== 'reports')) return;
+    
+    // NTP CHECKER strict routing
+    if (role === 'NTP_CHECKER' && (targetId !== 'registry' && targetId !== 'reports')) return;
+    if (role === 'DOH_TB' && targetId !== 'registry') return;
 
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
@@ -109,41 +114,58 @@ function applyPermissions() {
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     
     const navWork = document.getElementById('nav-workspace'); const navReg = document.getElementById('nav-registry'); const navRep = document.getElementById('nav-reports'); const navSet = document.getElementById('nav-settings');
-    const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed');
+    const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed'); const colRepeat = document.getElementById('col-repeat');
     const floatBtns = document.querySelector('.float-actions');
 
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
-    if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none';
+    if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none'; if(colRepeat) colRepeat.style.display = 'none';
     if(floatBtns) floatBtns.style.display = 'none';
 
     if (role === 'ADMIN' || role === 'STAFF') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
-        if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
+        if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
     } 
     else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
-        if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
+        if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
     } 
     else if (role === 'VIEWER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
-        if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex';
+        if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
         if(floatBtns) floatBtns.style.display = 'flex';
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none'; });
+        
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+            if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none';
+        });
     } 
     else if (role === 'NTP_CHECKER') {
-        if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex';
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
-        document.querySelectorAll('.chip-group .chip').forEach(chip => { if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; });
+        if(navReg) navReg.style.display = 'flex'; 
+        if(navRep) navRep.style.display = 'flex';
+        if(floatBtns) floatBtns.style.display = 'flex';
+        
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+            const attr = card.getAttribute('onclick') || '';
+            if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none';
+        });
+        document.querySelectorAll('.chip-group .chip').forEach(chip => {
+            if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none';
+        });
         switchTab('tb');
     }
     else if (role === 'DOH_TB') {
-        if(navReg) navReg.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex';
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
+        if(navReg) navReg.style.display = 'flex';
+        if(floatBtns) floatBtns.style.display = 'flex';
+        
+        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => {
+            const attr = card.getAttribute('onclick') || '';
+            if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none';
+        });
     }
 }
+
 // ==========================================
 // 4. ADD PATIENT LOGIC
 // ==========================================
@@ -219,10 +241,18 @@ async function runDirectSearch(q) {
 // ==========================================
 // 5. HISTORY & QUICK SEARCH LOGIC
 // ==========================================
-function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
+function openQuickSearch() { 
+    document.getElementById('quick-search-modal').style.display='flex'; 
+    const input = document.getElementById('quick-search-input');
+    input.value = ''; document.getElementById('quick-search-results').style.display = 'none';
+    document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); 
+}
+
 async function runQuickSearch(q) {
-  const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-  clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
+  const box = document.getElementById('quick-search-results');
+  if(q.length < 2) { box.style.display='none'; return; }
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
       try {
           const res = await apiGet("searchPatients", { query: q });
           if (res.status === "success" && res.data.length > 0) {
@@ -239,21 +269,34 @@ async function runQuickSearch(q) {
 
 async function viewQuickProfile(p) {
     currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    document.getElementById('qs-name').innerText = p.name;
+    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true); 
 }
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
+
+function editPatientDemographicsQS() {
+    if(!currentQuickPatient) return;
+    document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name;
+    document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility;
+}
 function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
 
+// COMPACT SUMMARY HISTORY WITH EDIT MODE
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
-    const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
+    const list = document.getElementById(listId);
+    list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
+    
     try {
         const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
         if (res.status === 'success' && res.data.length > 0) {
             list.innerHTML = res.data.map((h, i) => {
-                const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
-                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
+                const uniqueId = `hist-${listId}-${i}`;
+                const dateStr = new Date(h.date).toLocaleDateString();
+                
+                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">';
+                let editInputsHtml = '<div class="form-grid grid-2">';
+
                 if(h.fullData) {
                     for (const [key, value] of Object.entries(h.fullData)) {
                         if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
@@ -263,6 +306,7 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
                     }
                 }
                 summaryHtml += '</div>'; editInputsHtml += '</div>';
+                
                 return `
                 <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
                     <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
@@ -294,15 +338,40 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
     } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
 }
 
-function toggleHistoryEdit(id) { const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id); if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; } }
-async function saveHistoryEdit(patientId, testType, uniqueId) { const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {}; inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value); try { const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates }); if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); } } catch(e) { alert("Error updating past record: " + e); } }
+function toggleHistoryEdit(id) {
+    const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id);
+    if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; }
+}
+
+async function saveHistoryEdit(patientId, testType, uniqueId) {
+    const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {};
+    inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value);
+    try {
+        const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates });
+        if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); }
+    } catch(e) { alert("Error updating past record: " + e); }
+}
 
 function clearForm() {
-    document.getElementById('regForm').reset(); labOrders = {}; document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary(); document.getElementById('finalPatientId').value = ""; isExistingPatient = false; 
-    document.getElementById('history-section').style.display = 'none'; document.getElementById('new-entry-header').style.display = 'flex'; document.getElementById('profile-header').style.display = 'none';
-    editingPendingId = null; document.getElementById('col-entry').classList.remove('edit-mode-pane'); document.getElementById('entry-main-header').classList.remove('edit-mode-header'); document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-user-plus"></i> Patient Entry</h2><button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>`;
-    document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'grid';
-    const saveBtn = document.getElementById('save-btn-action'); saveBtn.innerHTML = '<i class="ph ph-paper-plane-right"></i> Save Record'; saveBtn.onclick = finalSubmit; saveBtn.style.background = '';
+    document.getElementById('regForm').reset(); labOrders = {}; 
+    document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary();
+    document.getElementById('finalPatientId').value = ""; isExistingPatient = false; 
+    document.getElementById('history-section').style.display = 'none';
+    document.getElementById('new-entry-header').style.display = 'flex';
+    document.getElementById('profile-header').style.display = 'none';
+    
+    editingPendingId = null;
+    document.getElementById('col-entry').classList.remove('edit-mode-pane');
+    document.getElementById('entry-main-header').classList.remove('edit-mode-header');
+    document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-user-plus"></i> Patient Entry</h2><button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>`;
+    
+    document.getElementById('test-details-area').style.display = 'none'; 
+    document.getElementById('test-buttons-container').style.display = 'grid';
+    
+    const saveBtn = document.getElementById('save-btn-action');
+    saveBtn.innerHTML = '<i class="ph ph-paper-plane-right"></i> Save Record';
+    saveBtn.onclick = finalSubmit; 
+    saveBtn.style.background = '';
 }
 
 async function finalSubmit() {
@@ -310,14 +379,29 @@ async function finalSubmit() {
   if(!document.getElementById('p_name').value || Object.keys(labOrders).length === 0) { alert("Fill in Name and select a test."); return; }
   const originalText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true;
 
-  let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
-  Object.keys(labOrders).forEach(key => { const entry = { name: availableTests[key].testName, code: availableTests[key].testCode, details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } }; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); finalTestsArray.push(entry); });
+  let finalTestsArray = [];
+  const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
+  Object.keys(labOrders).forEach(key => {
+      const entry = { name: availableTests[key].testName, code: availableTests[key].testCode, details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } };
+      if(labOrders[key].subTests && labOrders[key].subTests.length > 0) entry.details["Requested Tests"] = labOrders[key].subTests.join(', ');
+      finalTestsArray.push(entry);
+  });
 
-  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: document.getElementById('p_email').value, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
+  const formData = {
+      patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value,
+      bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value,
+      contact: document.getElementById('p_contact').value, email: document.getElementById('p_email').value, facility: pFacility,
+      encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray)
+  };
 
   try {
       const res = await apiPost("submitForm", { formObject: formData });
-      if (res.status === "success") { btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; clearForm(); if (currentUser.role !== 'ENCODER') loadPendingData(); setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000); } else { throw new Error(res.message); }
+      if (res.status === "success") {
+          btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
+          clearForm(); 
+          if (currentUser.role !== 'ENCODER') await loadPendingData(); // AUTO REFRESH
+          setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000);
+      } else { throw new Error(res.message); }
   } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
@@ -354,8 +438,10 @@ async function submitPendingUpdate() {
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
     let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
     let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
-    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
+
+    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
+
 // ==========================================
 // 7. PENDING CARDS & RESULTS LOGIC
 // ==========================================
@@ -398,11 +484,15 @@ function renderLists() {
     };
 
     const fPending = window.pendingData.filter(i => filterFn(i, false)); 
-    const fComp = window.completedData.filter(i => filterFn(i, true));
+    
+    // Hide parked items from completed
+    const fComp = window.completedData.filter(i => {
+        let d = typeof i.details === 'string' ? JSON.parse(i.details) : i.details;
+        if (d.Remarks === "PARKED_FOR_REPEAT") return false; 
+        return filterFn(i, true);
+    });
 
-    // =====================================
-    // LOGIC FOR REPEAT TESTING POPULATION
-    // =====================================
+    // FIND ITEMS FOR REPEAT
     let latestCompleted = {};
     window.completedData.forEach(item => { 
         let key = item.patientId + "_" + item.test.toUpperCase(); 
@@ -415,7 +505,6 @@ function renderLists() {
         let rpt = d.Repeat || d["Test Type"] || "";
         
         if (String(rpt).toUpperCase() === 'INITIAL') {
-            // Check kung hindi pa siya binalik sa pending
             let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && p.test.toUpperCase() === item.test.toUpperCase());
             if(!isAlreadyPending) { 
                 let tCode = getTestCodeFromName(item.test); 
@@ -427,31 +516,28 @@ function renderLists() {
         }
     });
 
-    // PENDING LIST RENDER
     pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; let repeatBadge = ""; 
         try { 
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
-            
-            // Auto Repeat Badge Check
             let hasInitial = window.completedData.some(c => c.patientId === item.patientId && c.test.toUpperCase() === item.test.toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : c.details; return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
             if(hasInitial) repeatBadge = `<span class="badge badge-danger" style="margin-left:4px; font-size:0.55rem;">REPEAT</span>`;
         } catch(e){}
         
-        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
+        let parkBtn = isViewer ? '' : `<button onclick="parkPendingToRepeat('${item.id}')" id="btn-park-${safeId}" class="btn-icon" style="color:var(--warning);" title="Park to For Repeat (Bypass Pending)"><i class="ph ph-archive"></i></button>`;
+        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;">${parkBtn}<button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         let clickAttr = isViewer ? '' : `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
         let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         
         return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
 
-    // REPEAT LIST RENDER (Yellowish background para distinct)
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
             const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
-            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: #FFF9F0;">
+            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);">
                         <div class="pc-name" style="color: var(--warning);">${item.name}</div>
                         <div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>
                         ${isViewer ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}
@@ -460,14 +546,12 @@ function renderLists() {
         document.getElementById('count-repeat').innerText = `(${fRepeat.length})`;
     }
 
-    // COMPLETED LIST RENDER
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test);
         let repeatBadge = ""; 
         try { 
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             let rpt = d.Repeat || d["Test Type"];
-            // Display badge ONLY if the completed test itself is an initial
             if(rpt && String(rpt).toUpperCase() === 'INITIAL') {
                 repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem;">INITIAL</span>`;
             }
@@ -478,36 +562,35 @@ function renderLists() {
     document.getElementById('count-pending').innerText = `(${fPending.length})`;
 }
 
-// ==========================================
-// 7.1 MOVE TO PENDING (NEW FEATURE)
-// ==========================================
+async function parkPendingToRepeat(id) {
+    if(!confirm("Park this request to 'For Repeat'? It will be removed from today's pending to save Lab Numbering.")) return;
+    const item = window.pendingData.find(d => String(d.id) === String(id)); if(!item) return;
+
+    const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
+    const btn = document.getElementById('btn-park-' + safeId);
+    if(btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>'; btn.disabled = true; }
+
+    let dObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+    let finalStr = JSON.stringify({ ...dObj, "Test Type": "INITIAL", "Repeat": "INITIAL", "Remarks": "PARKED_FOR_REPEAT" });
+    
+    try {
+        await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        await loadPendingData(); 
+    } catch(e) { alert("Failed to park: " + e); }
+}
+
 async function moveToPendingRepeat(idStr) {
     const item = window.completedData.find(i => String(i.id) === String(idStr)); if(!item) return;
     const btn = document.getElementById('btn-repeat-' + item.id.replace(/[^a-zA-Z0-9]/g, ""));
     if(btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Moving...'; btn.disabled = true; }
 
     let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-    // Extract only demographics and constants, remove the old results/dates
-    let cleanDetails = { 
-        age: d.age || d.Age || "", sex: d.sex || d.Sex || "", facility: d.facility || d.Facility || "", 
-        address: d.address || d.Address || "", contact: d.contact || d.Contact || "", bday: d.bday || d.Bday || "", 
-        "History of Treatment": d["History of Treatment"] || "", "Source of Request": d["Source of Request"] || "" 
-    };
-    
+    let cleanDetails = { age: d.age || d.Age || "", sex: d.sex || d.Sex || "", facility: d.facility || d.Facility || "", address: d.address || d.Address || "", contact: d.contact || d.Contact || "", bday: d.bday || d.Bday || "", "History of Treatment": d["History of Treatment"] || "", "Source of Request": d["Source of Request"] || "", "X-Ray Result": d["X-Ray Result"] || "" };
     const tCode = getTestCodeFromName(item.test);
     const testEntry = { name: item.test, code: tCode, details: cleanDetails };
     const formData = { patientId: item.patientId, fullName: item.name, bday: cleanDetails.bday, sex: cleanDetails.sex, age: cleanDetails.age, address: cleanDetails.address, contact: cleanDetails.contact, email: "", facility: cleanDetails.facility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify([testEntry]) };
 
-    try { 
-        const res = await apiPost("submitForm", { formObject: formData }); 
-        if (res.status === "success") { 
-            alert("Moved to Pending! Fresh Lab Test Number assigned.");
-            loadPendingData(); 
-        } else { 
-            alert("Error: " + res.message); 
-            if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; }
-        } 
-    } catch (err) { alert("Error moving to pending."); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
+    try { const res = await apiPost("submitForm", { formObject: formData }); if (res.status === "success") { await loadPendingData(); } else { alert("Error: " + res.message); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } } } catch (err) { alert("Error moving."); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
 }
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
@@ -520,21 +603,25 @@ async function saveResult(id, safeId, btn, doPrint) {
   const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
   let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
   let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+  
+  let tCodePrint = getTestCodeFromName(item.test);
+  
+  // AUTO X-RAY TO REMARKS LOGIC
+  if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
+      if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
+  }
+  
   let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+  btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
-  btn.disabled = true; btn.innerHTML = 'Saving...';
   try {
       const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
       if (res.status === "success") {
-          btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
-          let tCodePrint = getTestCodeFromName(item.test);
-          
           if(doPrint) { 
               const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}] });
               if(printRes.status === "success" && printRes.data) { printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; }
           }
-          const pIndex = window.pendingData.findIndex(p => p.id === id);
-          if (pIndex > -1) { const moved = window.pendingData[pIndex]; moved.isSessionCompleted = true; moved.dateResult = TODAY_STR; window.completedData.unshift(moved); window.pendingData.splice(pIndex, 1); renderLists(); }
+          await loadPendingData(); 
       }
   } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
 }
@@ -565,7 +652,7 @@ function getResultTemplate(code, safeId, item) {
  const rem = `<div class="field-group full-width" style="margin-top:10px;"><label class="field-label">Remarks</label><input type="text" class="res-${safeId} form-input" data-key="Remarks"></div>`;
  
  switch (code) {
-     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
+     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Test Type', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
      case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
      case 'DSSM': return `<div class="form-grid grid-2">${[1,2].map(n=>`<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
      case 'CHEM': return `<div class="form-grid grid-3">${input('FBS','FBS',['FBS','GLUCOSE'])}${input('RBS','RBS',['RBS'])}${input('HbA1c','HbA1c',['HBA1C'])}${input('Cholesterol','Chol',['CHOLESTEROL','LIPID'])}${input('Triglycerides','Trig',['TRIGLYCERIDES','LIPID'])}${input('HDL','HDL',['HDL','LIPID'])}${input('LDL','LDL',['LDL','LIPID'])}${input('BUN','BUN',['BUN'])}${input('Creatinine','Crea',['CREA'])}${input('Uric Acid','Uric',['URIC'])}${input('SGOT','SGOT',['SGOT','AST'])}${input('SGPT','SGPT',['SGPT','ALT'])}</div>${rem}`;
@@ -699,7 +786,7 @@ async function batchPrint() {
 }
 
 // ==========================================
-// 9. SETTINGS & REPORTS (Restored)
+// 9. SETTINGS & REPORTS
 // ==========================================
 async function loadSettingsData() { 
     apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
