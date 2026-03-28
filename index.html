@@ -566,8 +566,9 @@
         </div>
     </div>
 
-    <div id="quick-search-modal" class="modal-backdrop" style="display:none;">
-        <div class="auth-card" style="text-align: left; overflow:hidden;">
+      
+   <div id="quick-search-modal" class="modal-backdrop" style="display:none;">
+        <div class="auth-card" style="text-align: left; overflow: visible; min-height: 250px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
                 <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central Search</h2>
                 <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
@@ -575,8 +576,9 @@
             
             <div style="position: relative; margin-bottom: 15px;">
                 <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search masterlist..." onkeyup="runQuickSearch(this.value)">
-                <div id="quick-search-results" class="search-results-container"></div>
+                <div id="quick-search-results" class="search-results-container" style="position: absolute; width: 100%; z-index: 9999; max-height: 300px; overflow-y: auto; box-shadow: var(--shadow-float);"></div>
             </div>
+
             
             <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1; padding-right: 5px;">
                 <div style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
