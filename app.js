@@ -1,7 +1,7 @@
 // ==========================================
 // 1. API CONNECTION & GLOBALS
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz94em62kB7owuPNzqat_aJjganQzwiSZRS2Cwlp1_-_-HmBk_1c7_MdAS-UUTxhA6UsQ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysZgd3VDOfy2CAHiSK1JrrmW7D8fPV8Dmpix9PNdPNVxyZYyGcMXsbr1M81R9oNvmehQ/exec"; // <-- Ibalik mo yung URL mo rito
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -19,6 +19,9 @@ const TODAY_STR = new Date().toLocaleDateString();
 async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); try { const res = await fetch(url); return await res.json(); } catch (e) { throw e; } }
 async function apiPost(action, payload) { try { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); } catch (e) { throw e; } }
 
+// ==========================================
+// 2. SYSTEM STARTUP
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     try {
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
@@ -61,6 +64,9 @@ function applyLimitedMode(isLimited) {
 function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
 
+// ==========================================
+// 3. LOGIN TABS & PATIENT PORTAL
+// ==========================================
 function switchLoginTab(type) {
     if(type === 'staff') {
         document.getElementById('staff-login-form').style.display = 'block'; document.getElementById('patient-login-form').style.display = 'none';
@@ -102,6 +108,19 @@ function showPatientInfo() { document.getElementById('login-card').style.display
 function backToLoginFromPatient() { document.getElementById('patient-resend-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
 async function resendPatientPassword() { const email = document.getElementById('resend_pat_email').value.trim(); if(!email) return alert("Enter email."); const btn = document.querySelector('#patient-resend-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; try { await apiPost("resendPatientPassword", { email: email }); alert("If registered, password sent."); backToLoginFromPatient(); } catch(e) { alert("If registered, password sent."); backToLoginFromPatient(); } finally { btn.innerHTML = oldText; btn.disabled = false; } }
 
+// LOGOUT FIX
+function logoutUser() { 
+    const modal = document.getElementById('logout-modal');
+    if (modal) modal.style.display = 'flex'; 
+    const sidebar = document.getElementById('main-sidebar');
+    if (sidebar && sidebar.classList.contains('show')) toggleSidebar();
+}
+function closeLogoutModal() { const modal = document.getElementById('logout-modal'); if(modal) modal.style.display = 'none'; }
+function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
+
+// ==========================================
+// 4. NAVIGATION & PERMISSIONS
+// ==========================================
 function showPage(targetId) {
     const elId = 'page-' + targetId; const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     if (role === 'VIEWER' && targetId === 'settings') return;
@@ -155,6 +174,7 @@ function applyPermissions() {
         document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
     }
 }
+
 // ==========================================
 // 5. TEST FORMS & RESULT LOGIC
 // ==========================================
@@ -317,12 +337,12 @@ async function finalSubmit() {
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
           clearForm(); if (currentUser.role !== 'ENCODER') await loadPendingData(); 
           
-          const savedEmail = res.data.email;
-          const savedPass = res.data.generatedPassword;
+          const savedEmail = res.data ? res.data.email : pEmail;
+          const savedPass = res.data ? res.data.generatedPassword : generatedPassword;
           if(savedEmail && savedPass) alert(`Patient Portal Credentials:\nEmail: ${savedEmail}\nPassword: ${savedPass}\n\n(An email has been sent, or they can use these to log in.)`);
           
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000); 
-      } else { throw new Error(res.message); }
+      } else { throw new Error("Server rejected the save."); }
   } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
@@ -359,6 +379,7 @@ async function submitPendingUpdate() {
 
     try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
+
 // ==========================================
 // 6. PENDING CARDS & RESULTS LOGIC
 // ==========================================
@@ -387,10 +408,10 @@ function renderLists() {
     const currentVal = filterSelect.value;
     let dropHtml = '<option value="ALL">All Sections</option>';
     uniqueTests.forEach(t => { let tCode = getTestCodeFromName(t); if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; } });
-    filterSelect.innerHTML = dropHtml; filterSelect.value = currentVal || 'ALL';
+    if(filterSelect) { filterSelect.innerHTML = dropHtml; filterSelect.value = currentVal || 'ALL'; }
 
     const filterFn = (item, isCompleted) => {
-        let t = (item.test || "").toUpperCase(); let filterVal = filterSelect.value; let tCode = getTestCodeFromName(t);
+        let t = (item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t);
         if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
@@ -409,7 +430,8 @@ function renderLists() {
         let rpt = d.Repeat || d["Test Type"] || "";
         if (String(rpt).toUpperCase() === 'INITIAL') {
             let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && p.test.toUpperCase() === item.test.toUpperCase());
-            if(!isAlreadyPending) { let tCode = getTestCodeFromName(item.test); if(!isLimited || allowedTests.includes(tCode)) { let typeMatch = (filterSelect.value === "ALL") || item.test.toUpperCase().includes(filterSelect.value); if(typeMatch) fRepeat.push(item); } }
+            let typeMatch = !filterSelect || filterSelect.value === "ALL" || item.test.toUpperCase().includes(filterSelect.value);
+            if(!isAlreadyPending && typeMatch) fRepeat.push(item); 
         }
     });
 
@@ -435,7 +457,7 @@ function renderLists() {
             const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
             return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
         }).join('');
-        document.getElementById('count-repeat').innerText = `(${fRepeat.length})`;
+        const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
     }
 
     cList.innerHTML = fComp.map(item => {
@@ -444,7 +466,7 @@ function renderLists() {
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem;">INITIAL</span>`; } catch(e){}
         return `<div class="completed-card" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" title="Click to print"><div style="overflow:hidden;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta">${item.test}</div></div><i class="ph ph-printer" style="color: var(--success); font-size: 1.2rem;"></i></div>`;
     }).join('');
-    document.getElementById('count-pending').innerText = `(${fPending.length})`;
+    const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
 
 async function moveToPendingRepeat(idStr) {
@@ -533,12 +555,9 @@ function getResultTemplate(code, safeId, item) {
 }
 
 // ==========================================
-// 8. REGISTRY MODALS, FIT & FILTERS
+// 8. REGISTRY MODALS & PRINTING
 // ==========================================
-function showRegistrySelectionModal() { 
-    const modal = document.getElementById('registry-selection-modal');
-    if(modal) modal.style.display = 'flex'; 
-}
+function showRegistrySelectionModal() { const modal = document.getElementById('registry-selection-modal'); if(modal) modal.style.display = 'flex'; }
 
 async function openRegistryModal(type) {
     document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
@@ -563,7 +582,7 @@ async function openRegistryModal(type) {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
-                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    let isResCol = c.original.toLowerCase().includes('result code') || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
                     if (isResCol) {
                         let style = "res-gray"; let vU = String(val).toUpperCase();
                         if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
@@ -594,7 +613,7 @@ function filterRegistryTable() {
 
 function printRegistryLogbook() {
     const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
-    if (checkedBoxes.length === 0) { alert("Please select at least one record to print."); return; }
+    if (checkedBoxes.length === 0) { alert("Select at least one record to print."); return; }
 
     let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
 
@@ -673,22 +692,3 @@ function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
 
-// ==========================================
-// FIX FOR LOGOUT & REGISTRY MODAL
-// ==========================================
-function logoutUser() { 
-    const modal = document.getElementById('logout-modal');
-    if (modal) modal.style.display = 'flex'; 
-    const sidebar = document.getElementById('main-sidebar');
-    if (sidebar && sidebar.classList.contains('show')) toggleSidebar();
-}
-
-function closeLogoutModal() { 
-    const modal = document.getElementById('logout-modal');
-    if(modal) modal.style.display = 'none'; 
-}
-
-function confirmLogout() { 
-    localStorage.removeItem('labUser'); 
-    window.location.reload(); 
-}
