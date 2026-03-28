@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
+        .switch-row:last-child { border-bottom: none; }
+        .pass-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
+        .pass-wrapper input { width: 100%; margin-bottom: 0 !important; padding-right: 35px; }
+        .pass-wrapper i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem; }
+    </style>
 </head>
 <body>
 
@@ -14,7 +21,7 @@
         <div class="auth-card" style="width: 320px; padding: 25px; text-align: center; animation: popIn 0.3s ease;">
             <i id="custom-alert-icon" class="ph ph-info" style="font-size: 3rem; color: var(--pri); margin-bottom: 15px;"></i>
             <h3 id="custom-alert-title" style="margin-bottom: 10px; color: var(--text-main);">Notice</h3>
-            <p id="custom-alert-msg" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;"></p>
+            <p id="custom-alert-msg" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; white-space: pre-wrap;"></p>
             <button class="btn btn-primary full-width" onclick="closeCustomAlert()">Okay</button>
         </div>
     </div>
@@ -399,19 +406,22 @@
                     <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-gear" style="color:var(--pri);"></i> System Preferences</h3>
                     </div>
-                    <div style="padding: 16px; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle);">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <strong style="font-size:0.85rem; color:var(--text-main);">Limited Test Menu Mode</strong>
-                                <div style="font-size:0.7rem; color:var(--text-muted);">Only show GXP, DSSM, Gram Stain, Dengue, Serology</div>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="toggle-limited-mode" onchange="toggleLimitedMode()">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
+                    <div id="test-toggles-container" style="padding: 16px; background: var(--bg-subtle);">
+                        <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">ENABLE/DISABLE TEST MENU</div>
+                        <label class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="GXP" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="DSSM" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Viral Load</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="GXVL" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Serology</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="SERO" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Hematology</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="HEMA" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Blood Chemistry</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="CHEM" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Urinalysis</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="UA" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Fecalysis</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="FA" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="DENGUE" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Gram Stain</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="GRAM" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
                     </div>
-                    
+                </div>
+
+                <div class="workspace-col" style="padding:0; flex-grow:2;">
                     <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
                         <div style="display:flex; gap:8px;">
@@ -423,8 +433,12 @@
                     <div id="user-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
                         <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD NEW USER</h4>
                         <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
+                            <input type="text" id="u_fullname" class="form-input" placeholder="Full Name">
                             <input type="text" id="u_user" class="form-input" placeholder="Username">
-                            <input type="password" id="u_pass" class="form-input" placeholder="Password">
+                            <div class="pass-wrapper">
+                                <input type="password" id="u_pass" class="form-input" placeholder="Password">
+                                <i class="ph ph-eye" onclick="togglePass('u_pass', this)"></i>
+                            </div>
                             <select id="u_role" class="form-select">
                                 <option value="" disabled selected>Select Role</option>
                                 <option value="ADMIN">ADMIN (Full Access)</option>
@@ -435,23 +449,6 @@
                             <select id="u_facility" class="form-select"><option value="" disabled selected>Loading facilities...</option></select>
                         </div>
                         <button class="btn btn-primary full-width" onclick="saveUser()">CREATE USER</button>
-                    </div>
-                </div>
-
-                <div class="workspace-col" style="padding:0;">
-                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
-                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-buildings" style="color:var(--sec);"></i> Facilities</h3>
-                        <button onclick="toggleForm('fac-form')" class="btn-icon" style="color: var(--sec);"><i class="ph ph-plus-circle"></i></button>
-                    </div>
-                    <div id="list-facilities" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
-                    <div id="fac-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
-                        <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD FACILITY</h4>
-                        <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
-                            <input type="text" id="f_name" class="form-input" placeholder="Facility Name">
-                            <input type="text" id="f_address" class="form-input" placeholder="Address">
-                            <div style="display:flex; gap:8px;"><input type="text" id="f_person" class="form-input" placeholder="Contact Person"><input type="text" id="f_number" class="form-input" placeholder="Contact #"></div>
-                        </div>
-                        <button class="btn btn-primary full-width" onclick="handleSaveFacility()">ADD FACILITY</button>
                     </div>
                 </div>
 
@@ -493,14 +490,20 @@
             
             <div id="staff-login-form">
                 <input type="text" id="login_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
-                <input type="password" id="login_pass" class="form-input" placeholder="Password" style="margin-bottom:20px;">
+                <div class="pass-wrapper" style="margin-bottom: 20px;">
+                    <input type="password" id="login_pass" class="form-input" placeholder="Password">
+                    <i class="ph ph-eye" onclick="togglePass('login_pass', this)"></i>
+                </div>
                 <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">Log In</button>
             </div>
 
             <div id="patient-login-form" style="display:none;">
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.3;">Enter your registered email and the auto-generated password sent to you.</p>
                 <input type="email" id="pat_user" class="form-input" placeholder="Registered Email Address" style="margin-bottom:12px;" onblur="this.value = this.value.toLowerCase()">
-                <input type="password" id="pat_pass" class="form-input" placeholder="Password" style="margin-bottom:12px;">
+                <div class="pass-wrapper">
+                    <input type="password" id="pat_pass" class="form-input" placeholder="Password">
+                    <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
+                </div>
                 <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">View My Results</button>
                 
                 <div style="margin-top:15px; font-size:0.75rem; display:flex; justify-content:space-between; border-top: 1px dashed var(--border-color); padding-top: 15px;">
@@ -529,9 +532,7 @@
                 <div style="margin-top:10px; font-weight:bold; color:#0084FF; font-size:1rem;"><i class="ph ph-messenger-logo"></i> Angono MHO Laboratory</div>
             </div>
             <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
-        </div></div>
-
-
+        </div>
 
     <div id="app-loader" class="modal-backdrop" style="flex-direction:column; background:var(--bg-body);">
         <i class="ph ph-circle-notch ph-spin" style="font-size: 3rem; color: var(--pri);"></i>
@@ -566,66 +567,52 @@
         </div>
     </div>
 
-      
-   <div id="quick-search-modal" class="modal-backdrop" style="display:none;">
-        <div class="auth-card" style="text-align: left; overflow: visible; min-height: 250px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
-                <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central Search</h2>
-                <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
-            </div>
-            
-            <div style="position: relative; margin-bottom: 15px;">
-                <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search masterlist..." onkeyup="runQuickSearch(this.value)">
-                <div id="quick-search-results" class="search-results-container" style="position: absolute; width: 100%; z-index: 9999; max-height: 300px; overflow-y: auto; box-shadow: var(--shadow-float);"></div>
-            </div>
-
-            
-            <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1; padding-right: 5px;">
-                <div style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <h3 id="qs-name" style="color:var(--pri); font-size:1.1rem; margin:0;"></h3>
-                        <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
-                    </div>
-                    <div id="qs-meta" style="font-size:0.8rem; color:var(--text-main); font-weight:500; display:flex; flex-wrap:wrap; gap:10px;"></div>
-                    
-                    <div id="qs-edit-form" style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                        <div class="form-grid grid-2">
-                            <div class="field-group full-width"><label class="field-label">Name</label><input type="text" id="qs_edit_name" class="form-input"></div>
-                            <div class="field-group"><label class="field-label">Age</label><input type="text" id="qs_edit_age" class="form-input"></div>
-                            <div class="field-group"><label class="field-label">Facility</label><input type="text" id="qs_edit_fac" class="form-input"></div>
-                        </div>
-                        <button class="btn btn-primary text-xs" onclick="savePatientDemographicsQS()">Save Changes</button>
-                    </div>
-                </div>
-
-                <h4 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i class="ph ph-clock-counter-clockwise"></i> Complete Laboratory History</h4>
-                <div id="qs-history-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="registry-selection-modal" class="modal-backdrop" style="display:none;">
-        <div class="auth-card" style="width: 500px; padding: 25px; text-align: left;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-size: 1.1rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
-                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                <div class="test-btn-vert" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
-            </div>
-        </div>
-    </div>
-
     <script src="app.js"></script>
+    <script>
+        function togglePass(id, icon) {
+            const el = document.getElementById(id);
+            if(el.type === 'password') { el.type = 'text'; icon.classList.replace('ph-eye', 'ph-eye-slash'); }
+            else { el.type = 'password'; icon.classList.replace('ph-eye-slash', 'ph-eye'); }
+        }
+        
+        // Load initial toggle states on load
+        window.addEventListener('load', () => {
+            let prefs = JSON.parse(localStorage.getItem('mho-test-prefs') || "{}");
+            document.querySelectorAll('.test-toggle').forEach(chk => {
+                let code = chk.getAttribute('data-test');
+                if(prefs[code] !== undefined) chk.checked = prefs[code];
+                else chk.checked = true; // default to true
+            });
+            applyTestToggles();
+        });
+
+        function saveTestToggles() {
+            let prefs = {};
+            document.querySelectorAll('.test-toggle').forEach(chk => { prefs[chk.getAttribute('data-test')] = chk.checked; });
+            localStorage.setItem('mho-test-prefs', JSON.stringify(prefs));
+            applyTestToggles();
+            showAppAlert("Settings Saved", "Test menu preferences updated.", "success");
+        }
+
+        function applyTestToggles() {
+            let prefs = JSON.parse(localStorage.getItem('mho-test-prefs') || "{}");
+            const mapping = { "GXP": { entry: "btn-mtb", reg: "GXP" }, "DSSM": { entry: "btn-dssm", reg: "DSSM" }, "GXVL": { entry: "btn-viral", reg: "GXVL" }, "SERO": { entry: "btn-sero", reg: "SERO" }, "HEMA": { entry: "btn-hema", reg: "HEMA" }, "CHEM": { entry: "btn-chem", reg: "CHEM" }, "UA": { entry: "btn-uria", reg: "UA" }, "FA": { entry: "btn-feca", reg: "FA" }, "DENGUE": { entry: "btn-dengue", reg: "DENGUE" }, "GRAM": { entry: "btn-gram", reg: "GRAM" } };
+            
+            Object.keys(mapping).forEach(key => {
+                let isEnabled = prefs[key] !== false; 
+                let m = mapping[key];
+                let entryBtn = document.getElementById(m.entry);
+                if(entryBtn) { if(isEnabled) entryBtn.classList.remove('disabled-test'); else entryBtn.classList.add('disabled-test'); }
+                
+                document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => {
+                    let onclickAttr = card.getAttribute('onclick') || "";
+                    if(onclickAttr.includes(`'${m.reg}'`) || onclickAttr.includes(`"${m.reg}"`)) {
+                        if(isEnabled) card.classList.remove('disabled-test'); else card.classList.add('disabled-test');
+                    }
+                });
+            });
+        }
+    </script>
 </body>
 </html>
 
