@@ -101,9 +101,6 @@ function showPatientResend() { document.getElementById('login-card').style.displ
 function showPatientInfo() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'block'; }
 function backToLoginFromPatient() { document.getElementById('patient-resend-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
 async function resendPatientPassword() { const email = document.getElementById('resend_pat_email').value.trim(); if(!email) return alert("Enter email."); const btn = document.querySelector('#patient-resend-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; try { await apiPost("resendPatientPassword", { email: email }); alert("If registered, password sent."); backToLoginFromPatient(); } catch(e) { alert("If registered, password sent."); backToLoginFromPatient(); } finally { btn.innerHTML = oldText; btn.disabled = false; } }
-function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; toggleSidebar(); }
-function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
-function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
 
 function showPage(targetId) {
     const elId = 'page-' + targetId; const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
@@ -538,7 +535,10 @@ function getResultTemplate(code, safeId, item) {
 // ==========================================
 // 8. REGISTRY MODALS, FIT & FILTERS
 // ==========================================
-function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
+function showRegistrySelectionModal() { 
+    const modal = document.getElementById('registry-selection-modal');
+    if(modal) modal.style.display = 'flex'; 
+}
 
 async function openRegistryModal(type) {
     document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
@@ -673,3 +673,22 @@ function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
 
+// ==========================================
+// FIX FOR LOGOUT & REGISTRY MODAL
+// ==========================================
+function logoutUser() { 
+    const modal = document.getElementById('logout-modal');
+    if (modal) modal.style.display = 'flex'; 
+    const sidebar = document.getElementById('main-sidebar');
+    if (sidebar && sidebar.classList.contains('show')) toggleSidebar();
+}
+
+function closeLogoutModal() { 
+    const modal = document.getElementById('logout-modal');
+    if(modal) modal.style.display = 'none'; 
+}
+
+function confirmLogout() { 
+    localStorage.removeItem('labUser'); 
+    window.location.reload(); 
+}
