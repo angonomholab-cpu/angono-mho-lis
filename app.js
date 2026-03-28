@@ -70,6 +70,17 @@ function applyLimitedMode(isLimited) {
 }
 
 function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
+function switchLoginTab(type) {
+    if(type === 'staff') {
+        document.getElementById('staff-login-form').style.display = 'block'; document.getElementById('patient-login-form').style.display = 'none';
+        document.getElementById('tab-staff-login').style.color = 'var(--pri)'; document.getElementById('tab-staff-login').style.borderBottom = '2px solid var(--pri)';
+        document.getElementById('tab-patient-login').style.color = 'var(--text-muted)'; document.getElementById('tab-patient-login').style.borderBottom = 'none';
+    } else {
+        document.getElementById('staff-login-form').style.display = 'none'; document.getElementById('patient-login-form').style.display = 'block';
+        document.getElementById('tab-patient-login').style.color = 'var(--pri)'; document.getElementById('tab-patient-login').style.borderBottom = '2px solid var(--pri)';
+        document.getElementById('tab-staff-login').style.color = 'var(--text-muted)'; document.getElementById('tab-staff-login').style.borderBottom = 'none';
+    }
+}
 
 async function attemptLogin() {
     const u = document.getElementById('login_user').value.trim(); const p = document.getElementById('login_pass').value.trim();
@@ -82,6 +93,24 @@ async function attemptLogin() {
         else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
     } catch (e) { alert("Server Error. Check connection."); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
+
+async function attemptPatientLogin() {
+    const e = document.getElementById('pat_user').value.trim().toLowerCase(); const p = document.getElementById('pat_pass').value.trim();
+    const btn = document.getElementById('btn-pat-login'); const err = document.getElementById('login-error');
+    if (!e || !p) { err.style.display = 'block'; err.innerText = "Enter email and password."; return; }
+    btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
+    try {
+        const res = await apiGet("patientLogin", { email: e, password: p });
+        if (res.status === "SUCCESS") { 
+            currentUser = { username: res.patientId, facility: "PATIENT", role: "PATIENT", fullName: res.name }; 
+            localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); 
+        } 
+        else { err.style.display = 'block'; err.innerHTML = "Invalid email or password."; }
+    } catch (e) { err.style.display = 'block'; err.innerHTML = "Server Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
+}
+
+
+
 function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; toggleSidebar(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
