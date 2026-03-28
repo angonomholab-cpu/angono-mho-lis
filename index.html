@@ -219,14 +219,14 @@
         <div id="page-reports" class="page-area">
             <div class="report-card" style="padding: 0; display:flex; flex-direction:column; height: 100%;">
                 <div class="rep-header" style="background: linear-gradient(to right, var(--pri-light), var(--bg-surface)); padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                    <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" class="logo-side" style="width: 70px; height: 70px; object-fit: contain;">
+                    <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" class="logo-side" style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
                     <div class="rep-header-text" style="text-align: center; flex-grow: 1;">
-                        <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000" style="width: 40px; height: 40px; margin-bottom: 5px;">
+                        <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000" style="width: 50px; height: 50px; background: white; border-radius: 50%; padding: 4px; margin-bottom: 5px;">
                         <h3 style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Republic of the Philippines<br>Province of Rizal<br>Municipality of Angono</h3>
                         <h1 style="font-size: 1.4rem; color: var(--pri); margin: 4px 0;">MUNICIPAL HEALTH OFFICE</h1>
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p>
                     </div>
-                    <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" class="logo-side" style="width: 70px; height: 70px; object-fit: contain;">
+                    <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" class="logo-side" style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
                 </div>
 
                 <div class="controls-area" style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
@@ -245,7 +245,7 @@
                         </select>
                         <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
                         <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i class="ph ph-lightning"></i> GENERATE</button>
-                        <button onclick="window.print()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
+                        <button onclick="printCurrentReport()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
                     </div>
 
                     <div class="chip-group" style="margin-top: 16px;">
@@ -359,9 +359,15 @@
                                 <tbody id="tb-res-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
                             </table>
                         </div>
-                        <div style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:400px; margin:0 auto; border-radius:var(--radius-lg);">
-                            <span class="text-muted font-bold text-sm">TOTAL CARTRIDGES USED</span><br>
-                            <span id="tb-cart" style="color:var(--pri); font-size:2.5rem; font-weight:800;">0</span>
+                        <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap;">
+                            <div style="flex:1; text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:300px; border-radius:var(--radius-lg);">
+                                <span class="text-muted font-bold text-sm">TOTAL CARTRIDGES USED</span><br>
+                                <span id="tb-cart" style="color:var(--pri); font-size:2.5rem; font-weight:800;">0</span>
+                            </div>
+                            <div style="flex:1; text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:300px; border-radius:var(--radius-lg);">
+                                <span class="text-muted font-bold text-sm">TOTAL DSSM EXAMINED</span><br>
+                                <span id="tb-dssm-count" style="color:#BA68C8; font-size:2.5rem; font-weight:800;">0</span>
+                            </div>
                         </div>
                     </div>
 
@@ -426,30 +432,9 @@
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
                         <div style="display:flex; gap:8px;">
                             <button onclick="loadSettingsData()" class="btn-icon"><i class="ph ph-arrows-clockwise"></i></button>
-                            <button onclick="toggleForm('user-form')" class="btn-icon" style="color: var(--pri);"><i class="ph ph-plus-circle"></i></button>
                         </div>
                     </div>
                     <div id="list-users" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
-                    <div id="user-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
-                        <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD NEW USER</h4>
-                        <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
-                            <input type="text" id="u_fullname" class="form-input" placeholder="Full Name">
-                            <input type="text" id="u_user" class="form-input" placeholder="Username">
-                            <div class="pass-wrapper">
-                                <input type="password" id="u_pass" class="form-input" placeholder="Password">
-                                <i class="ph ph-eye" onclick="togglePass('u_pass', this)"></i>
-                            </div>
-                            <select id="u_role" class="form-select">
-                                <option value="" disabled selected>Select Role</option>
-                                <option value="ADMIN">ADMIN (Full Access)</option>
-                                <option value="STAFF">LAB STAFF (Verify/Release)</option>
-                                <option value="ENCODER">ENCODER (Add Only)</option>
-                                <option value="VIEWER">VIEWER (Read Only)</option>
-                            </select>
-                            <select id="u_facility" class="form-select"><option value="" disabled selected>Loading facilities...</option></select>
-                        </div>
-                        <button class="btn btn-primary full-width" onclick="saveUser()">CREATE USER</button>
-                    </div>
                 </div>
 
                 <div class="workspace-col" style="padding:0;">
@@ -478,7 +463,6 @@
                 </div>
             </div>
         </div>
-
     </main>
 
     <div id="login-overlay" class="modal-backdrop">
@@ -495,6 +479,33 @@
                     <i class="ph ph-eye" onclick="togglePass('login_pass', this)"></i>
                 </div>
                 <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">Log In</button>
+                <div style="margin-top:15px; font-size:0.75rem; text-align:center;">
+                    <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showStaffRegister()"><i class="ph ph-user-plus"></i> Create new staff account</span>
+                </div>
+            </div>
+
+            <div id="staff-register-form" style="display:none;">
+                <h3 style="margin-bottom:15px; color:var(--pri);"><i class="ph ph-user-plus"></i> Register Staff</h3>
+                <input type="text" id="reg_fullname" class="form-input" placeholder="Full Name" style="margin-bottom:12px;">
+                <input type="text" id="reg_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
+                <div class="pass-wrapper" style="margin-bottom: 12px;">
+                    <input type="password" id="reg_pass" class="form-input" placeholder="Password">
+                    <i class="ph ph-eye" onclick="togglePass('reg_pass', this)"></i>
+                </div>
+                <select id="reg_role" class="form-select" style="margin-bottom:12px;">
+                    <option value="" disabled selected>Select Role</option>
+                    <option value="ADMIN">Admin (Full Access)</option>
+                    <option value="STAFF">Lab Staff (Verify/Release)</option>
+                    <option value="ENCODER">Encoder (Add Only)</option>
+                    <option value="VIEWER">Viewer (Read Only)</option>
+                </select>
+                <select id="reg_facility" class="form-select" style="margin-bottom:20px;">
+                    <option value="" disabled selected>Loading facilities...</option>
+                </select>
+                <button id="btn-register" class="btn btn-primary full-width" onclick="attemptRegister()">Register</button>
+                <div style="margin-top:15px; font-size:0.75rem; text-align:center;">
+                    <span style="color:var(--text-muted); cursor:pointer;" onclick="hideStaffRegister()"><i class="ph ph-arrow-left"></i> Back to Login</span>
+                </div>
             </div>
 
             <div id="patient-login-form" style="display:none;">
@@ -551,23 +562,7 @@
         </div>
     </div>
 
-    <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
-        <div class="auth-card" style="width:350px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="margin:0;">Manage User</h3>
-                <button onclick="closeEditModal()" class="btn-icon"><i class="ph ph-x"></i></button>
-            </div>
-            <div id="edit-username-display" style="font-weight:bold; margin-bottom:15px; color:var(--pri);"></div>
-            <select id="edit-role-select" class="form-select" style="margin-bottom:15px;">
-                <option value="ADMIN">Admin</option><option value="STAFF">Staff</option><option value="ENCODER">Encoder</option><option value="VIEWER">Viewer</option>
-            </select>
-            <select id="edit-status-select" class="form-select" style="margin-bottom:20px;">
-                <option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="REJECTED">Rejected</option>
-            </select>
-            <button onclick="saveUserChanges()" id="btn-save-user" class="btn btn-primary full-width">Save Changes</button>
-        </div>
-    </div>
-   <div id="quick-search-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+    <div id="quick-search-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
         <div class="auth-card" style="text-align: left; overflow: visible; min-height: 250px; width: 400px; max-width: 95%;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
                 <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central Search</h2>
@@ -624,6 +619,22 @@
         </div>
     </div>
 
+    <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+        <div class="auth-card" style="width:350px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;">Manage User</h3>
+                <button onclick="closeEditModal()" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="edit-username-display" style="font-weight:bold; margin-bottom:15px; color:var(--pri);"></div>
+            <select id="edit-role-select" class="form-select" style="margin-bottom:15px;">
+                <option value="ADMIN">Admin</option><option value="STAFF">Staff</option><option value="ENCODER">Encoder</option><option value="VIEWER">Viewer</option>
+            </select>
+            <select id="edit-status-select" class="form-select" style="margin-bottom:20px;">
+                <option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="REJECTED">Rejected</option>
+            </select>
+            <button onclick="saveUserChanges()" id="btn-save-user" class="btn btn-primary full-width">Save Changes</button>
+        </div>
+    </div>
 
     <script src="app.js"></script>
     <script>
@@ -641,7 +652,23 @@
                 else chk.checked = true; 
             });
             applyTestToggles();
+            
+            // Populan natin ang facilities para sa Registration Form agad
+            loadFacilitiesForReg();
         });
+
+        async function loadFacilitiesForReg() {
+            try {
+                const res = await apiGet("getFacilityList");
+                const regDropdown = document.getElementById('reg_facility');
+                if (regDropdown && res.data) {
+                    res.data.forEach(f => {
+                        let o = document.createElement('option'); o.value = f.name; o.innerText = f.name;
+                        regDropdown.appendChild(o);
+                    });
+                }
+            } catch(e) {}
+        }
 
         function saveTestToggles() {
             let prefs = {};
