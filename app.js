@@ -1,7 +1,7 @@
 // ==========================================
 // 1. API CONNECTION & GLOBALS
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgAvLkwCw-Uz3NetiAiBM10EyCRyWmu6p8ftI1QM_BxcsPjJVDN9Bn8Sviu-mYcDXHmg/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw2jVzUYunLcNWkJ3KAbpQ3Y2oMIQ0PaTYMWUghIpr4FZ9ZKEFMpAqDtzTgMAn0lEzQDQ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -21,7 +21,7 @@ async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.
 async function apiPost(action, payload) { try { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); } catch (e) { throw e; } }
 
 // ==========================================
-// 2. SYSTEM STARTUP (WITH SAFETY NET)
+// 2. SYSTEM STARTUP & LIMITED MODE
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -54,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('labUser'); 
         const overlay = document.getElementById('login-overlay'); if(overlay) overlay.style.display = 'flex';
     } finally {
-        // GUARANTEED TO HIDE LOADER
         const loader = document.getElementById('app-loader'); if(loader) loader.style.display = 'none';
     }
 });
@@ -66,7 +65,6 @@ function applyLimitedMode(isLimited) {
     hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
     document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const onclickAttr = card.getAttribute('onclick'); if(onclickAttr) { let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r)); if(isLimited && isHidden) card.classList.add('disabled-test'); else card.classList.remove('disabled-test'); } });
 }
-
 function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
 
@@ -221,7 +219,6 @@ function confirmDetail(id) {
 function toggleSimple(id) { const btn = document.getElementById('btn-'+id); if(labOrders[id]) { delete labOrders[id]; btn.classList.remove('active'); } else { labOrders[id] = { details: {}, subTests: [] }; btn.classList.add('active'); } updateSummary(); }
 function updateSummary() { const container = document.getElementById('order-summary'); container.innerHTML = ''; Object.keys(labOrders).forEach(key => { let label = availableTests[key].testName; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) label += `: ${labOrders[key].subTests.join(', ')}`; container.innerHTML += `<div class="badge badge-warning" style="cursor:pointer;" onclick="removeOrder('${key}')">${label} &times;</div>`; }); }
 function removeOrder(key) { delete labOrders[key]; document.getElementById('btn-'+key).classList.remove('active'); updateSummary(); }
-
 function setSelectValue(id, val) { const el = document.getElementById(id); if (!el || !val) return; const searchVal = String(val).toUpperCase().trim(); for (let i = 0; i < el.options.length; i++) { if (el.options[i].value.toUpperCase().trim() === searchVal || el.options[i].text.toUpperCase().trim() === searchVal) { el.selectedIndex = i; return; } } }
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
@@ -243,8 +240,13 @@ async function runDirectSearch(q) {
                       isExistingPatient = true; document.getElementById('finalPatientId').value = p.id;
                       document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || "";
                       document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; 
+                      
+                      // AUTO POPULATE EMAIL
+                      if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
+                      
                       setSelectValue('p_sex', p.sex); setSelectValue('p_facility', p.facility || p.Facility);
                       if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } catch(e){} }
+                      
                       box.style.display = 'none'; 
                       document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
                       fetchHistory(p.id, 'history-section', 'history-list'); 
@@ -255,106 +257,6 @@ async function runDirectSearch(q) {
       } catch(e) {} finally { stat.style.display='none'; }
   }, 600);
 }
-// ==========================================
-// 6. HISTORY, QUICK SEARCH, & PATIENT PORTAL
-// ==========================================
-function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
-async function runQuickSearch(q) {
-  const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-  clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
-      try {
-          const res = await apiGet("searchPatients", { query: q });
-          if (res.status === "success" && res.data.length > 0) {
-              box.style.display = 'block'; box.innerHTML = '';
-              res.data.forEach(p => {
-                  const div = document.createElement('div'); div.className = "search-item";
-                  div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
-                  div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
-              });
-          } else { box.style.display = 'none'; }
-      } catch(e) {}
-  }, 500);
-}
-
-async function viewQuickProfile(p) {
-    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
-    fetchHistory(p.id, null, 'qs-history-list', true); 
-}
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
-function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
-
-// THIS IS THE MISSING FUNCTION FOR THE PATIENT PORTAL
-async function loadPatientResults() {
-    const histContainer = document.getElementById('my-portal-history');
-    if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
-    
-    const nameEl = document.getElementById('my-portal-name');
-    if(nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
-    const metaEl = document.getElementById('my-portal-meta');
-    if(metaEl) metaEl.innerText = `Patient ID: ${currentUser.username}`;
-    
-    // Load history using the fetchHistory UI builder
-    fetchHistory(currentUser.username, null, 'my-portal-history', false, true); 
-}
-
-async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPatientPortal = false) {
-    if(sectionId) document.getElementById(sectionId).style.display = 'block';
-    const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
-    try {
-        const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
-        if (res.status === 'success' && res.data.length > 0) {
-            list.innerHTML = res.data.map((h, i) => {
-                const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
-                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
-                if(h.fullData) {
-                    for (const [key, value] of Object.entries(h.fullData)) {
-                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
-                           summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
-                           editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
-                        }
-                    }
-                }
-                summaryHtml += '</div>'; editInputsHtml += '</div>';
-                
-                // Hide edit buttons if it's the patient portal
-                let editBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>` : '';
-                let printBtnHtml = (isQuickSearch || isPatientPortal) ? `<button class="btn-icon" onclick="printDirect(event, '${id}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>` : '';
-                let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
-                
-                return `
-                <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
-                        <div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
-                            ${printBtnHtml}
-                            <i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i>
-                        </div>
-                    </div>
-                    <div id="${uniqueId}" class="h-expanded-details">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
-                            <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>
-                            ${editBtnHtml}
-                        </div>
-                        <div id="summary-view-${uniqueId}">${summaryHtml}</div>
-                        <div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);">
-                            <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
-                            ${editInputsHtml}
-                            <div style="margin-top:10px; display:flex; gap:10px;">
-                                <button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>
-                                ${updateBtnHtml}
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
-        } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
-    } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
-}
-
-function toggleHistoryEdit(id) { const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id); if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; } }
-async function saveHistoryEdit(patientId, testType, uniqueId) { const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {}; inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value); try { const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates }); if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); } } catch(e) { alert("Error updating past record: " + e); } }
 
 function clearForm() {
     document.getElementById('regForm').reset(); labOrders = {}; document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary(); document.getElementById('finalPatientId').value = ""; isExistingPatient = false; 
@@ -375,6 +277,7 @@ async function finalSubmit() {
   let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
   Object.keys(labOrders).forEach(key => { const entry = { name: availableTests[key].testName, code: availableTests[key].testCode, details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } }; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); finalTestsArray.push(entry); });
 
+  // PAYLOAD WITH EMAIL AND PASSWORD
   const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
   try {
@@ -421,6 +324,104 @@ async function submitPendingUpdate() {
 
     try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
+
+// ==========================================
+// 6. HISTORY, QUICK SEARCH, & PATIENT PORTAL
+// ==========================================
+function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
+async function runQuickSearch(q) {
+  const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
+  clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
+      try {
+          const res = await apiGet("searchPatients", { query: q });
+          if (res.status === "success" && res.data.length > 0) {
+              box.style.display = 'block'; box.innerHTML = '';
+              res.data.forEach(p => {
+                  const div = document.createElement('div'); div.className = "search-item";
+                  div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+                  div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
+              });
+          } else { box.style.display = 'none'; }
+      } catch(e) {}
+  }, 500);
+}
+
+async function viewQuickProfile(p) {
+    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    fetchHistory(p.id, null, 'qs-history-list', true, false); 
+}
+
+function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
+function savePatientDemographicsQS() { alert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
+
+async function loadPatientResults() {
+    const histContainer = document.getElementById('my-portal-history');
+    if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
+    
+    const nameEl = document.getElementById('my-portal-name'); if(nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
+    const metaEl = document.getElementById('my-portal-meta'); if(metaEl) metaEl.innerText = `Patient ID: ${currentUser.username}`;
+    
+    fetchHistory(currentUser.username, null, 'my-portal-history', false, true); 
+}
+
+async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPatientPortal = false) {
+    if(sectionId) document.getElementById(sectionId).style.display = 'block';
+    const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
+    try {
+        const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
+        if (res.status === 'success' && res.data.length > 0) {
+            list.innerHTML = res.data.map((h, i) => {
+                const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
+                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
+                if(h.fullData) {
+                    for (const [key, value] of Object.entries(h.fullData)) {
+                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
+                           summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
+                           editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
+                        }
+                    }
+                }
+                summaryHtml += '</div>'; editInputsHtml += '</div>';
+                
+                let editBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>` : '';
+                let printBtnHtml = (isQuickSearch || isPatientPortal) ? `<button class="btn-icon" onclick="printDirect(event, '${id}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>` : '';
+                let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
+                
+                return `
+                <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
+                        <div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
+                            ${printBtnHtml}
+                            <i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i>
+                        </div>
+                    </div>
+                    <div id="${uniqueId}" class="h-expanded-details">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                            <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>
+                            ${editBtnHtml}
+                        </div>
+                        <div id="summary-view-${uniqueId}">${summaryHtml}</div>
+                        <div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);">
+                            <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
+                            ${editInputsHtml}
+                            <div style="margin-top:10px; display:flex; gap:10px;">
+                                <button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>
+                                ${updateBtnHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
+    } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
+}
+
+function toggleHistoryEdit(id) { const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id); if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; } }
+async function saveHistoryEdit(patientId, testType, uniqueId) { const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {}; inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value); try { const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates }); if (res.status === "success") { alert("Record updated successfully!"); toggleHistoryEdit(uniqueId); } } catch(e) { alert("Error updating past record: " + e); } }
+
 // ==========================================
 // 7. PENDING CARDS & RESULTS LOGIC
 // ==========================================
@@ -605,6 +606,9 @@ function getResultTemplate(code, safeId, item) {
  }
 }
 
+// ==========================================
+// 8. REGISTRY MODALS, FIT & FILTERS
+// ==========================================
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
 async function openRegistryModal(type) {
@@ -630,7 +634,7 @@ async function openRegistryModal(type) {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
-                    let isResCol = c.original.toLowerCase().includes('result code') || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
                     if (isResCol) {
                         let style = "res-gray"; let vU = String(val).toUpperCase();
                         if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
@@ -721,6 +725,9 @@ async function batchPrint() {
     runPrintJob(requests);
 }
 
+// ==========================================
+// 9. SETTINGS & REPORTS
+// ==========================================
 async function loadSettingsData() { 
     apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
     loadStaff(); loadFacilities(); 
