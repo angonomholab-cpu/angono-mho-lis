@@ -1,7 +1,7 @@
 // ==========================================
-// 1. API CONNECTION & GLOBALS
+// 1. API & CUSTOM MODALS
 // ==========================================
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyi-_47wK4wntFiZloAEM9FHsSUk9lyGVLLymt_oRjdTh-McYkyIXcMK3N71as3TV_-w/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgAvLkwCw-Uz3NetiAiBM10EyCRyWmu6p8ftI1QM_BxcsPjJVDN9Bn8Sviu-mYcDXHmg/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -13,12 +13,32 @@ let currentQuickPatient = null;
 let searchTimeout; 
 let editModeIds = new Set();
 window.CURRENT_TEST_TYPE = ""; 
-
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
 async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); try { const res = await fetch(url); return await res.json(); } catch (e) { throw e; } }
 async function apiPost(action, payload) { try { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); } catch (e) { throw e; } }
+
+function showCustomAlert(msg, type = 'info') {
+    document.getElementById('custom-alert-msg').innerHTML = msg;
+    const icon = document.getElementById('custom-alert-icon');
+    if(type === 'error') { icon.className = 'ph ph-warning-circle'; icon.style.color = 'var(--danger)'; }
+    else if(type === 'success') { icon.className = 'ph ph-check-circle'; icon.style.color = 'var(--success)'; }
+    else { icon.className = 'ph ph-info'; icon.style.color = 'var(--pri)'; }
+    document.getElementById('custom-alert').style.display = 'flex';
+}
+function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
+
+function showCustomConfirm(msg, callback) {
+    document.getElementById('custom-confirm-msg').innerHTML = msg;
+    document.getElementById('custom-confirm').style.display = 'flex';
+    window.pendingConfirmCallback = callback;
+}
+function closeCustomConfirm(isConfirmed) {
+    document.getElementById('custom-confirm').style.display = 'none';
+    if(isConfirmed && window.pendingConfirmCallback) window.pendingConfirmCallback();
+    window.pendingConfirmCallback = null;
+}
 
 // ==========================================
 // 2. SYSTEM STARTUP & LIMITED MODE
@@ -46,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
             
-            // PATIENT PORTAL ROUTING
             if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
             else showPage('workspace');
@@ -78,6 +97,9 @@ function switchLoginTab(type) {
         document.getElementById('tab-staff-login').style.color = 'var(--text-muted)'; document.getElementById('tab-staff-login').style.borderBottom = 'none';
     }
 }
+function showPatientResend() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-resend-card').style.display = 'block'; }
+function showPatientInfo() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'block'; }
+function backToLoginFromPatient() { document.getElementById('patient-resend-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
 
 async function attemptLogin() {
     const u = document.getElementById('login_user').value.trim(); const p = document.getElementById('login_pass').value.trim();
@@ -88,7 +110,7 @@ async function attemptLogin() {
         const res = await apiGet("loginUser", { username: u, password: p });
         if (res.status === "SUCCESS") { currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
         else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
-    } catch (e) { alert("Server Error. Check connection."); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
+    } catch (e) { showCustomAlert("Server Error. Check connection.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
 async function attemptPatientLogin() {
@@ -97,14 +119,19 @@ async function attemptPatientLogin() {
     if (!e || !p) { err.style.display = 'block'; err.innerText = "Enter email and password."; return; }
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     try {
-        // Assume API connects to your sheet to verify email & password
         const res = await apiGet("patientLogin", { email: e, password: p });
-        if (res.status === "SUCCESS") { 
-            currentUser = { username: res.patientId, facility: "PATIENT", role: "PATIENT", fullName: res.name }; 
-            localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); 
-        } 
+        if (res.status === "SUCCESS") { currentUser = { username: res.patientId, facility: "PATIENT", role: "PATIENT", fullName: res.name }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
         else { err.style.display = 'block'; err.innerHTML = "Invalid email or password."; }
     } catch (e) { err.style.display = 'block'; err.innerHTML = "Server Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
+}
+
+async function resendPatientPassword() {
+    const email = document.getElementById('resend_pat_email').value.trim();
+    if(!email) return showCustomAlert("Please enter your registered email address.", "error");
+    const btn = document.querySelector('#patient-resend-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true;
+    try { await apiPost("resendPatientPassword", { email: email }); showCustomAlert("If your email is registered, your password has been sent.", "success"); backToLoginFromPatient(); } 
+    catch(e) { showCustomAlert("If your email is registered, your password has been sent.", "success"); backToLoginFromPatient(); } 
+    finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
 function logoutUser() { document.getElementById('logout-modal').style.display = 'flex'; toggleSidebar(); }
@@ -124,9 +151,7 @@ function showPage(targetId) {
 
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
-    
     document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); if (item.id === 'nav-' + targetId) item.classList.add('active'); });
-    
     if (targetId === 'workspace' && (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER' || role === 'VIEWER')) loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
@@ -141,10 +166,7 @@ function applyPermissions() {
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none'; if(colRepeat) colRepeat.style.display = 'none';
     if(floatBtns) floatBtns.style.display = 'none';
 
-    if (role === 'PATIENT') {
-        const sidebarBtn = document.getElementById('menu-toggle-btn');
-        if(sidebarBtn) sidebarBtn.style.display = 'none'; // Hide sidebar from patients
-    }
+    if (role === 'PATIENT') { const sidebarBtn = document.getElementById('menu-toggle-btn'); if(sidebarBtn) sidebarBtn.style.display = 'none'; }
     else if (role === 'ADMIN' || role === 'STAFF') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
@@ -173,7 +195,7 @@ function applyPermissions() {
         document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
     }
 }
-// ==========================================
+ // ==========================================
 // 5. ADD PATIENT LOGIC
 // ==========================================
 const availableTests = {
@@ -198,12 +220,11 @@ function openTestDetails(id) {
 
 function toggleSub(btn) { btn.classList.toggle('active'); }
 function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'grid'; }
-
 function confirmDetail(id) {
    let details = {}; let subSelected = [];
    document.querySelectorAll('#test-details-area [data-key]').forEach(el => { details[el.getAttribute('data-key')] = el.value; });
    if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); }
-   else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { alert("Select at least one test."); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); }
+   else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { showCustomAlert("Select at least one test.", "error"); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); }
    labOrders[id] = { details: details, subTests: subSelected }; document.getElementById('btn-'+id).classList.add('active'); updateSummary(); cancelDetail(); 
 }
 
@@ -244,6 +265,84 @@ async function runDirectSearch(q) {
   }, 600);
 }
 
+function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
+async function runQuickSearch(q) {
+  const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
+  clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
+      try {
+          const res = await apiGet("searchPatients", { query: q });
+          if (res.status === "success" && res.data.length > 0) {
+              box.style.display = 'block'; box.innerHTML = '';
+              res.data.forEach(p => {
+                  const div = document.createElement('div'); div.className = "search-item";
+                  div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+                  div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
+              });
+          } else { box.style.display = 'none'; }
+      } catch(e) {}
+  }, 500);
+}
+
+async function viewQuickProfile(p) {
+    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    fetchHistory(p.id, null, 'qs-history-list', true); 
+}
+function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
+function savePatientDemographicsQS() { showCustomAlert("Demographics update triggered. (Requires backend updateMasterlist)."); document.getElementById('qs-edit-form').style.display = 'none'; }
+
+async function fetchHistory(id, sectionId, listId, isQuickSearch = false) {
+    if(sectionId) document.getElementById(sectionId).style.display = 'block';
+    const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
+    try {
+        const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
+        if (res.status === 'success' && res.data.length > 0) {
+            list.innerHTML = res.data.map((h, i) => {
+                const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
+                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
+                if(h.fullData) {
+                    for (const [key, value] of Object.entries(h.fullData)) {
+                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
+                           summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
+                           editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
+                        }
+                    }
+                }
+                summaryHtml += '</div>'; editInputsHtml += '</div>';
+                return `
+                <div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details">
+                        <div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>
+                            <button class="btn-icon" onclick="printDirect(event, '${id}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>
+                            <i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i>
+                        </div>
+                    </div>
+                    <div id="${uniqueId}" class="h-expanded-details">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                            <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>
+                            <button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>
+                        </div>
+                        <div id="summary-view-${uniqueId}">${summaryHtml}</div>
+                        <div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);">
+                            <div style="margin-bottom:10px; font-size:0.7rem; color:var(--warning); font-weight:bold;">EDIT COMPLETE DETAILS:</div>
+                            ${editInputsHtml}
+                            <div style="margin-top:10px; display:flex; gap:10px;">
+                                <button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>
+                                <button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
+    } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
+}
+
+function toggleHistoryEdit(id) { const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id); if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; } }
+async function saveHistoryEdit(patientId, testType, uniqueId) { const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {}; inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value); try { const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates }); if (res.status === "success") { showCustomAlert("Record updated successfully!", "success"); toggleHistoryEdit(uniqueId); } } catch(e) { showCustomAlert("Error updating past record: " + e, "error"); } }
+
 function clearForm() {
     document.getElementById('regForm').reset(); labOrders = {}; document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary(); document.getElementById('finalPatientId').value = ""; isExistingPatient = false; 
     document.getElementById('history-section').style.display = 'none'; document.getElementById('new-entry-header').style.display = 'flex'; document.getElementById('profile-header').style.display = 'none';
@@ -252,12 +351,9 @@ function clearForm() {
     const saveBtn = document.getElementById('save-btn-action'); saveBtn.innerHTML = '<i class="ph ph-paper-plane-right"></i> Save Record'; saveBtn.onclick = finalSubmit; saveBtn.style.background = '';
 }
 
-// ------------------------------------------
-// FINAL SUBMIT (Includes Auto-Password for Patients)
-// ------------------------------------------
 async function finalSubmit() {
   const btn = document.getElementById('save-btn-action');
-  if(!document.getElementById('p_name').value || Object.keys(labOrders).length === 0) { alert("Fill in Name and select a test."); return; }
+  if(!document.getElementById('p_name').value || Object.keys(labOrders).length === 0) { showCustomAlert("Fill in Name and select a test.", "error"); return; }
   const originalText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true;
 
   const pEmail = document.getElementById('p_email').value.trim().toLowerCase();
@@ -272,11 +368,11 @@ async function finalSubmit() {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") { 
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
-          clearForm(); if (currentUser.role !== 'ENCODER') loadPendingData(); 
-          if(pEmail && generatedPassword) alert(`Patient Access Created!\nEmail: ${pEmail}\nPassword: ${generatedPassword}\n(Tell the patient to check their email for login details)`);
+          clearForm(); if (currentUser.role !== 'ENCODER') await loadPendingData(); 
+          if(pEmail && generatedPassword) showCustomAlert(`<b>Patient Portal Access Created!</b><br>Email: ${pEmail}<br>Password: <strong style="color:var(--danger);">${generatedPassword}</strong><br><br><i>Credentials have been emailed to the patient.</i>`, "success");
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000); 
       } else { throw new Error(res.message); }
-  } catch (err) { alert("Error: " + err); btn.disabled = false; btn.innerHTML = originalText; }
+  } catch (err) { showCustomAlert("Error: " + err, "error"); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
 function editPendingFull(id) {
@@ -310,7 +406,7 @@ async function submitPendingUpdate() {
     let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
     let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
 
-    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); loadPendingData(); } catch(e) { alert("Error: " + e); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
+    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { showCustomAlert("Error: " + e, "error"); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
 // ==========================================
 // 6. PENDING CARDS & RESULTS LOGIC
@@ -373,12 +469,10 @@ function renderLists() {
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
             let hasInitial = window.completedData.some(c => c.patientId === item.patientId && c.test.toUpperCase() === item.test.toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : c.details; return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
-            
-            // SUPER VISIBLE RED REPEAT BADGE
             if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px; box-shadow: 0 2px 4px rgba(231,76,60,0.3);">REPEAT</span>`;
         } catch(e){}
         
-        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
+        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="confirmDelete('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         let clickAttr = isViewer ? '' : `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
         let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         
@@ -403,9 +497,7 @@ function renderLists() {
         try { 
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             let rpt = d.Repeat || d["Test Type"];
-            if(rpt && String(rpt).toUpperCase() === 'INITIAL') {
-                repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem;">INITIAL</span>`;
-            }
+            if(rpt && String(rpt).toUpperCase() === 'INITIAL') { repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem;">INITIAL</span>`; }
         } catch(e){}
 
         return `<div class="completed-card" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" title="Click to print"><div style="overflow:hidden;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta">${item.test}</div></div><i class="ph ph-printer" style="color: var(--success); font-size: 1.2rem;"></i></div>`;
@@ -424,11 +516,11 @@ async function moveToPendingRepeat(idStr) {
     const testEntry = { name: item.test, code: tCode, details: cleanDetails };
     const formData = { patientId: item.patientId, fullName: item.name, bday: cleanDetails.bday, sex: cleanDetails.sex, age: cleanDetails.age, address: cleanDetails.address, contact: cleanDetails.contact, email: "", facility: cleanDetails.facility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify([testEntry]) };
 
-    try { const res = await apiPost("submitForm", { formObject: formData }); if (res.status === "success") { await loadPendingData(); } else { alert("Error: " + res.message); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } } } catch (err) { alert("Error moving."); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
+    try { const res = await apiPost("submitForm", { formObject: formData }); if (res.status === "success") { showCustomAlert("Moved to Pending successfully!", "success"); await loadPendingData(); } else { showCustomAlert("Error: " + res.message, "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } } } catch (err) { showCustomAlert("Error moving.", "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
 }
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
-async function deleteEntry(id) { if(!confirm("Delete entry?")) return; try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
+function confirmDelete(id) { showCustomConfirm("Are you sure you want to delete this entry?", async () => { try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }); }
 
 async function saveResult(id, safeId, btn, doPrint) {
   let printWin = null;
@@ -487,161 +579,5 @@ function getResultTemplate(code, safeId, item) {
  switch (code) {
      case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Test Type', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
      case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
-     case 'DSSM': return `<div class="form-grid grid-2">${[1,2].map(n=>`<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
-     case 'CHEM': return `<div class="form-grid grid-3">${input('FBS','FBS',['FBS','GLUCOSE'])}${input('RBS','RBS',['RBS'])}${input('HbA1c','HbA1c',['HBA1C'])}${input('Cholesterol','Chol',['CHOLESTEROL','LIPID'])}${input('Triglycerides','Trig',['TRIGLYCERIDES','LIPID'])}${input('HDL','HDL',['HDL','LIPID'])}${input('LDL','LDL',['LDL','LIPID'])}${input('BUN','BUN',['BUN'])}${input('Creatinine','Crea',['CREA'])}${input('Uric Acid','Uric',['URIC'])}${input('SGOT','SGOT',['SGOT','AST'])}${input('SGPT','SGPT',['SGPT','ALT'])}</div>${rem}`;
-     case 'HEMA': return `<div class="form-grid grid-3">${input('Hemoglobin','Hb',['CBC'])}${input('Hematocrit','Hct',['CBC'])}${input('WBC_Count','WBC',['CBC'])}${input('RBC_Count','RBC',['CBC'])}${input('Platelet','Plt',['CBC','PLATELET'])}${input('Neutrophils','Neut',['CBC'])}${input('Lymphocytes','Lym',['CBC'])}${input('Monocytes','Mono',['CBC'])}${input('Eosinophils','Eos',['CBC'])}${input('Basophils','Baso',['CBC'])}${select('ABO','ABO',['A','B','AB','O'],['TYPING'])}${select('Rh','Rh',['Positive','Negative'],['TYPING'])}</div>${rem}`;
-     case 'UA': return `<div class="form-grid grid-3">${input('Color','Color')}${input('Transparency','Transp')}${input('pH','pH')}${input('SG','Sp.Grav')}${select('Protein','Protein',gradings)}${select('Glucose','Glucose',gradings)}${input('RBC','RBC')}${input('WBC','WBC')}${input('Bacteria','Bact.')}${input('Epithelial','Epith.')}${input('Cast','Casts')}${input('Crystals','Crys.')}${input('Amorphous','Amorph')}${input('Mucus','Mucus')}</div>${rem}`;
-     case 'FA': return `<div class="form-grid grid-2">${select('Color','Color',['Brown','Yellow','Green','Black','Red'])}${select('Consistency','Consistency',['Formed','Soft','Loose','Watery'])}<div class="full-width">${input('parasite','Parasite')}</div>${input('RBC','RBC')}${input('WBC','WBC')}</div>${rem}`;
-     case 'GRAM': return `<div class="form-grid grid-2"><div class="full-width font-bold" style="color:var(--pri);">Gram Positive</div>${input('GP_Quantity','Qty')}${input('GP_Morphology','Morph')}${input('GP_Arrangement','Arrange')}<div class="full-width font-bold" style="color:var(--sec); margin-top:8px;">Gram Negative</div>${input('GN_Quantity','Qty')}${input('GN_Morphology','Morph')}${input('GN_Arrangement','Arrange')}</div>${rem}`;
-     case 'SERO': return `<div class="form-grid grid-3">${select('HIV','HIV',['NONREACTIVE','REACTIVE'],['HIV','SERO'])}${select('HBSAG','HBsAg',['NONREACTIVE','REACTIVE'],['HBSAG','SERO'])}${select('SYPHILIS','Syphilis',['NONREACTIVE','REACTIVE'],['SYPHILIS','SERO'])}</div>${rem}`;
-     case 'DENGUE': let duoHtml = ''; if (req.includes('DUO')) { duoHtml = select('IgG', 'IgG', ['Negative','Positive']) + select('IgM', 'IgM', ['Negative','Positive']); } return `<div class="form-grid grid-1">${select('Dengue_Result', 'Dengue NS1', ['Negative', 'Positive'])}${duoHtml}</div>${rem}`;
-     default: return `<div class="form-grid grid-1">${input('Result','Result')}</div>${rem}`;
- }
-}
-
-function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
-
-async function openRegistryModal(type) {
-    document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
-    window.CURRENT_TEST_TYPE = type; 
-    document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
-    const cont = document.getElementById('registry-table-content');
-    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
-    try {
-        const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
-        if (res.status === "success" && res.data && res.data.rows) {
-            window.CURRENT_REGISTRY_HEADERS = res.data.headers; window.CURRENT_REGISTRY_TITLE = res.data.title;
-            const hMap = res.data.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
-            
-            const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
-
-            const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
-            
-            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
-            hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
-            
-            sorted.forEach((row, rIndex) => {
-                html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
-                hMap.forEach(c => {
-                    let val = row[c.index];
-                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
-                    if (isResCol) {
-                        let style = "res-gray"; let vU = String(val).toUpperCase();
-                        if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
-                        else if (vU==="N" || vU.includes("NON") || vU.includes("NEG")) style = "res-negative";
-                        else if (vU==="RR" || vU.includes("RESISTANT")) style = "res-dark-red"; 
-                        else if (vU==="TT"||vU==="TI") style = "res-warning";
-                        else if (vU==="I" || vU.includes("ERR")) style = "res-black";
-                        html += `<td><span class="res-badge ${style}">${val||''}</span></td>`;
-                    } else { html += `<td>${val||''}</td>`; }
-                }); html += `</tr>`;
-            });
-            cont.innerHTML = html + `</tbody></table>`;
-        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
-    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
-}
-
-function filterRegistryTable() {
-    const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
-    document.querySelectorAll('#regTableBody tr').forEach(tr => { 
-        let textToSearch = "";
-        if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
-        const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.trim() : "";
-        let matchMonth = true;
-        if (m !== "") { const d = new Date(dateText); if (!isNaN(d)) { const monthName = d.toLocaleString('default', { month: 'long' }); matchMonth = monthName.toLowerCase() === m; } else { matchMonth = dateText.toLowerCase().includes(m); } }
-        const matchSearch = textToSearch.includes(s); tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
-    });
-}
-
-function printRegistryLogbook() {
-    const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
-    if (checkedBoxes.length === 0) { alert("Please select at least one record to print."); return; }
-
-    let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
-
-    let excludeCols = ["PATIENT ID", "ID"]; 
-    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST", "X-RAY RESULT");
-    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
-
-    let printHeaders = []; let headerIndices = [];
-    window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
-        const upperH = h.toUpperCase();
-        if (excludeCols.some(ex => upperH === ex)) return; 
-        if (h.includes("{") || h.includes("}")) return; 
-        printHeaders.push(h.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
-    });
-
-    if (window.CURRENT_TEST_TYPE === 'SERO') {
-        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
-        if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
-    }
-
-    let html = `<html><head><title>Registry Logbook</title>
-        <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 9px; color: #000; }
-            .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;}
-            .page:last-child { page-break-after: auto; }
-            .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; }
-            .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
-            .header p { margin: 2px 0; font-size: 10px; font-weight: bold;}
-            table { width: 100%; border-collapse: collapse; table-layout: auto; }
-            th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;}
-            tr { height: 6vh; } 
-            th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: auto;}
-            .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;}
-            .footer-col { flex: 1; }
-        </style>
-    </head><body>`;
-
-    const chunk = 10; 
-    for (let i = 0; i < rowsData.length; i += chunk) {
-        const pageRows = rowsData.slice(i, i + chunk);
-        html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
-        printHeaders.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
-        pageRows.forEach(row => { html += `<tr>`; headerIndices.forEach(idx => { html += `<td>${row[idx] || ''}</td>`; }); html += `</tr>`; });
-        html += `</tbody></table>
-            <div class="footer">
-                <div class="footer-col"><strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br><strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</div>
-                <div class="footer-col"><strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br><strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</div>
-            </div></div>`;
-    }
-    html += `</body></html>`;
-    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); setTimeout(() => { printWin.print(); }, 500);
-}
-
-async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { alert("Select at least one record."); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
-    runPrintJob(requests);
-}
-
-// ==========================================
-// 9. SETTINGS & REPORTS (Restored)
-// ==========================================
-async function loadSettingsData() { 
-    apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e));
-    loadStaff(); loadFacilities(); 
-}
-function renderSettings(data) { 
-    if (typeof data === 'string') data = JSON.parse(data);
-    const uList = document.getElementById('list-users'); 
-    if (!uList) return;
-    if (!data || !data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } 
-    const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; 
-    const isAdmin = (myRole === 'ADMIN'); 
-    uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); 
-}
-let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { if(!confirm(action + " access for " + username + "?")) return; try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} } async function saveUser() { const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_user').value }; if(!user.u || !user.p || !user.role) { alert("Please fill all fields."); return; } const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; try { await apiPost("saveNewUser", { data: { username: user.u, password: user.p, facility: user.fac, role: user.role, fullName: user.name, roleCheck: currentUser.role }}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } }
-let globalFacilityList = []; async function loadFacilities() { try { const res = await apiGet("getFacilityList"); globalFacilityList = res.data || []; renderFacilityList(); } catch(e) {} } function renderFacilityList() { const container = document.getElementById('list-facilities'); const dropdown = document.getElementById('u_facility'); if(dropdown) { while (dropdown.options.length > 1) { dropdown.remove(1); } } if(container) { container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteFacility(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } globalFacilityList.forEach(f => { if(dropdown) { let o = document.createElement('option'); o.value = f.name; o.innerText = f.name; dropdown.appendChild(o); } }); } let editingFacilityIndex = -1; async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } function deleteFacility(index) { if(!confirm("Remove facility?")) return; globalFacilityList.splice(index, 1); renderFacilityList(); } function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
-let globalStaffList = []; let editingStaffIndex = -1; async function loadStaff() { try { const res = await apiGet("getStaffList"); globalStaffList = res.data || []; renderStaffList(); } catch(e) {} } function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteStaff(${index})" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); } function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; } async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } function editStaff(index) { const s = globalStaffList[index]; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sigUrl || ""; editingStaffIndex = index; document.getElementById('staff-form').style.display = 'block'; } async function deleteStaff(index) { if(!confirm("Remove staff?")) return; globalStaffList.splice(index, 1); renderStaffList(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); } catch(e) {} } function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffIndex = -1; } function toggleForm(id) { const el = document.getElementById(id); if(el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
-
-function switchTab(id) { document.querySelectorAll('.tab-view').forEach(el => el.style.display = 'none'); document.querySelectorAll('.chip').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + id).style.display = 'block'; const btn = document.getElementById('tab-btn-' + id); if(btn) btn.classList.add('active'); }
-function togglePeriod() { const type = document.querySelector('input[name="rep_type"]:checked').value; document.getElementById('rep_month').style.display = (type === 'monthly') ? 'inline-block' : 'none'; document.getElementById('rep_quarter').style.display = (type === 'quarterly') ? 'inline-block' : 'none'; }
-async function generateReport() { const type = document.querySelector('input[name="rep_type"]:checked').value; const year = document.getElementById('rep_year').value; let targetFacility = "ALL"; let userRole = "VIEWER"; try { if (typeof currentUser !== 'undefined') { userRole = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_'); if (userRole === 'VIEWER' || userRole === 'ENCODER') { targetFacility = currentUser.facility || "ALL"; } } } catch (e) {} let val = 0; let text = ""; if (type === 'monthly') { const sel = document.getElementById('rep_month'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else if (type === 'quarterly') { const sel = document.getElementById('rep_quarter'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else { val = 0; text = "ANNUAL REPORT " + year; } let facLabel = (targetFacility === "ALL") ? "(CONSOLIDATED)" : `(${targetFacility})`; document.querySelectorAll('.rep-period').forEach(el => el.innerText = `- ${text} ${facLabel}`); const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; try { const res = await apiGet("getReportData", { type: type, value: val, year: year, facility: targetFacility }); if (res.status === "success") { const d = res.data; renderTB(d.tb); renderHIV(d.hiv); renderSTI(d.sti); renderDengue(d.dengue); renderWorkload(d.workload); if (d.fhsis_maternal) renderFHSIS(d.fhsis_maternal); } } catch (err) {} finally { btn.innerHTML = oldHtml; btn.disabled = false; } }
-function renderFHSIS(data) { if (!data) return; const facMap = { "SAN ISIDRO": "SI", "SAN VICENTE": "SV", "KALAYAAN": "KA", "STO. NIÑO": "SN", "SAN ROQUE": "SR", "MAHABANG PARANG": "MP", "POB. ITAAS": "PI", "POB. IBABA": "PB", "BAGUMBAYAN": "BA", "SAN PEDRO": "SP", "ANGONO RHU I": "R1" }; const keys = [ "syp_s_t", "syp_s_10", "syp_s_15", "syp_s_20", "syp_p_t", "syp_p_10", "syp_p_15", "syp_p_20", "hiv_s_t", "hiv_s_10", "hiv_s_15", "hiv_s_20", "hiv_r_t", "hiv_r_10", "hiv_r_15", "hiv_r_20", "hbs_s_t", "hbs_s_10", "hbs_s_15", "hbs_s_20", "hbs_r_t", "hbs_r_10", "hbs_r_15", "hbs_r_20" ]; keys.forEach(key => { let rowTotal = 0; Object.keys(facMap).forEach(facName => { let val = (data[facName] && data[facName][key]) ? data[facName][key] : 0; let cellId = key + "_" + facMap[facName]; let cell = document.getElementById(cellId); if (cell) { cell.innerText = val; rowTotal += val; } }); let totalCell = document.getElementById(key + "_TOT"); if (totalCell) totalCell.innerText = rowTotal; }); }
-function renderTB(tb) { const row = (lbl, n, r) => `<tr><td style="font-weight:600; text-align:left;">${lbl}</td><td class="text-center">${n || 0}</td><td class="text-center">${r || 0}</td></tr>`; document.getElementById('tb-exam-body').innerHTML = row("EXAMINED", tb.exam.new, tb.exam.ret) + row("INVALID / ERROR", tb.invalid.new, tb.invalid.ret) + row("INITIAL RESULT", tb.initial.new, tb.initial.ret); document.getElementById('tb-res-body').innerHTML = row("MTB DETECTED", tb.pos.new, tb.pos.ret) + row(" > RIF RESISTANT", tb.rr.new, tb.rr.ret) + row(" > TRACE DETECTED", tb.tt.new, tb.tt.ret) + row(" > INDETERMINATE", tb.ti.new, tb.ti.ret) + row(" > SENSITIVE", tb.t.new, tb.t.ret) + row("MTB NOT DETECTED", tb.n.new, tb.n.ret); document.getElementById('tb-cart').innerText = tb.cartridges || 0; }
-function renderHIV(h) { const buildRow = (grid) => `<tr><td style="font-weight:600; text-align:left;">ANGONO</td><td class="text-center">${grid.m.c15}</td><td class="text-center">${grid.m.c1524}</td><td class="text-center">${grid.m.c2534}</td><td class="text-center">${grid.m.c3549}</td><td class="text-center">${grid.m.c50}</td><td class="text-center">${grid.f.c15}</td><td class="text-center">${grid.f.c1524}</td><td class="text-center">${grid.f.c2534}</td><td class="text-center">${grid.f.c3549}</td><td class="text-center">${grid.f.c50}</td><td class="text-center" style="color:var(--danger); font-weight:700;">${grid.f.mat}</td><td class="text-center">${grid.kap.msm}</td><td class="text-center">${grid.kap.tgw}</td><td class="text-center">${grid.kap.msw}</td><td class="text-center">${grid.kap.fsw}</td><td class="text-center">${grid.kap.pwid}</td><td class="text-center" style="font-weight:700; color:var(--text-main); background:var(--warning-bg);">${grid.kap.tb}</td><td class="text-center font-bold" style="background:var(--bg-subtle);">${grid.total}</td></tr>`; document.getElementById('hiv-test-body').innerHTML = buildRow(h.tested); document.getElementById('hiv-react-body').innerHTML = buildRow(h.reactive); }
-function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style="font-weight:700; vertical-align:middle;">${name}</td><td>NON-REACTIVE</td><td class="text-center">${d.m - d.m_r}</td><td class="text-center">${d.f - d.f_r}</td><td class="text-center">${d.mat - d.mat_r}</td><td class="text-center">${d.total - d.react}</td></tr><tr style="color:var(--danger); font-weight:600;"><td>REACTIVE</td><td class="text-center">${d.m_r}</td><td class="text-center">${d.f_r}</td><td class="text-center">${d.mat_r}</td><td class="text-center">${d.react}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.m}</td><td class="text-center">${d.f}</td><td class="text-center">${d.mat}</td><td class="text-center">${d.total}</td></tr>`; document.getElementById('sti-body').innerHTML = buildSTI("HIV", s.hiv) + buildSTI("SYPHILIS", s.syph) + buildSTI("HBsAg", s.hbsag); }
-function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
-function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
+     case 'DSSM': return `<div class="form-grid grid-2">${[1,2].map(n=>`<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width
 
