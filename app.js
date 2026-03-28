@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8-qy--tEOEe6eEBcoaYi98XRIAgi897OuYPT-ga4dD14LLGLA2Dhey0X8oq2F2lqpZA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOJdEysB8PILzgwwVe2Q1bBdkHxdWSdRGUOUT4-FDC28NnYKdI_nCWL7aIj_daVbfiAA/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -132,6 +132,7 @@ async function attemptPatientLogin() {
 function showPatientResend() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-resend-card').style.display = 'block'; }
 function showPatientInfo() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'block'; }
 function backToLoginFromPatient() { document.getElementById('patient-resend-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
+
 async function resendPatientPassword() { 
     const email = document.getElementById('resend_pat_email').value.trim(); 
     if(!email) return showAppAlert("Required", "Please enter your email.", "error"); 
@@ -147,7 +148,6 @@ async function resendPatientPassword() {
             showAppAlert("Success", res.data, "success"); 
             backToLoginFromPatient();
         } else {
-            // LALABAS DITO KUNG "NOT FOUND" O "GOOGLE FAILED"
             showAppAlert("Failed to Send", res.message, "error"); 
         }
     } catch(e) { 
@@ -157,7 +157,6 @@ async function resendPatientPassword() {
         btn.disabled = false; 
     } 
 }
-
 
 function logoutUser() { 
     const modal = document.getElementById('logout-modal'); 
@@ -308,10 +307,7 @@ function editPatientDemographicsQS() {
     document.getElementById('qs_edit_age').value = currentQuickPatient.age; 
     document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; 
 }
-function savePatientDemographicsQS() { 
-    showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); 
-    document.getElementById('qs-edit-form').style.display = 'none'; 
-}
+function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
 
 async function loadPatientResults() {
     const histContainer = document.getElementById('my-portal-history'); 
@@ -618,20 +614,114 @@ function getResultTemplate(code, safeId, item) {
      default: return `<div class="form-grid grid-1">${input('Result','Result')}</div>${rem}`;
  }
 }
+ async function openRegistryModal(type) {
+    document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
+    window.CURRENT_TEST_TYPE = type; 
+    document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
+    const cont = document.getElementById('registry-table-content');
+    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
+    try {
+        const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
+        if (res.status === "success" && res.data && res.data.rows) {
+            window.CURRENT_REGISTRY_HEADERS = res.data.headers; window.CURRENT_REGISTRY_TITLE = res.data.title;
+            const hMap = res.data.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
+            
+            const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
+
+            const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
+            
+            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
+            
+            sorted.forEach((row, rIndex) => {
+                html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                hMap.forEach(c => {
+                    let val = row[c.index];
+                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
+                    if (isResCol) {
+                        let style = "res-gray"; let vU = String(val).toUpperCase();
+                        if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
+                        else if (vU==="N" || vU.includes("NON") || vU.includes("NEG")) style = "res-negative";
+                        else if (vU==="RR" || vU.includes("RESISTANT")) style = "res-dark-red"; 
+                        else if (vU==="TT"||vU==="TI") style = "res-warning";
+                        else if (vU==="I" || vU.includes("ERR")) style = "res-black";
+                        html += `<td><span class="res-badge ${style}">${val||''}</span></td>`;
+                    } else { html += `<td>${val||''}</td>`; }
+                }); html += `</tr>`;
+            });
+            cont.innerHTML = html + `</tbody></table>`;
+        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
+    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
+}
+
+function filterRegistryTable() {
+    const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
+    document.querySelectorAll('#regTableBody tr').forEach(tr => { 
+        let textToSearch = "";
+        if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
+        const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.trim() : "";
+        let matchMonth = true;
+        if (m !== "") { const d = new Date(dateText); if (!isNaN(d)) { const monthName = d.toLocaleString('default', { month: 'long' }); matchMonth = monthName.toLowerCase() === m; } else { matchMonth = dateText.toLowerCase().includes(m); } }
+        const matchSearch = textToSearch.includes(s); tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
+    });
+}
+
+function printRegistryLogbook() {
+    const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
+    if (checkedBoxes.length === 0) { showAppAlert("Required", "Please select at least one record to print.", "error"); return; }
+    let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
+    let excludeCols = ["PATIENT ID", "ID"]; 
+    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST", "X-RAY RESULT");
+    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
+    let printHeaders = []; let headerIndices = [];
+    window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
+        const upperH = h.toUpperCase();
+        if (excludeCols.some(ex => upperH === ex)) return; 
+        if (h.includes("{") || h.includes("}")) return; 
+        printHeaders.push(h.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
+    });
+    if (window.CURRENT_TEST_TYPE === 'SERO') {
+        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
+        if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
+    }
+    let html = `<html><head><title>Registry Logbook</title>
+        <style>body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 9px; color: #000; } .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} .page:last-child { page-break-after: auto; } .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} table { width: 100%; border-collapse: collapse; table-layout: auto; } th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;} tr { height: 6vh; } th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: auto;} .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} .footer-col { flex: 1; }</style>
+    </head><body>`;
+    const chunk = 10; 
+    for (let i = 0; i < rowsData.length; i += chunk) {
+        const pageRows = rowsData.slice(i, i + chunk);
+        html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
+        printHeaders.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
+        pageRows.forEach(row => { html += `<tr>`; headerIndices.forEach(idx => { html += `<td>${row[idx] || ''}</td>`; }); html += `</tr>`; });
+        html += `</tbody></table>
+            <div class="footer"><div class="footer-col"><strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br><strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</div><div class="footer-col"><strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br><strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</div></div></div>`;
+    }
+    html += `</body></html>`;
+    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); setTimeout(() => { printWin.print(); }, 500);
+}
+
+async function batchPrint() {
+    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
+    const printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Batch PDF... Please wait.</h2>');
+    try { const res = await apiPost("printFromRegistry", { requests: requests }); if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; } } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
+}
 
 async function loadSettingsData() { apiGet("getSettingsData").then(res => { if (res.status === "success") renderSettings(res.data); }).catch(e=>console.log(e)); loadStaff(); loadFacilities(); }
 function renderSettings(data) { if (typeof data === 'string') data = JSON.parse(data); const uList = document.getElementById('list-users'); if (!uList) return; if (!data || !data.users || data.users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } const myRole = (typeof currentUser !== 'undefined' && currentUser.role) ? String(currentUser.role).toUpperCase() : ""; const isAdmin = (myRole === 'ADMIN'); uList.innerHTML = data.users.map(u => { const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${u.status || 'ACTIVE'}</span></div>`; } let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.role}', '${u.status}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname || u.username}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; }).join(''); }
-let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { customConfirm(action + " access for " + username + "?", async () => { try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} }); } async function saveUser() { 
+let currentEditTarget = ""; function openEditUser(username, role, status) { currentEditTarget = username; document.getElementById('edit-username-display').innerText = "@" + username; document.getElementById('edit-role-select').value = role; document.getElementById('edit-status-select').value = status; document.getElementById('edit-user-modal').style.display = 'flex'; } function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } async function saveUserChanges() { const newRole = document.getElementById('edit-role-select').value; const newStatus = document.getElementById('edit-status-select').value; const btn = document.getElementById('btn-save-user'); const oldText = btn.innerText; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; try { await apiPost("updateUser", { targetUsername: currentEditTarget, newRole: newRole, newStatus: newStatus, adminRole: currentUser.role }); closeEditModal(); loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } async function decideUser(username, action) { customConfirm(action + " access for " + username + "?", async () => { try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} }); } 
+
+async function saveUser() { 
     const user = { 
         u: document.getElementById('u_user').value, 
         p: document.getElementById('u_pass').value, 
         role: document.getElementById('u_role').value, 
         fac: document.getElementById('u_facility').value, 
-        name: document.getElementById('u_fullname').value // <--- HETO YUNG FULL NAME
+        name: document.getElementById('u_fullname').value 
     }; 
     if(!user.u || !user.p || !user.role || !user.name) { 
         showAppAlert("Required", "Please fill all fields.", "error"); 
-        return;
+        return; 
     } 
     const btn = document.querySelector('#user-form button'); 
     const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; 
@@ -644,7 +734,6 @@ let currentEditTarget = ""; function openEditUser(username, role, status) { curr
         loadSettingsData(); 
     } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } 
 }
-
 
 let globalFacilityList = []; async function loadFacilities() { try { const res = await apiGet("getFacilityList"); globalFacilityList = res.data || []; renderFacilityList(); } catch(e) {} } function renderFacilityList() { const container = document.getElementById('list-facilities'); const dropdown = document.getElementById('u_facility'); if(dropdown) { while (dropdown.options.length > 1) { dropdown.remove(1); } } if(container) { container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove facility?', () => deleteFacility(${index}))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } globalFacilityList.forEach(f => { if(dropdown) { let o = document.createElement('option'); o.value = f.name; o.innerText = f.name; dropdown.appendChild(o); } }); } let editingFacilityIndex = -1; async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } function deleteFacility(index) { globalFacilityList.splice(index, 1); renderFacilityList(); } function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
 let globalStaffList = []; let editingStaffIndex = -1; async function loadStaff() { try { const res = await apiGet("getStaffList"); globalStaffList = res.data || []; renderStaffList(); } catch(e) {} } function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove staff?', () => deleteStaff(${index}))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); } function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; } async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } function editStaff(index) { const s = globalStaffList[index]; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sigUrl || ""; editingStaffIndex = index; document.getElementById('staff-form').style.display = 'block'; } async function deleteStaff(index) { globalStaffList.splice(index, 1); renderStaffList(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); } catch(e) {} } function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffIndex = -1; } function toggleForm(id) { const el = document.getElementById(id); if(el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
