@@ -619,22 +619,47 @@
         </div>
     </div>
 
-    <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
-        <div class="auth-card" style="width:350px;">
+       <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+        <div class="auth-card" style="width:350px; text-align: left; padding: 25px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="margin:0;">Manage User</h3>
+                <h3 style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-pencil-simple" style="color:var(--pri);"></i> Edit User</h3>
                 <button onclick="closeEditModal()" class="btn-icon"><i class="ph ph-x"></i></button>
             </div>
-            <div id="edit-username-display" style="font-weight:bold; margin-bottom:15px; color:var(--pri);"></div>
-            <select id="edit-role-select" class="form-select" style="margin-bottom:15px;">
-                <option value="ADMIN">Admin</option><option value="STAFF">Staff</option><option value="ENCODER">Encoder</option><option value="VIEWER">Viewer</option>
-            </select>
-            <select id="edit-status-select" class="form-select" style="margin-bottom:20px;">
-                <option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="REJECTED">Rejected</option>
-            </select>
-            <button onclick="saveUserChanges()" id="btn-save-user" class="btn btn-primary full-width">Save Changes</button>
+            
+            <div class="form-grid grid-1" style="gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="edit_u_name" class="form-input"></div>
+                <div class="field-group"><label class="field-label">Username</label><input type="text" id="edit_u_user" class="form-input"></div>
+                <div class="field-group"><label class="field-label">New Password (leave blank to keep current)</label>
+                    <div class="pass-wrapper">
+                        <input type="password" id="edit_u_pass" class="form-input" placeholder="***">
+                        <i class="ph ph-eye" onclick="togglePass('edit_u_pass', this)"></i>
+                    </div>
+                </div>
+                <div class="field-group"><label class="field-label">Facility</label>
+                    <select id="edit_u_fac" class="form-select"><option value="ALL">ALL / MAIN</option></select>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div class="field-group" style="flex:1;"><label class="field-label">Role</label>
+                        <select id="edit_u_role" class="form-select">
+                            <option value="ADMIN">ADMIN</option><option value="STAFF">STAFF</option><option value="ENCODER">ENCODER</option><option value="VIEWER">VIEWER</option>
+                        </select>
+                    </div>
+                    <div class="field-group" style="flex:1;"><label class="field-label">Status</label>
+                        <select id="edit_u_status" class="form-select">
+                            <option value="ACTIVE">ACTIVE</option><option value="PENDING">PENDING</option><option value="REJECTED">REJECTED</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top: 20px;">
+                <button onclick="deleteUserRecord()" class="btn btn-secondary" style="flex: 1; border-color:var(--danger); color:var(--danger);"><i class="ph ph-trash"></i> Delete</button>
+                <button onclick="saveUserChangesFull()" id="btn-save-user-full" class="btn btn-primary" style="flex: 2;"><i class="ph ph-floppy-disk"></i> Save</button>
+            </div>
         </div>
     </div>
+
+
 
     <script src="app.js"></script>
     <script>
