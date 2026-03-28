@@ -157,6 +157,8 @@ async function resendPatientPassword() {
         btn.disabled = false; 
     } 
 }
+
+
 function logoutUser() { 
     const modal = document.getElementById('logout-modal'); 
     if (modal) modal.style.display = 'flex'; 
