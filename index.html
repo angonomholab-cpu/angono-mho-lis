@@ -523,7 +523,7 @@
             <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="backToLoginFromPatient()">Back to Login</div>
         </div>
 
-               <div id="patient-info-card" class="auth-card" style="display:none; padding-top:20px;">
+        <div id="patient-info-card" class="auth-card" style="display:none; padding-top:20px;">
             <h2 style="margin-bottom:10px; color:var(--pri);"><i class="ph ph-user-plus"></i> New Patient?</h2>
             <p style="font-size:0.8rem; color:var(--text-main); margin-bottom:15px; line-height:1.5;">Patient accounts are <strong>automatically generated</strong> during your first laboratory visit.</p>
             <div style="background:var(--bg-subtle); padding:15px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:20px;">
@@ -533,16 +533,17 @@
             </div>
             <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
         </div>
-    </div>
-    <div id="app-loader" class="modal-backdrop" style="flex-direction:column; background:var(--bg-body);">
+    </div> 
+
+    <div id="app-loader" class="modal-backdrop" style="flex-direction:column; background:var(--bg-body); z-index:9999999;">
         <i class="ph ph-circle-notch ph-spin" style="font-size: 3rem; color: var(--pri);"></i>
         <p style="margin-top:16px; color:var(--text-muted); font-weight:600;">Loading System...</p>
     </div>
 
-    <div id="logout-modal" class="modal-backdrop" style="display:none;">
-        <div class="auth-card" style="width:300px;">
-            <i class="ph ph-sign-out" style="font-size: 2.5rem; color: var(--pri); margin-bottom: 10px;"></i>
-            <h3 style="margin:0 0 10px 0;">Log Out?</h3>
+    <div id="logout-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+        <div class="auth-card" style="width:300px; text-align: center; padding: 25px;">
+            <i class="ph ph-sign-out" style="font-size: 3rem; color: var(--pri); margin-bottom: 15px;"></i>
+            <h3 style="margin-bottom: 10px;">Log Out?</h3>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button onclick="closeLogoutModal()" class="btn btn-secondary full-width">Cancel</button>
                 <button onclick="confirmLogout()" class="btn btn-primary full-width">Log Out</button>
@@ -550,7 +551,7 @@
         </div>
     </div>
 
-    <div id="edit-user-modal" class="modal-backdrop" style="display:none;">
+    <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
         <div class="auth-card" style="width:350px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="margin:0;">Manage User</h3>
@@ -575,13 +576,12 @@
             else { el.type = 'password'; icon.classList.replace('ph-eye-slash', 'ph-eye'); }
         }
         
-        // Load initial toggle states on load
         window.addEventListener('load', () => {
             let prefs = JSON.parse(localStorage.getItem('mho-test-prefs') || "{}");
             document.querySelectorAll('.test-toggle').forEach(chk => {
                 let code = chk.getAttribute('data-test');
                 if(prefs[code] !== undefined) chk.checked = prefs[code];
-                else chk.checked = true; // default to true
+                else chk.checked = true; 
             });
             applyTestToggles();
         });
