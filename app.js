@@ -371,7 +371,10 @@ async function loadPendingData() {
 }
 
 function renderLists() {
-    const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const filterSelect = document.getElementById('test-filter');
+    const pList = document.getElementById('list-pending'); 
+    const cList = document.getElementById('list-completed'); 
+    const rList = document.getElementById('list-repeat');
+    const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
     
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
@@ -394,21 +397,47 @@ function renderLists() {
         return true;
     };
 
-    const fPending = window.pendingData.filter(i => filterFn(i, false)); const fComp = window.completedData.filter(i => filterFn(i, true));
+    const fPending = window.pendingData.filter(i => filterFn(i, false)); 
+    const fComp = window.completedData.filter(i => filterFn(i, true));
 
+    // =====================================
+    // LOGIC FOR REPEAT TESTING POPULATION
+    // =====================================
+    let latestCompleted = {};
+    window.completedData.forEach(item => { 
+        let key = item.patientId + "_" + item.test.toUpperCase(); 
+        if(!latestCompleted[key]) latestCompleted[key] = item; 
+    });
+    
+    const fRepeat = [];
+    Object.values(latestCompleted).forEach(item => {
+        let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+        let rpt = d.Repeat || d["Test Type"] || "";
+        
+        if (String(rpt).toUpperCase() === 'INITIAL') {
+            // Check kung hindi pa siya binalik sa pending
+            let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && p.test.toUpperCase() === item.test.toUpperCase());
+            if(!isAlreadyPending) { 
+                let tCode = getTestCodeFromName(item.test); 
+                if(!isLimited || allowedTests.includes(tCode)) { 
+                    let typeMatch = (filterSelect.value === "ALL") || item.test.toUpperCase().includes(filterSelect.value); 
+                    if(typeMatch) fRepeat.push(item); 
+                } 
+            }
+        }
+    });
+
+    // PENDING LIST RENDER
     pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
-        
-        // REPEAT/INITIAL BADGE LOGIC
         let subTxt = ""; let repeatBadge = ""; 
         try { 
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
-            let rpt = d.Repeat || d["Test Type"];
-            if(rpt && String(rpt).toUpperCase() !== 'STANDARD' && String(rpt).toUpperCase() !== 'NEW') {
-                let bColor = String(rpt).toUpperCase().includes('INITIAL') ? 'badge-warning' : 'badge-danger';
-                repeatBadge = `<span class="badge ${bColor}" style="margin-left:4px; font-size:0.55rem;">${String(rpt).toUpperCase()}</span>`;
-            }
+            
+            // Auto Repeat Badge Check
+            let hasInitial = window.completedData.some(c => c.patientId === item.patientId && c.test.toUpperCase() === item.test.toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : c.details; return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
+            if(hasInitial) repeatBadge = `<span class="badge badge-danger" style="margin-left:4px; font-size:0.55rem;">REPEAT</span>`;
         } catch(e){}
         
         let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="deleteEntry('${item.id}')" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
@@ -418,22 +447,67 @@ function renderLists() {
         return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
 
+    // REPEAT LIST RENDER (Yellowish background para distinct)
+    if (rList) {
+        rList.innerHTML = fRepeat.map(item => {
+            const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
+            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: #FFF9F0;">
+                        <div class="pc-name" style="color: var(--warning);">${item.name}</div>
+                        <div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>
+                        ${isViewer ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}
+                    </div>`;
+        }).join('');
+        document.getElementById('count-repeat').innerText = `(${fRepeat.length})`;
+    }
+
+    // COMPLETED LIST RENDER
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test);
-        
         let repeatBadge = ""; 
         try { 
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             let rpt = d.Repeat || d["Test Type"];
-            if(rpt && String(rpt).toUpperCase() !== 'STANDARD' && String(rpt).toUpperCase() !== 'NEW') {
-                let bColor = String(rpt).toUpperCase().includes('INITIAL') ? 'badge-warning' : 'badge-danger';
-                repeatBadge = `<span class="badge ${bColor}" style="margin-left:4px; font-size:0.55rem;">${String(rpt).toUpperCase()}</span>`;
+            // Display badge ONLY if the completed test itself is an initial
+            if(rpt && String(rpt).toUpperCase() === 'INITIAL') {
+                repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem;">INITIAL</span>`;
             }
         } catch(e){}
 
         return `<div class="completed-card" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" title="Click to print"><div style="overflow:hidden;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta">${item.test}</div></div><i class="ph ph-printer" style="color: var(--success); font-size: 1.2rem;"></i></div>`;
     }).join('');
     document.getElementById('count-pending').innerText = `(${fPending.length})`;
+}
+
+// ==========================================
+// 7.1 MOVE TO PENDING (NEW FEATURE)
+// ==========================================
+async function moveToPendingRepeat(idStr) {
+    const item = window.completedData.find(i => String(i.id) === String(idStr)); if(!item) return;
+    const btn = document.getElementById('btn-repeat-' + item.id.replace(/[^a-zA-Z0-9]/g, ""));
+    if(btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Moving...'; btn.disabled = true; }
+
+    let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+    // Extract only demographics and constants, remove the old results/dates
+    let cleanDetails = { 
+        age: d.age || d.Age || "", sex: d.sex || d.Sex || "", facility: d.facility || d.Facility || "", 
+        address: d.address || d.Address || "", contact: d.contact || d.Contact || "", bday: d.bday || d.Bday || "", 
+        "History of Treatment": d["History of Treatment"] || "", "Source of Request": d["Source of Request"] || "" 
+    };
+    
+    const tCode = getTestCodeFromName(item.test);
+    const testEntry = { name: item.test, code: tCode, details: cleanDetails };
+    const formData = { patientId: item.patientId, fullName: item.name, bday: cleanDetails.bday, sex: cleanDetails.sex, age: cleanDetails.age, address: cleanDetails.address, contact: cleanDetails.contact, email: "", facility: cleanDetails.facility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify([testEntry]) };
+
+    try { 
+        const res = await apiPost("submitForm", { formObject: formData }); 
+        if (res.status === "success") { 
+            alert("Moved to Pending! Fresh Lab Test Number assigned.");
+            loadPendingData(); 
+        } else { 
+            alert("Error: " + res.message); 
+            if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; }
+        } 
+    } catch (err) { alert("Error moving to pending."); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
 }
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
@@ -491,7 +565,7 @@ function getResultTemplate(code, safeId, item) {
  const rem = `<div class="field-group full-width" style="margin-top:10px;"><label class="field-label">Remarks</label><input type="text" class="res-${safeId} form-input" data-key="Remarks"></div>`;
  
  switch (code) {
-     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL', 'REPEAT'])}</div></div>${rem}`;
+     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
      case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
      case 'DSSM': return `<div class="form-grid grid-2">${[1,2].map(n=>`<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
      case 'CHEM': return `<div class="form-grid grid-3">${input('FBS','FBS',['FBS','GLUCOSE'])}${input('RBS','RBS',['RBS'])}${input('HbA1c','HbA1c',['HBA1C'])}${input('Cholesterol','Chol',['CHOLESTEROL','LIPID'])}${input('Triglycerides','Trig',['TRIGLYCERIDES','LIPID'])}${input('HDL','HDL',['HDL','LIPID'])}${input('LDL','LDL',['LDL','LIPID'])}${input('BUN','BUN',['BUN'])}${input('Creatinine','Crea',['CREA'])}${input('Uric Acid','Uric',['URIC'])}${input('SGOT','SGOT',['SGOT','AST'])}${input('SGPT','SGPT',['SGPT','ALT'])}</div>${rem}`;
