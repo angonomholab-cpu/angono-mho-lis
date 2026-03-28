@@ -151,11 +151,20 @@
                     <div id="list-pending" class="patient-list"></div>
                 </div>
 
-                <div class="workspace-col" id="col-completed">
-                    <div class="workspace-header">
-                        <h2><i class="ph ph-check-circle"></i> Completed</h2>
+                <div class="col-stacked-wrapper" id="col-stacked-wrapper">
+                    <div class="workspace-col" id="col-repeat">
+                        <div class="workspace-header">
+                            <h2><i class="ph ph-arrows-clockwise" style="color:var(--warning);"></i> For Repeat <span id="count-repeat" style="color:var(--warning); margin-left:5px;">(0)</span></h2>
+                        </div>
+                        <div id="list-repeat" class="patient-list" style="background: #FFFBF5;"></div>
                     </div>
-                    <div id="list-completed" class="patient-list" style="padding-top: 10px;"></div>
+
+                    <div class="workspace-col" id="col-completed">
+                        <div class="workspace-header">
+                            <h2><i class="ph ph-check-circle"></i> Completed</h2>
+                        </div>
+                        <div id="list-completed" class="patient-list"></div>
+                    </div>
                 </div>
                 
             </div>
@@ -369,7 +378,7 @@
             </div>
         </div>
 
-               <div id="page-settings" class="page-area">
+        <div id="page-settings" class="page-area">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
 
                 <div class="workspace-col" style="padding:0;">
@@ -458,8 +467,6 @@
                 </div>
             </div>
         </div>
-
-
 
     </main>
 
