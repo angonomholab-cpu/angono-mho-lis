@@ -84,7 +84,12 @@
                                     <div class="field-group" style="flex:2;"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
                                 </div>
                                 <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input" placeholder="Brgy. / Address"></div>
-                                <input type="hidden" id="p_email" value=""> 
+                                
+                                <div class="field-group">
+                                    <label class="field-label">Email Address (For Patient Portal)</label>
+                                    <input type="email" id="p_email" class="form-input" placeholder="patient@email.com" onblur="this.value = this.value.toLowerCase()">
+                                </div>
+
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
                                     <select id="p_facility" class="form-select">
@@ -133,6 +138,7 @@
                                 <div class="test-btn-vert" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle"></i><span>Dengue NS1 / Duo</span></div>
                                 <div class="test-btn-vert" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
                             </div>
+
                             <div id="test-details-area" style="display:none; background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); margin-bottom:10px; border:1px solid var(--pri);"></div>
                         </div>
                     </div>
@@ -167,6 +173,18 @@
                     </div>
                 </div>
                 
+            </div>
+        </div>
+
+        <div id="page-patient" class="page-area" style="padding: 20px; text-align: center;">
+            <div class="auth-card" style="margin: 40px auto; width: 800px; max-width: 100%; text-align: left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--pri); padding-bottom: 10px; margin-bottom: 20px;">
+                    <h2 style="color:var(--pri);"><i class="ph ph-user"></i> My Laboratory Results</h2>
+                    <button class="btn btn-secondary text-xs" onclick="logoutUser()"><i class="ph ph-sign-out"></i> Log Out</button>
+                </div>
+                <h3 id="my-portal-name" style="color:var(--text-main); font-size: 1.3rem;"></h3>
+                <div id="my-portal-meta" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:20px;"></div>
+                <div id="my-portal-history"></div>
             </div>
         </div>
 
@@ -468,30 +486,41 @@
             </div>
         </div>
 
+        <div id="page-patient" class="page-area" style="padding: 20px; text-align: center;">
+            <div class="auth-card" style="margin: 40px auto; width: 800px; max-width: 100%; text-align: left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--pri); padding-bottom: 10px; margin-bottom: 20px;">
+                    <h2 style="color:var(--pri);"><i class="ph ph-user"></i> My Laboratory Results</h2>
+                    <button class="btn btn-secondary text-xs" onclick="logoutUser()"><i class="ph ph-sign-out"></i> Log Out</button>
+                </div>
+                <h3 id="my-portal-name" style="color:var(--text-main); font-size: 1.3rem;"></h3>
+                <div id="my-portal-meta" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:20px;"></div>
+                <div id="my-portal-history"></div>
+            </div>
+        </div>
+
     </main>
 
     <div id="login-overlay" class="modal-backdrop">
-        <div id="login-card" class="auth-card">
-            <div style="width:60px; height:60px; background:var(--pri-light); color:var(--pri); border-radius:50%; margin:0 auto 20px auto; display:flex; align-items:center; justify-content:center; font-size:2rem;"><i class="ph ph-flask"></i></div>
-            <h2 style="margin-bottom:20px;">Lab Access</h2>
-            <input type="text" id="login_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
-            <input type="password" id="login_pass" class="form-input" placeholder="Password" style="margin-bottom:20px;">
-            <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">Log In</button>
-            <p id="login-error" style="color:var(--danger); margin-top:15px; display:none; font-size:0.85rem; font-weight:bold;"></p>
-            <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('login-card').style.display='none'; document.getElementById('register-card').style.display='block';">Request Account</div>
-        </div>
+        <div id="login-card" class="auth-card" style="padding-top: 20px;">
+            <div style="display:flex; border-bottom:1px solid var(--border-color); margin-bottom:20px;">
+                <div id="tab-staff-login" style="flex:1; padding:10px; font-weight:bold; color:var(--pri); border-bottom:2px solid var(--pri); cursor:pointer;" onclick="switchLoginTab('staff')"><i class="ph ph-shield-check"></i> Staff Login</div>
+                <div id="tab-patient-login" style="flex:1; padding:10px; font-weight:bold; color:var(--text-muted); cursor:pointer;" onclick="switchLoginTab('patient')"><i class="ph ph-user"></i> Patient Portal</div>
+            </div>
+            
+            <div id="staff-login-form">
+                <input type="text" id="login_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
+                <input type="password" id="login_pass" class="form-input" placeholder="Password" style="margin-bottom:20px;">
+                <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">Log In</button>
+            </div>
 
-        <div id="register-card" class="auth-card" style="display:none;">
-            <h2 style="margin-bottom:20px;">Register</h2>
-            <input type="text" id="reg_name" class="form-input" placeholder="Full Name" style="margin-bottom:12px;">
-            <input type="text" id="reg_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
-            <input type="password" id="reg_pass" class="form-input" placeholder="Password" style="margin-bottom:12px;">
-            <select id="reg_fac" class="form-select" style="margin-bottom:20px;">
-                <option value="Angono RHU I">Angono RHU I</option>
-                <option value="San Isidro">San Isidro</option>
-            </select>
-            <button class="btn btn-primary full-width" onclick="submitRegister()">Submit Request</button>
-            <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('register-card').style.display='none'; document.getElementById('login-card').style.display='block';">Back to Login</div>
+            <div id="patient-login-form" style="display:none;">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.3;">Access your laboratory results securely. Enter your registered email and the auto-generated password sent to you.</p>
+                <input type="email" id="pat_user" class="form-input" placeholder="Registered Email Address" style="margin-bottom:12px;" onblur="this.value = this.value.toLowerCase()">
+                <input type="password" id="pat_pass" class="form-input" placeholder="Password" style="margin-bottom:20px;">
+                <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">View My Results</button>
+            </div>
+
+            <p id="login-error" style="color:var(--danger); margin-top:15px; display:none; font-size:0.85rem; font-weight:bold;"></p>
         </div>
     </div>
 
