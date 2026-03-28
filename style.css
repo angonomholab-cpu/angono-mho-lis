@@ -105,17 +105,24 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .edit-mode-header { background: var(--warning) !important; color: white !important; }
 .edit-mode-header h2 { color: white !important; }
 
+/* MOBILE RESPONSIVE FIXES */
 @media screen and (max-width: 1100px) {
     .workspace-grid { flex-direction: column; height: auto; min-width: 100%; }
     .workspace-col, .col-stacked-wrapper { width: 100% !important; min-width: 0 !important; max-width: 100vw; flex: none; margin-bottom: 0;}
-    #col-entry, #col-pending { min-width: 0 !important; width: 100% !important; margin-bottom: 20px;}
-    #col-pending { height: 450px; } 
-    .col-stacked-wrapper { height: 800px; gap: 20px; }
+    #col-entry { margin-bottom: 20px;}
+    
+    /* FIX 2: Limit Pending and Repeat Height sa Mobile */
+    #col-pending, #col-repeat { max-height: 450px; display: flex; flex-direction: column; margin-bottom: 20px;} 
+    #list-pending, #list-repeat { overflow-y: auto; flex: 1; }
+    
+    .col-stacked-wrapper { height: auto; gap: 20px; }
     .col-stacked-wrapper .workspace-col { height: 400px; }
     .ap-split { flex-direction: column; height: auto; overflow: visible; }
     .ap-left { border-right: none; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
     .sticky-footer { position: static; padding: 15px 0 0 0; background: transparent; border: none; }
 }
+
+
 @media screen and (max-width: 600px) {
     .form-grid.grid-2, .form-grid.grid-3 { grid-template-columns: 1fr; }
     .test-btn-vert { min-height: 60px; padding: 8px; }
