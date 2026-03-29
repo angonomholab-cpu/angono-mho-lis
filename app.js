@@ -598,8 +598,7 @@ async function openRegistryModal(type) {
 
             const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
             
-            // 🟢 BAGO: ANG NA-F-FILTER LANG ANG MA-C-CHECK 🟢
-            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
             sorted.forEach((row, rIndex) => {
@@ -607,27 +606,23 @@ async function openRegistryModal(type) {
                 hMap.forEach(c => {
                     let val = row[c.index] || '';
                     let hName = c.original.toUpperCase().trim();
-                    let isResCol = hName === 'RESULT CODE' || hName === 'FINAL RESULT' || hName === 'RESULT' || hName === 'DIAGNOSIS' || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
-                    let isPerformedBy = hName === 'PERFORMED BY';
+                    
+                    // MAS PINALAWAK NA DETECTOR PARA SIGURADONG MA-COLOR CODE
+                    let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
 
-                    // 🟢 BAGO: STRICT EXACT MATCH COLOR CODING PARA SA SCREEN 🟢
                     if (isResCol && val !== "") {
                         let vU = String(val).toUpperCase().trim();
                         let bg = "transparent", col = "inherit"; 
                         
-                        if (vU === "CONFIDENTIAL" || vU === "INITIAL") { bg = "#f1f5f9"; col = "#64748b"; } // Gray
-                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "var(--text-main)"; col = "var(--bg-body)"; } // Black/White adapting
-                        else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } // Pale Red
-                        else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } // Pale Green
-                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } // Deep Red
-                        else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } // Orange
-                        else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } // Yellow
+                        if (vU === "CONFIDENTIAL" || vU === "INITIAL") { bg = "#f1f5f9"; col = "#64748b"; } 
+                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "var(--text-main)"; col = "var(--bg-body)"; } 
+                        else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } 
+                        else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } 
+                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } 
+                        else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } 
+                        else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
                         
-                        html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
-                    } 
-                    else if (isPerformedBy && val !== "") {
-                        // 🟢 TINANGGAL ANG COLOR, PINALIIT ANG FONT 🟢
-                        html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
+                        html += `<td style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; font-weight:bold;` : ''}">${val}</td>`;
                     } 
                     else { 
                         html += `<td>${val}</td>`; 
@@ -639,6 +634,8 @@ async function openRegistryModal(type) {
         } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
     } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
 }
+
+
 
 function filterRegistryTable() {
     const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
@@ -671,24 +668,25 @@ function printRegistryLogbook() {
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
     
+    // 🟢 BAGO: PINALIIT ANG OVERALL FONT SIZE (7.5px) PARA MAGKASYA AT UNIFORM LAHAT 🟢
     let html = `<html><head><title>Registry Logbook</title>
         <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 8px; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff;} 
+            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 7.5px; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff;} 
             .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} 
             .page:last-child { page-break-after: auto; } 
             .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } 
             .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } 
             .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} 
             table { width: 100%; border-collapse: collapse; table-layout: auto; } 
-            th, td { border: 1px solid #000; padding: 3px; text-align: center; word-wrap: break-word;} 
+            th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word; font-size: 7.5px;} 
             tr { height: auto; } 
-            th { background-color: #f0f0f0 !important; font-weight: bold; } 
+            th { background-color: #e2e8f0 !important; font-weight: bold; } 
             .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} 
             .footer-col { flex: 1; }
         </style>
     </head><body>`;
     
-    const chunk = 12; 
+    const chunk = 13; // Kaya nang magkasya ng 13 rows per page
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
@@ -699,31 +697,25 @@ function printRegistryLogbook() {
             headerIndices.forEach((idx, i) => { 
                 let val = row[idx] || '';
                 let hName = printHeaders[i].toUpperCase().trim();
-                let isResCol = hName === 'RESULT CODE' || hName === 'FINAL RESULT' || hName === 'RESULT' || hName === 'DIAGNOSIS' || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
-                let isPerformedBy = hName === 'PERFORMED BY';
+                let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
                 
                 let bgStyle = "";
                 let textWeight = "normal";
-                let fontStyle = "";
                 
-                // 🟢 BAGO: EXACT MATCH COLOR CODING PARA SA LOGBOOK PRINTING 🟢
+                // 🟢 BAGO: PRINT COLOR CODES (Ginagamit ang !important) 🟢
                 if (isResCol && val !== "") {
                     let vU = String(val).toUpperCase().trim();
                     textWeight = "bold";
-                    if (vU === "CONFIDENTIAL" || vU === "INITIAL") bgStyle = "background-color: #f1f5f9; color: #64748b;"; // Gray
-                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000; color: #ffffff;"; // Black bg, white text
-                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2; color: #b91c1c;"; // Pale Red
-                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7; color: #15803d;"; // Pale Green
-                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b; color: #ffffff;"; // Deep Red
-                    else if (vU === "TI") bgStyle = "background-color: #ffedd5; color: #c2410c;"; // Orange
-                    else if (vU === "TT") bgStyle = "background-color: #fef9c3; color: #b45309;"; // Yellow
+                    if (vU === "CONFIDENTIAL" || vU === "INITIAL") bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; 
+                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; // Black for print
+                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; 
+                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; 
+                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; 
+                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; 
+                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;";
                 } 
-                else if (isPerformedBy && val !== "") {
-                    // 🟢 BAGO: 6px NA LANG ANG PERFORMED BY (-2 base font) AT WALANG KULAY 🟢
-                    fontStyle = "font-size: 6px; color: #555;"; 
-                }
 
-                html += `<td style="${bgStyle} font-weight: ${textWeight}; ${fontStyle}">${val}</td>`; 
+                html += `<td style="${bgStyle} font-weight: ${textWeight};">${val}</td>`; 
             }); 
             html += `</tr>`; 
         });
@@ -736,8 +728,6 @@ function printRegistryLogbook() {
     
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
-
-
 
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
