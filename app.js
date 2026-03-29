@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwaissMSjLSK89Cg-ZrqEeoGAt6j_iToI04OCc6MKWqcePwFjGE8CkU0Ob8jxaQ1C5SQw/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCwuyqzijP2u08taAhS0cQeg7BHznr6OENugPyu36jqX76aGzzyPy9-2VwhG9MLFGFHA/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -410,18 +410,16 @@ async function finalSubmit() {
           
           const savedEmail = res.data ? res.data.email : pEmail;
           const savedPass = res.data ? res.data.generatedPassword : generatedPassword;
-          const emailStatus = res.data ? res.data.emailStatus : ""; // Kukunin ang log galing backend
+          const debugLog = res.data ? res.data.emailStatus : "No log available.";
           
-          // 🟢 BAGO: MATALINONG POP-UP MESSAGE 🟢
-          if (emailStatus && emailStatus.includes("sent successfully")) {
-              showAppAlert("Patient Portal Created", `The record is saved and login credentials have been automatically emailed to:\n\nEmail: ${savedEmail}\nPassword: ${savedPass}`, "success");
-          } else if (emailStatus && emailStatus.includes("Error sending email")) {
-              showAppAlert("Record Saved, but Email Failed", `Record saved successfully, but Google failed to send the email.\n\nError: ${emailStatus}\n\nPassword generated: ${savedPass}`, "error");
+          // 🟢 MAG-A-ALERT NA MISMO KUNG ANO ANG NANGYARI SA EMAIL 🟢
+          if (debugLog.includes("SUCCESS")) {
+              showAppAlert("Patient Portal Created", `Credentials automatically emailed!\n\nEmail: ${savedEmail}\nPassword: ${savedPass}\n\nSystem Log: ${debugLog}`, "success");
           } else {
-              showAppAlert("Record Saved", "The laboratory record has been successfully added to pending. (No new email sent).", "success");
+              showAppAlert("Record Saved", `Record saved successfully.\n\nSystem Log: ${debugLog}`, "info");
           }
           
-          setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 3000); 
+          setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
       } else { throw new Error("Server rejected the save."); }
   } catch (err) { 
       showAppAlert("Error", String(err), "error"); 
