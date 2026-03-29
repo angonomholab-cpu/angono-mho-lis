@@ -598,34 +598,39 @@ async function openRegistryModal(type) {
 
             const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
             
-            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('.chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            // 🟢 BAGO: ANG NA-F-FILTER LANG ANG MA-C-CHECK 🟢
+            let html = `<table class="data-table"><thead><tr><th style="width:30px;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
             sorted.forEach((row, rIndex) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
-                    let val = row[c.index];
-                    let hName = c.original.toUpperCase();
+                    let val = row[c.index] || '';
+                    let hName = c.original.toUpperCase().trim();
                     let isResCol = hName === 'RESULT CODE' || hName === 'FINAL RESULT' || hName === 'RESULT' || hName === 'DIAGNOSIS' || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
                     let isPerformedBy = hName === 'PERFORMED BY';
 
-                    if (isResCol && val) {
-                        let vU = String(val).toUpperCase();
-                        let bg = "#f1f5f9", col = "#64748b"; // Default Gray (Confidential / Invalid)
+                    // 🟢 BAGO: STRICT EXACT MATCH COLOR CODING PARA SA SCREEN 🟢
+                    if (isResCol && val !== "") {
+                        let vU = String(val).toUpperCase().trim();
+                        let bg = "transparent", col = "inherit"; 
                         
-                        if (vU === "CONFIDENTIAL") { bg = "#f1f5f9"; col = "#64748b"; }
-                        else if (vU === "T" || vU.includes("REAC") || vU.includes("POS")) { bg = "#fee2e2"; col = "#b91c1c"; } // Pale Red
-                        else if (vU === "N" || vU.includes("NON") || vU.includes("NEG")) { bg = "#dcfce7"; col = "#15803d"; } // Pale Green
-                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#fca5a5"; col = "#991b1b"; } // Darker Red
-                        else if (vU === "TT" || vU === "TI") { bg = "#fef9c3"; col = "#b45309"; } // Pale Yellow
+                        if (vU === "CONFIDENTIAL" || vU === "INITIAL") { bg = "#f1f5f9"; col = "#64748b"; } // Gray
+                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "var(--text-main)"; col = "var(--bg-body)"; } // Black/White adapting
+                        else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } // Pale Red
+                        else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } // Pale Green
+                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } // Deep Red
+                        else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } // Orange
+                        else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } // Yellow
                         
-                        html += `<td><span class="res-badge" style="background:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;">${val}</span></td>`;
+                        html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
                     } 
-                    else if (isPerformedBy && val) {
-                        html += `<td style="font-weight:bold; color:var(--pri); background: #f0fdf4;">${val}</td>`;
+                    else if (isPerformedBy && val !== "") {
+                        // 🟢 TINANGGAL ANG COLOR, PINALIIT ANG FONT 🟢
+                        html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
                     } 
                     else { 
-                        html += `<td>${val||''}</td>`; 
+                        html += `<td>${val}</td>`; 
                     }
                 }); 
                 html += `</tr>`;
@@ -666,10 +671,9 @@ function printRegistryLogbook() {
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
     
-    // 🟢 NILITAN ANG FONT-SIZE (8px) AT INAYOS ANG PRINT COLOR ADJUST 🟢
     let html = `<html><head><title>Registry Logbook</title>
         <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 8px; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 8px; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff;} 
             .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} 
             .page:last-child { page-break-after: auto; } 
             .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } 
@@ -684,7 +688,7 @@ function printRegistryLogbook() {
         </style>
     </head><body>`;
     
-    const chunk = 12; // Pwedeng magkasya ang 12 rows dahil lumiit ang font
+    const chunk = 12; 
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
@@ -694,29 +698,32 @@ function printRegistryLogbook() {
             html += `<tr>`; 
             headerIndices.forEach((idx, i) => { 
                 let val = row[idx] || '';
-                let hName = printHeaders[i].toUpperCase();
+                let hName = printHeaders[i].toUpperCase().trim();
                 let isResCol = hName === 'RESULT CODE' || hName === 'FINAL RESULT' || hName === 'RESULT' || hName === 'DIAGNOSIS' || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
                 let isPerformedBy = hName === 'PERFORMED BY';
                 
                 let bgStyle = "";
                 let textWeight = "normal";
+                let fontStyle = "";
                 
-                // 🟢 APPLY COLOR CODES SA PDF / PRINT 🟢
-                if (isResCol && val) {
-                    let vU = String(val).toUpperCase();
+                // 🟢 BAGO: EXACT MATCH COLOR CODING PARA SA LOGBOOK PRINTING 🟢
+                if (isResCol && val !== "") {
+                    let vU = String(val).toUpperCase().trim();
                     textWeight = "bold";
-                    if (vU === "CONFIDENTIAL") bgStyle = "background-color: #f1f5f9; color: #64748b;"; 
-                    else if (vU === "T" || vU.includes("REAC") || vU.includes("POS")) bgStyle = "background-color: #fee2e2; color: #b91c1c;"; 
-                    else if (vU === "N" || vU.includes("NON") || vU.includes("NEG")) bgStyle = "background-color: #dcfce7; color: #15803d;"; 
-                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #fca5a5; color: #991b1b;"; 
-                    else if (vU === "TT" || vU === "TI") bgStyle = "background-color: #fef9c3; color: #b45309;";
-                    else if (vU === "I" || vU.includes("ERR")) bgStyle = "background-color: #f1f5f9; color: #334155;";
-                } else if (isPerformedBy && val) {
-                    bgStyle = "background-color: #f0fdf4; color: #0f766e;"; // Pale Green para sa Encoder
-                    textWeight = "bold";
+                    if (vU === "CONFIDENTIAL" || vU === "INITIAL") bgStyle = "background-color: #f1f5f9; color: #64748b;"; // Gray
+                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000; color: #ffffff;"; // Black bg, white text
+                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2; color: #b91c1c;"; // Pale Red
+                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7; color: #15803d;"; // Pale Green
+                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b; color: #ffffff;"; // Deep Red
+                    else if (vU === "TI") bgStyle = "background-color: #ffedd5; color: #c2410c;"; // Orange
+                    else if (vU === "TT") bgStyle = "background-color: #fef9c3; color: #b45309;"; // Yellow
+                } 
+                else if (isPerformedBy && val !== "") {
+                    // 🟢 BAGO: 6px NA LANG ANG PERFORMED BY (-2 base font) AT WALANG KULAY 🟢
+                    fontStyle = "font-size: 6px; color: #555;"; 
                 }
 
-                html += `<td style="${bgStyle} font-weight: ${textWeight};">${val}</td>`; 
+                html += `<td style="${bgStyle} font-weight: ${textWeight}; ${fontStyle}">${val}</td>`; 
             }); 
             html += `</tr>`; 
         });
@@ -727,9 +734,10 @@ function printRegistryLogbook() {
     html += `</body></html>`;
     const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); 
     
-    // Auto-print and close
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
+
+
 
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
