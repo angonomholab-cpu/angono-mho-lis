@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOYj2--AyUG1VB9m6UaYyMk5j3wzZD464ktQgY7tit-o2VFShcNm4bA6QxG_-sEmagCw/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwS3VPtVKLswbGMhFfOXI2WzX7QxahD0pXnCF_L_P0TZqttiaXLRpc539XjMgIEiWuR1g/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -792,8 +792,10 @@ async function loadSettingsData() {
                     });
                 }
             });
+        } else {
+            showAppAlert("Error", "Failed to load settings.", "error");
         }
-    } catch(e) { console.log(e); } 
+    } catch(e) { console.log("Settings Load Error: ", e); } 
 }
 
 function renderSettings(users) { 
@@ -1138,8 +1140,13 @@ async function submitStaffRegister() {
     const pass1 = document.getElementById('reg_pass').value;
     const pass2 = document.getElementById('reg_pass2').value;
     
-    if(!name || !role || !user || !pass1) return showAppAlert("Required", "Please fill all fields.", "error");
-    if(pass1 !== pass2) return showAppAlert("Mismatch", "Passwords do not match.", "error");
+    if(!name || !role || !user || !pass1 || !pass2) return showAppAlert("Required", "Please fill all fields.", "error");
+    
+    // 🟢 BAGO: PASSWORD MISMATCH LOGIC 🟢
+    if(pass1 !== pass2) {
+        document.getElementById('reg_pass2').value = ''; // Buburahin yung tinype niya
+        return showAppAlert("Mismatch", "Passwords do not match! Please try again.", "error");
+    }
 
     const btn = document.querySelector('#staff-register-card .btn-primary');
     const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Submitting...'; btn.disabled = true;
@@ -1149,13 +1156,9 @@ async function submitStaffRegister() {
         if(res.status === "success") {
             showAppAlert("Success", "Account requested successfully! Please wait for the Admin to approve your account before logging in.", "success");
             
-            // Clear fields
-            document.getElementById('reg_name').value = '';
-            document.getElementById('reg_user').value = '';
-            document.getElementById('reg_pass').value = '';
-            document.getElementById('reg_pass2').value = '';
+            document.getElementById('reg_name').value = ''; document.getElementById('reg_user').value = '';
+            document.getElementById('reg_pass').value = ''; document.getElementById('reg_pass2').value = '';
             document.getElementById('reg_role').value = '';
-            
             backToLoginFromRegister();
         } else { showAppAlert("Error", res.message, "error"); }
     } catch(e) { showAppAlert("Error", "Server error. Please try again.", "error"); }
