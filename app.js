@@ -251,9 +251,32 @@ async function runQuickSearch(q) {
 }
 
 async function viewQuickProfile(p) {
-    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    currentQuickPatient = p; 
+    document.getElementById('quick-profile-view').style.display = 'flex'; 
+    document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; 
+    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    
+    // Tatawagin ang normal na history fetcher
     fetchHistory(p.id, null, 'qs-history-list', true, false); 
+    
+    // 🟢 BAGO: TOTAL INVISIBILITY PARA SA VIRAL LOAD KUNG HINDI ADMIN 🟢
+    if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
+        const qsList = document.getElementById('qs-history-list');
+        
+        // Susubaybayan natin ang box, kapag may pumasok na "VIRAL LOAD", BUBURAHIN agad natin!
+        const observer = new MutationObserver(() => {
+            const cards = qsList.querySelectorAll('.history-card');
+            cards.forEach(card => {
+                const content = card.innerText.toUpperCase();
+                // Kung mabasa ng system na may GXVL o Viral Load, ide-delete niya yung buong element bago pa makita.
+                if (content.includes('VIRAL LOAD') || content.includes('GXVL') || content.includes('HIV-1')) {
+                    card.remove(); 
+                }
+            });
+        });
+        observer.observe(qsList, { childList: true, subtree: true });
+    }
 }
 
 function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
