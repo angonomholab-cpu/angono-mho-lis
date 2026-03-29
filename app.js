@@ -603,26 +603,39 @@ async function openRegistryModal(type) {
             
             sorted.forEach((row, rIndex) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                
+                // 🟢 BAGO: HAHANAPIN KUNG "INITIAL" ANG ROW NA ITO BAGO KULAYAN 🟢
+                let isInitialRow = false;
+                hMap.forEach(c => {
+                    let hName = c.original.toUpperCase().trim();
+                    if (hName === 'REPEAT' || hName === 'TEST TYPE') {
+                        if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true;
+                    }
+                });
+
                 hMap.forEach(c => {
                     let val = row[c.index] || '';
                     let hName = c.original.toUpperCase().trim();
-                    
-                    // MAS PINALAWAK NA DETECTOR PARA SIGURADONG MA-COLOR CODE
                     let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
+                    let isPerformedBy = hName === 'PERFORMED BY';
 
                     if (isResCol && val !== "") {
                         let vU = String(val).toUpperCase().trim();
                         let bg = "transparent", col = "inherit"; 
                         
-                        if (vU === "CONFIDENTIAL" || vU === "INITIAL") { bg = "#f1f5f9"; col = "#64748b"; } 
-                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "var(--text-main)"; col = "var(--bg-body)"; } 
+                        // 🟢 BAGO: COLOR LOGIC (OVERRIDE TO GRAY IF INITIAL) 🟢
+                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } 
+                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } // FORCED BLACK & WHITE
                         else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } 
                         else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } 
                         else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } 
                         else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } 
                         else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
                         
-                        html += `<td style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; font-weight:bold;` : ''}">${val}</td>`;
+                        html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
+                    } 
+                    else if (isPerformedBy && val !== "") {
+                        html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
                     } 
                     else { 
                         html += `<td>${val}</td>`; 
@@ -656,6 +669,7 @@ function printRegistryLogbook() {
     let excludeCols = ["PATIENT ID", "ID"]; 
     if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST", "X-RAY RESULT");
     else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
+    
     let printHeaders = []; let headerIndices = [];
     window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
         const upperH = h.toUpperCase();
@@ -668,17 +682,22 @@ function printRegistryLogbook() {
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
     
-    // 🟢 BAGO: PINALIIT ANG OVERALL FONT SIZE (7.5px) PARA MAGKASYA AT UNIFORM LAHAT 🟢
+    // 🟢 BAGO: DYNAMIC SIZING (10 rows for GXP/DSSM, 20 rows for others) 🟢
+    const is10Rows = (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'DSSM');
+    const chunk = is10Rows ? 10 : 20;
+    const fontSize = is10Rows ? "11px" : "8px"; // Mas malaki kung 10 rows lang
+    const tdPadding = is10Rows ? "6px" : "3px"; // Mas matangkad ang box kung 10 rows lang
+
     let html = `<html><head><title>Registry Logbook</title>
         <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 7.5px; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff;} 
+            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: ${fontSize}; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff;} 
             .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} 
             .page:last-child { page-break-after: auto; } 
             .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } 
             .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } 
             .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} 
-            table { width: 100%; border-collapse: collapse; table-layout: auto; } 
-            th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word; font-size: 7.5px;} 
+            table { width: 100%; border-collapse: collapse; table-layout: auto; flex-grow: 1; } 
+            th, td { border: 1px solid #000; padding: ${tdPadding}; text-align: center; word-wrap: break-word; font-size: ${fontSize};} 
             tr { height: auto; } 
             th { background-color: #e2e8f0 !important; font-weight: bold; } 
             .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} 
@@ -686,7 +705,6 @@ function printRegistryLogbook() {
         </style>
     </head><body>`;
     
-    const chunk = 13; // Kaya nang magkasya ng 13 rows per page
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
@@ -694,28 +712,46 @@ function printRegistryLogbook() {
         
         pageRows.forEach(row => { 
             html += `<tr>`; 
+            
+            // 🟢 BAGO: HAHANAPIN KUNG "INITIAL" ANG ROW NA ITO BAGO KULAYAN 🟢
+            let isInitialRow = false;
+            headerIndices.forEach((idx, i) => {
+                let hName = printHeaders[i].toUpperCase().trim();
+                if (hName === 'REPEAT' || hName === 'TEST TYPE') {
+                    if (String(row[idx]).toUpperCase().trim() === 'INITIAL') isInitialRow = true;
+                }
+            });
+
             headerIndices.forEach((idx, i) => { 
                 let val = row[idx] || '';
                 let hName = printHeaders[i].toUpperCase().trim();
                 let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
+                let isPerformedBy = hName === 'PERFORMED BY';
                 
                 let bgStyle = "";
                 let textWeight = "normal";
+                let fontStyle = "";
                 
-                // 🟢 BAGO: PRINT COLOR CODES (Ginagamit ang !important) 🟢
+                // 🟢 BAGO: PRINT COLOR CODES WITH INITIAL OVERRIDE 🟢
                 if (isResCol && val !== "") {
                     let vU = String(val).toUpperCase().trim();
                     textWeight = "bold";
-                    if (vU === "CONFIDENTIAL" || vU === "INITIAL") bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; 
-                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; // Black for print
-                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; 
-                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; 
-                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; 
-                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; 
-                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;";
+                    
+                    if (vU === "CONFIDENTIAL" || isInitialRow) bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; // Gray Override
+                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; // Black bg, white text
+                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; // Pale Red
+                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; // Pale Green
+                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; // Deep Red
+                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; // Orange
+                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;"; // Yellow
                 } 
+                else if (isPerformedBy && val !== "") {
+                    // Mas maliit nang onti sa actual font size
+                    const pfSize = is10Rows ? "8px" : "6px";
+                    fontStyle = `font-size: ${pfSize}; color: #555;`; 
+                }
 
-                html += `<td style="${bgStyle} font-weight: ${textWeight};">${val}</td>`; 
+                html += `<td style="${bgStyle} font-weight: ${textWeight}; ${fontStyle}">${val}</td>`; 
             }); 
             html += `</tr>`; 
         });
