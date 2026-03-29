@@ -772,13 +772,17 @@ async function batchPrint() {
     try { const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role }); if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; } } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
 }
 
+
 async function loadSettingsData() { 
     try {
-        const res = await apiGet("getSettingsData"); 
+        // 🟢 BAGO: GINAWANG apiPost PARA PUMASOK SA TAMA SA BACKEND 🟢
+        const res = await apiPost("getSettingsData", {}); 
+        
         if (res.status === "success") {
             const data = res.data;
             globalStaffList = data.staff || [];
             globalFacilityList = data.facilities || [];
+            
             renderFacilityList();
             renderStaffList();
             renderSettings(data.users); 
@@ -793,10 +797,14 @@ async function loadSettingsData() {
                 }
             });
         } else {
-            showAppAlert("Error", "Failed to load settings.", "error");
+            showAppAlert("Error", "Failed to load settings. Please try again.", "error");
         }
-    } catch(e) { console.log("Settings Load Error: ", e); } 
+    } catch(e) { 
+        console.log("Settings Load Error: ", e); 
+    } 
 }
+
+
 
 function renderSettings(users) { 
     const uList = document.getElementById('list-users'); 
