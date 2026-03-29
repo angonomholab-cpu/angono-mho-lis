@@ -129,6 +129,11 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
     .test-btn-vert i { font-size: 1.4rem; }
     .test-btn-vert span { font-size: 0.65rem; }
 }
+        @media (max-width: 768px) {
+            .content-area { min-height: 65vh !important; }
+            .rep-footer { flex-direction: column; gap: 10px; }
+            #page-reports .report-card { padding: 10px !important; margin: 10px !important; }
+        }
 
 /* ========================================= */
 /* 4. BUTTONS & FORMS                        */
