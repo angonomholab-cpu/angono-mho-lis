@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwS3VPtVKLswbGMhFfOXI2WzX7QxahD0pXnCF_L_P0TZqttiaXLRpc539XjMgIEiWuR1g/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwaissMSjLSK89Cg-ZrqEeoGAt6j_iToI04OCc6MKWqcePwFjGE8CkU0Ob8jxaQ1C5SQw/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -350,36 +350,83 @@ function clearForm() {
 
 async function finalSubmit() {
   const btn = document.getElementById('save-btn-action');
-  if(!document.getElementById('p_name').value || Object.keys(labOrders).length === 0) { showAppAlert("Missing Info", "Please fill in Name and select a test.", "error"); return; }
-  const originalText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true;
+  if(!document.getElementById('p_name').value || Object.keys(labOrders).length === 0) { 
+      showAppAlert("Missing Info", "Please fill in Name and select a test.", "error"); 
+      return; 
+  }
+  const originalText = btn.innerHTML; 
+  btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; 
+  btn.disabled = true;
 
   const pEmailEl = document.getElementById('p_email');
   const pEmail = pEmailEl ? pEmailEl.value.trim().toLowerCase() : "";
   const generatedPassword = pEmail ? Math.random().toString(36).slice(-8).toUpperCase() : "";
 
-  let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
-  Object.keys(labOrders).forEach(key => { const entry = { name: availableTests[key].testName, code: availableTests[key].testCode, details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } }; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); finalTestsArray.push(entry); });
+  let finalTestsArray = []; 
+  const pAge = document.getElementById('p_age').value || ""; 
+  const pSex = document.getElementById('p_sex').value || ""; 
+  const pFacility = document.getElementById('p_facility').value || "";
+  
+  Object.keys(labOrders).forEach(key => { 
+      const entry = { 
+          name: availableTests[key].testName, 
+          code: availableTests[key].testCode, 
+          details: { 
+              ...labOrders[key].details, 
+              age: pAge, sex: pSex, facility: pFacility, 
+              address: document.getElementById('p_address').value, 
+              contact: document.getElementById('p_contact').value, 
+              bday: document.getElementById('p_bday').value 
+          } 
+      }; 
+      if(labOrders[key].subTests && labOrders[key].subTests.length > 0) {
+          entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); 
+      }
+      finalTestsArray.push(entry); 
+  });
 
-  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
+  const formData = { 
+      patientId: document.getElementById('finalPatientId').value, 
+      fullName: document.getElementById('p_name').value, 
+      bday: document.getElementById('p_bday').value, 
+      sex: pSex, age: pAge, 
+      address: document.getElementById('p_address').value, 
+      contact: document.getElementById('p_contact').value, 
+      email: pEmail, 
+      patientPassword: generatedPassword, 
+      facility: pFacility, 
+      encoderFullName: currentUser.fullName || currentUser.username, 
+      encoder: currentUser.username, 
+      testsData: JSON.stringify(finalTestsArray) 
+  };
 
   try {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") { 
-          btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
+          btn.style.background = "var(--success)"; 
+          btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
           clearForm(); 
-          await loadPendingData(); // INAYOS: Laging magre-refresh ang pending ngayon!
+          await loadPendingData(); 
           
           const savedEmail = res.data ? res.data.email : pEmail;
           const savedPass = res.data ? res.data.generatedPassword : generatedPassword;
-          if(savedEmail && savedPass) {
-              showAppAlert("Patient Portal Created", `Email: ${savedEmail}\nPassword: ${savedPass}\n\n(Inform the patient or wait for the system to email them.)`, "success");
+          const emailStatus = res.data ? res.data.emailStatus : ""; // Kukunin ang log galing backend
+          
+          // 🟢 BAGO: MATALINONG POP-UP MESSAGE 🟢
+          if (emailStatus && emailStatus.includes("sent successfully")) {
+              showAppAlert("Patient Portal Created", `The record is saved and login credentials have been automatically emailed to:\n\nEmail: ${savedEmail}\nPassword: ${savedPass}`, "success");
+          } else if (emailStatus && emailStatus.includes("Error sending email")) {
+              showAppAlert("Record Saved, but Email Failed", `Record saved successfully, but Google failed to send the email.\n\nError: ${emailStatus}\n\nPassword generated: ${savedPass}`, "error");
           } else {
-              showAppAlert("Record Saved", "The laboratory record has been successfully added to pending.", "success");
+              showAppAlert("Record Saved", "The laboratory record has been successfully added to pending. (No new email sent).", "success");
           }
           
-          setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 2000); 
+          setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 3000); 
       } else { throw new Error("Server rejected the save."); }
-  } catch (err) { showAppAlert("Error", String(err), "error"); btn.disabled = false; btn.innerHTML = originalText; }
+  } catch (err) { 
+      showAppAlert("Error", String(err), "error"); 
+      btn.disabled = false; btn.innerHTML = originalText; 
+  }
 }
 
 function editPendingFull(id) {
