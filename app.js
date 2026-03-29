@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyuqPVJ4ovb-jqikXteA3GRXIbSNKOByPtBDVAuX_Lkluf90LfNjZfbbhqpuBjx4BvZ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXV89dqdi2gmzZjJirZOD-77wN6u_zpXxv6QbApi46up5LzTp3xRdv4LDyLcvhDnyOUg/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -437,6 +437,7 @@ function renderLists() {
     
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     const isViewer = (role === 'VIEWER');
+    const isEncoder = (role === 'ENCODER');
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
 
@@ -478,19 +479,28 @@ function renderLists() {
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
             if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
             let hasInitial = window.completedData.some(c => c.patientId === item.patientId && c.test.toUpperCase() === item.test.toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : c.details; return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
-            if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px;">REPEAT</span>`;
+            if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px; box-shadow: 0 2px 4px rgba(231,76,60,0.3);">REPEAT</span>`;
         } catch(e){}
         
-        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Are you sure you want to delete this pending request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
-        let clickAttr = isViewer ? '' : `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
+        // 🟢 BAGO: ENCODER RESTRICTION SA EDIT/DELETE BUTTONS 🟢
+        let actionsHtml = '';
+        if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) {
+            actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Are you sure you want to delete this pending request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
+        }
+
+        // 🟢 BAGO: BAWAL BUKSAN NG ENCODER ANG TESTING PANEL 🟢
+        let clickAttr = `style="flex-grow:1;"`; // Default walang click action
+        let expandAreaHtml = '';
         
-        // PENDING UI: Inalis ang Print at Download
-        let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area">
-            <div style="display:flex; gap:10px; margin-bottom: 16px;">
-                <button class="btn btn-primary full-width" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Result</button>
-            </div>
-            <div>${getResultTemplate(tCode, safeId, item)}</div>
-        </div>`;
+        if (role === 'ADMIN' || role === 'STAFF') {
+            clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
+            expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area">
+                <div style="display:flex; gap:10px; margin-bottom: 16px;">
+                    <button class="btn btn-primary full-width" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Result</button>
+                </div>
+                <div>${getResultTemplate(tCode, safeId, item)}</div>
+            </div>`;
+        }
         
         return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
@@ -498,12 +508,11 @@ function renderLists() {
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
             const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
-            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
+            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
     }
 
-    // COMPLETED UI: Dinagdag ang Print at Download button
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test);
         let repeatBadge = ""; 
@@ -830,10 +839,75 @@ function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
 function printReport() {
-    const header = document.querySelector('.rep-header').outerHTML;
-    const footer = document.querySelector('.rep-footer').outerHTML;
     let activeTab = "";
     document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
+
+    // 🟢 BAGO: NAKA-TABLE FORMAT ANG HEADER PARA UMA-APPEAR SA BAWAT PAGE 🟢
+    const headerHtml = `
+        <table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;">
+            <tr>
+                <td style="width: 70px; text-align: left; vertical-align: middle;"><img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" style="width: 50px; height: 50px;"></td>
+                <td style="text-align: center; vertical-align: middle;">
+                    <h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1>
+                    <h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3>
+                    <p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p>
+                </td>
+                <td style="width: 70px; text-align: right; vertical-align: middle;"><img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" style="width: 50px; height: 50px;"></td>
+            </tr>
+        </table>`;
+
+    const footerHtml = document.querySelector('.rep-footer').outerHTML;
+
+    const htmlContent = `<html><head><title>Print Report</title>
+        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
+        <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;}
+            table.main-layout { width: 100%; border-collapse: collapse; }
+            .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; }
+            .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; }
+            .data-table th { background-color: #f0f0f0 !important; }
+            .text-center { text-align: center; }
+            .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; }
+            .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            .controls-area, .chip-group, button { display: none !important; }
+        </style>
+        </head><body>
+            <table class="main-layout">
+                <thead><tr><td>${headerHtml}</td></tr></thead>
+                <tbody><tr><td>${activeTab}</td></tr></tbody>
+                <tfoot><tr><td>${footerHtml}</td></tr></tfoot>
+            </table>
+            <script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 800); };</script>
+        </body></html>`;
+    
+    const win = window.open('', '_blank');
+    win.document.write(htmlContent);
+    win.document.close();
+}
+
+async function downloadReport() {
+    showAppAlert("PDF Download", "Wait for the preview to load, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF'.", "info");
+    
+    let activeTab = "";
+    document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
+
+    const headerHtml = `
+        <table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;">
+            <tr>
+                <td style="width: 70px; text-align: left; vertical-align: middle;"><img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" style="width: 50px; height: 50px;"></td>
+                <td style="text-align: center; vertical-align: middle;">
+                    <h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1>
+                    <h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3>
+                    <p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p>
+                </td>
+                <td style="width: 70px; text-align: right; vertical-align: middle;"><img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" style="width: 50px; height: 50px;"></td>
+            </tr>
+        </table>`;
+
+    const footerHtml = document.querySelector('.rep-footer').outerHTML;
 
     const htmlContent = `<html><head><title>Print Report</title>
         <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
@@ -846,12 +920,6 @@ function printReport() {
             .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; }
             .data-table th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
             .text-center { text-align: center; }
-            .rep-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
-            .rep-header-text { text-align: center; flex-grow: 1; }
-            .rep-header-text h1 { font-size: 16px; margin: 2px 0; color: #00695C; }
-            .rep-header-text h3 { font-size: 12px; margin: 2px 0; color: #555; }
-            .rep-header-text p { font-size: 10px; margin: 2px 0; color: #555; }
-            .logo-side { width: 60px; height: 60px; }
             .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; }
             .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; }
             thead { display: table-header-group; }
@@ -874,9 +942,9 @@ function printReport() {
             </div>
             <div class="report-container">
                 <table class="main-layout">
-                    <thead><tr><td>${header}</td></tr></thead>
+                    <thead><tr><td>${headerHtml}</td></tr></thead>
                     <tbody><tr><td>${activeTab}</td></tr></tbody>
-                    <tfoot><tr><td>${footer}</td></tr></tfoot>
+                    <tfoot><tr><td>${footerHtml}</td></tr></tfoot>
                 </table>
             </div>
         </body></html>`;
