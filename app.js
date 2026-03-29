@@ -472,10 +472,19 @@ function renderLists() {
             if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px; box-shadow: 0 2px 4px rgba(231,76,60,0.3);">REPEAT</span>`;
         } catch(e){}
         
-        let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Are you sure you want to delete this pending request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
+               let actionsHtml = isViewer ? '' : `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Are you sure you want to delete this pending request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         let clickAttr = isViewer ? '' : `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
-        let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, true)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         
+        // 🟢 BAGO: 3 BUTTONS PARA SA SAVE, PRINT, AT DOWNLOAD 🟢
+        let expandAreaHtml = isViewer ? '' : `<div id="expand-${safeId}" class="pc-expand-area">
+            <div style="display:flex; gap:10px; margin-bottom: 16px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, false)"><i class="ph ph-floppy-disk"></i> Save Only</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this, 'print')"><i class="ph ph-printer"></i> Print</button>
+                <button class="btn btn-secondary" style="background:var(--bg-subtle); color:var(--pri);" onclick="saveResult('${item.id}', '${safeId}', this, 'download')" title="Save & Download PDF"><i class="ph ph-download-simple"></i> Download</button>
+            </div>
+            <div>${getResultTemplate(tCode, safeId, item)}</div>
+        </div>`;
+
         return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
 
@@ -513,11 +522,17 @@ async function moveToPendingRepeat(idStr) {
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 async function deleteEntry(id) { try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
 
-async function saveResult(id, safeId, btn, doPrint) {
+async function saveResult(id, safeId, btn, actionType) {
   let printWin = null;
-  if (doPrint) { printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Document... Please wait.</h2>'); }
+  if (actionType === 'print') { 
+      printWin = window.open('', '_blank'); 
+      printWin.document.write('<h2>Generating Document... Please wait.</h2>'); 
+  } else if (actionType === 'download') {
+      showAppAlert("Downloading", "Generating PDF, please wait...", "info");
+  }
   
-  const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+  const inputs = document.querySelectorAll('.res-' + safeId); 
+  const item = window.pendingData.find(d => String(d.id) === String(id).trim());
   let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
   let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
   let tCodePrint = getTestCodeFromName(item.test);
@@ -533,13 +548,25 @@ async function saveResult(id, safeId, btn, doPrint) {
       const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
       if (res.status === "success") {
           btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
-          if(doPrint) { 
-              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}], role: currentUser.role }); // Pinasok ang Role para confidential mask
-              if(printRes.status === "success" && printRes.data) { printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; }
+          
+          if(actionType === 'print') { 
+              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}], role: currentUser.role }); 
+              if(printRes.status === "success" && printRes.data) { 
+                  printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); 
+              } else { printWin.document.body.innerHTML = "Error generating print view."; }
+          } 
+          else if (actionType === 'download') {
+              const downRes = await apiPost("downloadPdfFromRegistry", { requests: [{testCode: id, testName: tCodePrint}], role: currentUser.role }); 
+              if (downRes.status === "success" && downRes.data) { 
+                  const linkSource = `data:application/pdf;base64,${downRes.data}`;
+                  const downloadLink = document.createElement("a");
+                  downloadLink.href = linkSource; downloadLink.download = `${tCodePrint}_Result.pdf`;
+                  downloadLink.click(); closeCustomAlert();
+              } else { showAppAlert("Error", "Download failed.", "error"); }
           }
           await loadPendingData(); 
       }
-  } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Save Only"; }
+  } catch (err) { if(printWin) printWin.close(); btn.disabled = false; btn.innerHTML = "Error"; }
 }
 
 async function printDirect(e, id, testName) { 
@@ -577,7 +604,7 @@ function getResultTemplate(code, safeId, item) {
  const rem = `<div class="field-group full-width" style="margin-top:10px;"><label class="field-label">Remarks</label><input type="text" class="res-${safeId} form-input" data-key="Remarks"></div>`;
  
  switch (code) {
-     case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Test Type', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
+      case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
      case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
      case 'DSSM': return `<div class="form-grid grid-2">${[1,2].map(n=>`<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
      case 'CHEM': return `<div class="form-grid grid-3">${input('FBS','FBS',['FBS','GLUCOSE'])}${input('RBS','RBS',['RBS'])}${input('HbA1c','HbA1c',['HBA1C'])}${input('Cholesterol','Chol',['CHOLESTEROL','LIPID'])}${input('Triglycerides','Trig',['TRIGLYCERIDES','LIPID'])}${input('HDL','HDL',['HDL','LIPID'])}${input('LDL','LDL',['LDL','LIPID'])}${input('BUN','BUN',['BUN'])}${input('Creatinine','Crea',['CREA'])}${input('Uric Acid','Uric',['URIC'])}${input('SGOT','SGOT',['SGOT','AST'])}${input('SGPT','SGPT',['SGPT','ALT'])}</div>${rem}`;
@@ -848,27 +875,49 @@ function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
 function printReport() {
-    const content = document.querySelector('#page-reports .report-card').innerHTML;
+    const header = document.querySelector('.rep-header').outerHTML;
+    const footer = document.querySelector('.rep-footer').outerHTML;
+    
+    // Hanapin kung aling tab ang active ngayon
+    let activeTab = "";
+    document.querySelectorAll('.tab-view').forEach(tab => {
+        if (tab.style.display === 'block') { activeTab = tab.outerHTML; }
+    });
+
     const win = window.open('', '_blank');
     win.document.write(`<html><head><title>Print Report</title>
         <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
         <style>
-            body { font-family: 'SF Pro Display', sans-serif; padding: 20px; color: #333; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-            th, td { border: 1px solid #000; padding: 6px; text-align: left; }
-            th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; }
+            table.main-layout { width: 100%; border-collapse: collapse; }
+            .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; }
+            .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; }
+            .data-table th { background-color: #f0f0f0 !important; }
             .text-center { text-align: center; }
-            .rep-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .rep-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
             .rep-header-text { text-align: center; flex-grow: 1; }
-            .rep-header-text h1, .rep-header-text h3, .rep-header-text p { margin: 2px 0; }
+            .rep-header-text h1 { font-size: 16px; margin: 2px 0; color: #00695C; }
+            .rep-header-text h3 { font-size: 12px; margin: 2px 0; color: #555; }
+            .rep-header-text p { font-size: 10px; margin: 2px 0; color: #555; }
             .logo-side { width: 60px; height: 60px; }
+            .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; }
+            .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; }
+            
+            /* Magic trick para maulit ang header at footer sa bawat print page */
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            
+            /* Tago ang mga hindi kailangan */
             .controls-area, .chip-group, button { display: none !important; }
-            .tab-view { display: block !important; margin-bottom: 40px; page-break-inside: avoid; }
-            .rep-footer { display: flex; justify-content: space-between; font-size: 9px; margin-top: 30px; border-top: 1px dashed #000; padding-top: 10px; }
-            @media print { .tab-view { break-inside: avoid; } }
         </style>
-        </head><body>${content}</body></html>`);
+        </head><body>
+            <table class="main-layout">
+                <thead><tr><td>${header}</td></tr></thead>
+                <tbody><tr><td>${activeTab}</td></tr></tbody>
+                <tfoot><tr><td>${footer}</td></tr></tfoot>
+            </table>
+            <script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 500); };</script>
+        </body></html>`);
     win.document.close();
-    setTimeout(() => { win.print(); }, 500);
 }
-
