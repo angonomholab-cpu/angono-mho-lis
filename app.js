@@ -540,7 +540,7 @@ function renderLists() {
         }
     });
 
-    pList.innerHTML = fPending.map(item => {
+       pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; let repeatBadge = ""; 
         try { 
@@ -550,14 +550,12 @@ function renderLists() {
             if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px; box-shadow: 0 2px 4px rgba(231,76,60,0.3);">REPEAT</span>`;
         } catch(e){}
         
-        // 🟢 BAGO: ENCODER RESTRICTION SA EDIT/DELETE BUTTONS 🟢
         let actionsHtml = '';
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) {
             actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Are you sure you want to delete this pending request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         }
 
-        // 🟢 BAGO: BAWAL BUKSAN NG ENCODER ANG TESTING PANEL 🟢
-        let clickAttr = `style="flex-grow:1;"`; // Default walang click action
+        let clickAttr = `style="flex-grow:1;"`; 
         let expandAreaHtml = '';
         
         if (role === 'ADMIN' || role === 'STAFF') {
@@ -570,31 +568,20 @@ function renderLists() {
             </div>`;
         }
         
-        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta">${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
-    }).join('');
-
-    if (rList) {
-        rList.innerHTML = fRepeat.map(item => {
-            const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
-            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
-        }).join('');
-        const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
-    }
-
-    cList.innerHTML = fComp.map(item => {
-        let tCodePrint = getTestCodeFromName(item.test);
-        let repeatBadge = ""; 
-        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem;">INITIAL</span>`; } catch(e){}
-        return `<div class="completed-card" style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="overflow:hidden; flex-grow:1;">
-                <div class="pc-name">${item.name} ${repeatBadge}</div>
-                <div class="pc-meta">${item.test}</div>
-            </div>
-            <div style="display:flex; gap:8px;">
-                <button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button>
-                <button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button>
-            </div>
-        </div>`;
+        // 🟢 BAGO: ISININGIT ANG LAB TEST NUMBER (item.id) BILANG HIGHLIGHTED BADGE 🟢
+        return `<div class="pending-card" id="card-${safeId}">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div ${clickAttr}>
+                            <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div>
+                            <div class="pc-meta" style="margin-top: 6px;">
+                                <span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.id}</span>
+                                ${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span>
+                            </div>
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                    ${expandAreaHtml}
+                </div>`;
     }).join('');
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
