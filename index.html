@@ -208,9 +208,10 @@
                 
                 <div style="padding-top: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
                     <div class="text-sm font-bold" style="color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="printRegistryLogbook()" class="btn btn-secondary"><i class="ph ph-notebook"></i> Print Logbook</button>
-                        <button id="btn-batch-print" onclick="batchPrint()" class="btn btn-primary"><i class="ph ph-printer"></i> Print Results</button>
+                                     <div style="display: flex; gap: 10px;">
+                        <button onclick="printRegistryLogbook()" class="btn btn-secondary"><i class="ph ph-notebook"></i> Logbook</button>
+                        <button id="btn-batch-print" onclick="batchPrint()" class="btn btn-primary"><i class="ph ph-printer"></i> Print</button>
+                        <button id="btn-batch-download" onclick="batchDownload()" class="btn btn-secondary" style="color:var(--pri);"><i class="ph ph-download-simple"></i> Download</button>
                     </div>
                 </div>
             </div>
@@ -243,11 +244,11 @@
                         <select id="rep_quarter" class="form-select" style="display:none; width: auto;">
                             <option value="1">1st Quarter</option><option value="2">2nd Quarter</option><option value="3">3rd Quarter</option><option value="4">4th Quarter</option>
                         </select>
-                        <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
+                          <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
                         <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i class="ph ph-lightning"></i> GENERATE</button>
                         <button onclick="printReport()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
+                        <button onclick="downloadReport()" class="btn btn-secondary" style="color:var(--pri);"><i class="ph ph-download-simple"></i> DOWNLOAD</button>
                     </div>
-
                     <div class="chip-group" style="margin-top: 16px;">
                         <button class="chip active" onclick="switchTab('fhsis')" id="tab-btn-fhsis">FHSIS REPORT</button>
                         <button class="chip" onclick="switchTab('hiv')" id="tab-btn-hiv">HIV CENSUS</button>
