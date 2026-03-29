@@ -78,7 +78,41 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .nav-item:hover { background-color: var(--bg-subtle); color: var(--pri); }
 .nav-item.active { background: linear-gradient(135deg, var(--pri), var(--sec)); color: white; box-shadow: var(--shadow-card); }
 .nav-item.active i { color: white; }
-
+#login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  /* background glow stays as is */
+}
+#patient-resend-card h2 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--pri); /* Main purple color shown in image 0 */
+  font-size: 1.5rem;
+}
+#patient-resend-card p {
+  margin-bottom: 25px; /* Better spacing above input than image 0 */
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+#patient-resend-card input {
+   margin-bottom: 20px; /* distinct space before button */
+}
+/* Fix colors in Dark Mode (Addresses compression/transparency in image 0) */
+body.dark-mode .auth-card {
+   background-color: var(--bg-surface, #262633) !important;
+   border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+   box-shadow: var(--shadow-card);
+   color: var(--text-main, #F5F5F8);
+}
+body.dark-mode .auth-card p {
+   color: var(--text-muted, #A6A6B8);
+}
 /* ========================================= */
 /* 3. WORKSPACE COLUMNS & RESPONSIVENESS     */
 /* ========================================= */
@@ -212,7 +246,18 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 
 /* Modals */
 #login-overlay, .modal-backdrop { position: fixed; top:0; left:0; width:100%; height:100%; background-color: rgba(44, 62, 80, 0.6); backdrop-filter: var(--blur-effect); z-index: 99999; display: flex; justify-content: center; align-items: center;}
-.auth-card { background: var(--bg-surface); padding: 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-float); width: 400px; text-align: center; border: 1px solid var(--border-color); }
+.auth-card {
+  background: #ffffff; /* Explicit background to separate from body */
+  padding: 40px; /* generous padding like image 1 */
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* slight shadow on light mode */
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+  margin: 0 !important; /* Removing explicit margins for flex centering */
+  position: relative;
+  border: 1px solid transparent;
+}
 #quick-search-modal .auth-card { width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;}
 .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
 .switch input { opacity: 0; width: 0; height: 0; }
