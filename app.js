@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXV89dqdi2gmzZjJirZOD-77wN6u_zpXxv6QbApi46up5LzTp3xRdv4LDyLcvhDnyOUg/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOYj2--AyUG1VB9m6UaYyMk5j3wzZD464ktQgY7tit-o2VFShcNm4bA6QxG_-sEmagCw/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -1110,3 +1110,54 @@ async function batchDownload() {
     } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
 }
 
+// 🟢 BAGO: LOGIC PARA SA CREATE STAFF ACCOUNT 🟢
+function showStaffRegister() {
+    document.getElementById('login-card').style.display = 'none';
+    document.getElementById('staff-register-card').style.display = 'block';
+    
+    // Kunin ang facilities galing sa server
+    apiGet("getFacilityList").then(res => {
+        if(res.status === 'success') {
+            const sel = document.getElementById('reg_fac');
+            sel.innerHTML = '<option value="ALL">ALL / MAIN</option>';
+            res.data.forEach(f => sel.innerHTML += `<option value="${f.name}">${f.name}</option>`);
+        }
+    });
+}
+
+function backToLoginFromRegister() {
+    document.getElementById('staff-register-card').style.display = 'none';
+    document.getElementById('login-card').style.display = 'block';
+}
+
+async function submitStaffRegister() {
+    const name = document.getElementById('reg_name').value.trim();
+    const fac = document.getElementById('reg_fac').value;
+    const role = document.getElementById('reg_role').value;
+    const user = document.getElementById('reg_user').value.trim();
+    const pass1 = document.getElementById('reg_pass').value;
+    const pass2 = document.getElementById('reg_pass2').value;
+    
+    if(!name || !role || !user || !pass1) return showAppAlert("Required", "Please fill all fields.", "error");
+    if(pass1 !== pass2) return showAppAlert("Mismatch", "Passwords do not match.", "error");
+
+    const btn = document.querySelector('#staff-register-card .btn-primary');
+    const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Submitting...'; btn.disabled = true;
+    
+    try {
+        const res = await apiPost("registerUser", { data: { u: user, p: pass1, fac: fac, role: role, name: name }});
+        if(res.status === "success") {
+            showAppAlert("Success", "Account requested successfully! Please wait for the Admin to approve your account before logging in.", "success");
+            
+            // Clear fields
+            document.getElementById('reg_name').value = '';
+            document.getElementById('reg_user').value = '';
+            document.getElementById('reg_pass').value = '';
+            document.getElementById('reg_pass2').value = '';
+            document.getElementById('reg_role').value = '';
+            
+            backToLoginFromRegister();
+        } else { showAppAlert("Error", res.message, "error"); }
+    } catch(e) { showAppAlert("Error", "Server error. Please try again.", "error"); }
+    finally { btn.innerHTML = oldText; btn.disabled = false; }
+}
