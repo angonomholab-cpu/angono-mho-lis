@@ -605,17 +605,30 @@ async function openRegistryModal(type) {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 hMap.forEach(c => {
                     let val = row[c.index];
-                    let isResCol = c.original.toLowerCase() === 'result code' || c.original.toLowerCase() === 'result' || c.original.toLowerCase() === 'diagnosis';
-                    if (isResCol) {
-                        let style = "res-gray"; let vU = String(val).toUpperCase();
-                        if (vU==="T" || vU.includes("REAC") || vU.includes("POS")) style = "res-positive";
-                        else if (vU==="N" || vU.includes("NON") || vU.includes("NEG")) style = "res-negative";
-                        else if (vU==="RR" || vU.includes("RESISTANT")) style = "res-dark-red"; 
-                        else if (vU==="TT"||vU==="TI") style = "res-warning";
-                        else if (vU==="I" || vU.includes("ERR")) style = "res-black";
-                        html += `<td><span class="res-badge ${style}">${val||''}</span></td>`;
-                    } else { html += `<td>${val||''}</td>`; }
-                }); html += `</tr>`;
+                    let hName = c.original.toUpperCase();
+                    let isResCol = hName === 'RESULT CODE' || hName === 'FINAL RESULT' || hName === 'RESULT' || hName === 'DIAGNOSIS' || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
+                    let isPerformedBy = hName === 'PERFORMED BY';
+
+                    if (isResCol && val) {
+                        let vU = String(val).toUpperCase();
+                        let bg = "#f1f5f9", col = "#64748b"; // Default Gray (Confidential / Invalid)
+                        
+                        if (vU === "CONFIDENTIAL") { bg = "#f1f5f9"; col = "#64748b"; }
+                        else if (vU === "T" || vU.includes("REAC") || vU.includes("POS")) { bg = "#fee2e2"; col = "#b91c1c"; } // Pale Red
+                        else if (vU === "N" || vU.includes("NON") || vU.includes("NEG")) { bg = "#dcfce7"; col = "#15803d"; } // Pale Green
+                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#fca5a5"; col = "#991b1b"; } // Darker Red
+                        else if (vU === "TT" || vU === "TI") { bg = "#fef9c3"; col = "#b45309"; } // Pale Yellow
+                        
+                        html += `<td><span class="res-badge" style="background:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;">${val}</span></td>`;
+                    } 
+                    else if (isPerformedBy && val) {
+                        html += `<td style="font-weight:bold; color:var(--pri); background: #f0fdf4;">${val}</td>`;
+                    } 
+                    else { 
+                        html += `<td>${val||''}</td>`; 
+                    }
+                }); 
+                html += `</tr>`;
             });
             cont.innerHTML = html + `</tbody></table>`;
         } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
@@ -652,20 +665,70 @@ function printRegistryLogbook() {
         const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
+    
+    // 🟢 NILITAN ANG FONT-SIZE (8px) AT INAYOS ANG PRINT COLOR ADJUST 🟢
     let html = `<html><head><title>Registry Logbook</title>
-        <style>body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 9px; color: #000; } .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} .page:last-child { page-break-after: auto; } .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} table { width: 100%; border-collapse: collapse; table-layout: auto; } th, td { border: 1px solid #000; padding: 4px; text-align: center; word-wrap: break-word;} tr { height: 6vh; } th { background-color: #f0f0f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; height: auto;} .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} .footer-col { flex: 1; }</style>
+        <style>
+            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: 8px; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+            .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} 
+            .page:last-child { page-break-after: auto; } 
+            .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } 
+            .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } 
+            .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} 
+            table { width: 100%; border-collapse: collapse; table-layout: auto; } 
+            th, td { border: 1px solid #000; padding: 3px; text-align: center; word-wrap: break-word;} 
+            tr { height: auto; } 
+            th { background-color: #f0f0f0 !important; font-weight: bold; } 
+            .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} 
+            .footer-col { flex: 1; }
+        </style>
     </head><body>`;
-    const chunk = 10; 
+    
+    const chunk = 12; // Pwedeng magkasya ang 12 rows dahil lumiit ang font
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
         printHeaders.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
-        pageRows.forEach(row => { html += `<tr>`; headerIndices.forEach(idx => { html += `<td>${row[idx] || ''}</td>`; }); html += `</tr>`; });
+        
+        pageRows.forEach(row => { 
+            html += `<tr>`; 
+            headerIndices.forEach((idx, i) => { 
+                let val = row[idx] || '';
+                let hName = printHeaders[i].toUpperCase();
+                let isResCol = hName === 'RESULT CODE' || hName === 'FINAL RESULT' || hName === 'RESULT' || hName === 'DIAGNOSIS' || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
+                let isPerformedBy = hName === 'PERFORMED BY';
+                
+                let bgStyle = "";
+                let textWeight = "normal";
+                
+                // 🟢 APPLY COLOR CODES SA PDF / PRINT 🟢
+                if (isResCol && val) {
+                    let vU = String(val).toUpperCase();
+                    textWeight = "bold";
+                    if (vU === "CONFIDENTIAL") bgStyle = "background-color: #f1f5f9; color: #64748b;"; 
+                    else if (vU === "T" || vU.includes("REAC") || vU.includes("POS")) bgStyle = "background-color: #fee2e2; color: #b91c1c;"; 
+                    else if (vU === "N" || vU.includes("NON") || vU.includes("NEG")) bgStyle = "background-color: #dcfce7; color: #15803d;"; 
+                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #fca5a5; color: #991b1b;"; 
+                    else if (vU === "TT" || vU === "TI") bgStyle = "background-color: #fef9c3; color: #b45309;";
+                    else if (vU === "I" || vU.includes("ERR")) bgStyle = "background-color: #f1f5f9; color: #334155;";
+                } else if (isPerformedBy && val) {
+                    bgStyle = "background-color: #f0fdf4; color: #0f766e;"; // Pale Green para sa Encoder
+                    textWeight = "bold";
+                }
+
+                html += `<td style="${bgStyle} font-weight: ${textWeight};">${val}</td>`; 
+            }); 
+            html += `</tr>`; 
+        });
+        
         html += `</tbody></table>
             <div class="footer"><div class="footer-col"><strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br><strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</div><div class="footer-col"><strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br><strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</div></div></div>`;
     }
     html += `</body></html>`;
-    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); setTimeout(() => { printWin.print(); }, 500);
+    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); 
+    
+    // Auto-print and close
+    setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
 
 async function batchPrint() {
