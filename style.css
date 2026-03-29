@@ -16,7 +16,7 @@
     --success: #27AE60;       
     --success-light: #E8F8F5;
     --warning: #E67E22;       
-    --warning-light-bg: #FFF9F0; /* FIX 1: Dynamic Repeat Bg */
+    --warning-light-bg: #FFF9F0; 
     --danger: #E74C3C;        
     --danger-bg: #FDEDEC;
     
@@ -42,7 +42,7 @@ body.dark-mode {
     --pri: #F48FB1;          
     --pri-hover: #F06292;
     --sec: #CE93D8;
-    --warning-light-bg: #332200; /* FIX 1: Dark mode repeat bg */
+    --warning-light-bg: #332200; 
     --border-color: rgba(255, 255, 255, 0.08);
     --shadow-card: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
@@ -78,43 +78,54 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; color: var(--text-main); }
 .nav-item:hover { background-color: var(--bg-subtle); color: var(--pri); }
 .nav-item.active { background: linear-gradient(135deg, var(--pri), var(--sec)); color: white; box-shadow: var(--shadow-card); }
 .nav-item.active i { color: white; }
-#login-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  /* background glow stays as is */
-}
-#patient-resend-card h2 {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  color: var(--pri); /* Main purple color shown in image 0 */
-  font-size: 1.5rem;
-}
-#patient-resend-card p {
-  margin-bottom: 25px; /* Better spacing above input than image 0 */
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-#patient-resend-card input {
-   margin-bottom: 20px; /* distinct space before button */
-}
-/* Fix colors in Dark Mode (Addresses compression/transparency in image 0) */
-body.dark-mode .auth-card {
-   background-color: var(--bg-surface, #262633) !important;
-   border: 1px solid var(--border-color, rgba(255,255,255,0.08));
-   box-shadow: var(--shadow-card);
-   color: var(--text-main, #F5F5F8);
-}
-body.dark-mode .auth-card p {
-   color: var(--text-muted, #A6A6B8);
-}
+
 /* ========================================= */
-/* 3. WORKSPACE COLUMNS & RESPONSIVENESS     */
+/* 3. MODALS, LOGIN & AUTH CARDS             */
+/* ========================================= */
+#login-overlay, .modal-backdrop { 
+    position: fixed; top:0; left:0; width:100%; height:100%; 
+    background-color: rgba(44, 62, 80, 0.6); 
+    backdrop-filter: var(--blur-effect); 
+    z-index: 99999; 
+    display: flex; justify-content: center; align-items: center;
+}
+
+#login-page {
+    display: flex; justify-content: center; align-items: center; min-height: 100vh;
+}
+
+/* 🟢 THE FIXED AUTH CARD 🟢 */
+.auth-card {
+    background: #ffffff; 
+    padding: 30px; 
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+    width: 90%;
+    max-width: 400px;
+    margin: auto !important; 
+    position: relative;
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column; /* Force elements to stack vertically */
+    box-sizing: border-box;
+}
+
+body.dark-mode .auth-card {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+    color: var(--text-main);
+}
+body.dark-mode .auth-card p { color: var(--text-muted); }
+
+#patient-resend-card h2 { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--pri); font-size: 1.5rem; }
+#patient-resend-card p { margin-bottom: 25px; color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+#patient-resend-card input { margin-bottom: 20px; }
+
+#quick-search-modal .auth-card { width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ========================================= */
+/* 4. WORKSPACE COLUMNS & RESPONSIVENESS     */
 /* ========================================= */
 .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; padding: 20px 20px 20px 10px; background: var(--bg-body); }
 .page-area { display: none; height: 100%; }
@@ -145,7 +156,6 @@ body.dark-mode .auth-card p {
     .workspace-col, .col-stacked-wrapper { width: 100% !important; min-width: 0 !important; max-width: 100vw; flex: none; margin-bottom: 0;}
     #col-entry { margin-bottom: 20px;}
     
-    /* FIX 2: Limit Pending and Repeat Height sa Mobile */
     #col-pending, #col-repeat { max-height: 450px; display: flex; flex-direction: column; margin-bottom: 20px;} 
     #list-pending, #list-repeat { overflow-y: auto; flex: 1; }
     
@@ -156,6 +166,11 @@ body.dark-mode .auth-card p {
     .sticky-footer { position: static; padding: 15px 0 0 0; background: transparent; border: none; }
 }
 
+@media screen and (max-width: 768px) {
+    .content-area { min-height: 65vh !important; }
+    .rep-footer { flex-direction: column; gap: 10px; }
+    #page-reports .report-card { padding: 10px !important; margin: 10px !important; }
+}
 
 @media screen and (max-width: 600px) {
     .form-grid.grid-2, .form-grid.grid-3 { grid-template-columns: 1fr; }
@@ -163,14 +178,9 @@ body.dark-mode .auth-card p {
     .test-btn-vert i { font-size: 1.4rem; }
     .test-btn-vert span { font-size: 0.65rem; }
 }
-        @media (max-width: 768px) {
-            .content-area { min-height: 65vh !important; }
-            .rep-footer { flex-direction: column; gap: 10px; }
-            #page-reports .report-card { padding: 10px !important; margin: 10px !important; }
-        }
 
 /* ========================================= */
-/* 4. BUTTONS & FORMS                        */
+/* 5. BUTTONS, FORMS & CHIPS                 */
 /* ========================================= */
 .vertical-test-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
 .test-btn-vert { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: 0.15s; width: 100%; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
@@ -181,11 +191,12 @@ body.dark-mode .auth-card p {
 
 .form-grid { display: grid; gap: 10px; margin-bottom: 12px; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
 .full-width { grid-column: 1 / -1; }
-.field-group { display: flex; flex-direction: column; gap: 3px; }
+.field-group { display: flex; flex-direction: column; gap: 3px; width: 100%; }
 .field-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 
-.form-input, .form-select { width: 100%; padding: 8px 12px; font-size: 0.8rem; font-family: inherit; background-color: var(--bg-body); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); transition: 0.2s; }
+.form-input, .form-select { width: 100%; padding: 8px 12px; font-size: 0.8rem; font-family: inherit; background-color: var(--bg-body); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); transition: 0.2s; box-sizing: border-box; }
 .form-input:focus, .form-select:focus { background-color: var(--bg-surface); border-color: var(--pri); outline: none; box-shadow: 0 0 0 3px var(--sec-light); }
 .form-select option { background-color: var(--bg-surface); color: var(--text-main); } 
 
@@ -209,21 +220,26 @@ body.dark-mode .auth-card p {
 .history-card .h-date { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;}
 .h-expanded-details { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); font-size: 0.75rem; background: var(--bg-surface); padding: 10px; border-radius: var(--radius-sm);}
 
-/* ========================================= */
-/* 5. TABLES, REGISTRY & REPORTS             */
-/* ========================================= */
-       /* 🟢 BAGO: FROZEN HEADERS AT THICK SCROLLBAR 🟢 */
-        #registry-table-content { max-height: 65vh; overflow: auto; }
-        .data-table th { position: sticky; top: 0; z-index: 5; background-color: #e2e8f0 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .table-responsive::-webkit-scrollbar { height: 16px; width: 14px; } /* Pinalaki ang scrollbar! */
-        .table-responsive::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
-        .table-responsive::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; border: 3px solid #f1f5f9; }
-        .table-responsive::-webkit-scrollbar-thumb:hover { background: #64748b; }
+.switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--pri); }
+input:checked + .slider:before { transform: translateX(20px); }
 
+/* ========================================= */
+/* 6. TABLES, REGISTRY & PENDING LISTS       */
+/* ========================================= */
+/* 🟢 THICK SCROLLBAR & FROZEN HEADERS 🟢 */
+#registry-table-content { max-height: 65vh; overflow: auto; }
+.data-table th { position: sticky; top: 0; z-index: 5; background-color: #e2e8f0 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
 .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-responsive::-webkit-scrollbar { height: 16px; width: 14px; } 
+.table-responsive::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+.table-responsive::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; border: 3px solid #f1f5f9; }
+.table-responsive::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-/* FIX 2: Prevent Vertical "Matrix" Text on Mobile */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; table-layout: auto;}
 .data-table th, .data-table td { white-space: nowrap !important; }
 .data-table th { background: var(--bg-subtle); color: var(--pri); padding: 8px; text-align: left; font-weight: 700; border-bottom: 2px solid var(--border-color); }
@@ -244,30 +260,8 @@ body.dark-mode .auth-card p {
 .pc-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; font-weight: 600; }
 .pc-expand-area { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
 
-/* Modals */
-#login-overlay, .modal-backdrop { position: fixed; top:0; left:0; width:100%; height:100%; background-color: rgba(44, 62, 80, 0.6); backdrop-filter: var(--blur-effect); z-index: 99999; display: flex; justify-content: center; align-items: center;}
-.auth-card {
-  background: #ffffff; /* Explicit background to separate from body */
-  padding: 40px; /* generous padding like image 1 */
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* slight shadow on light mode */
-  width: 90%;
-  max-width: 450px;
-  text-align: center;
-  margin: 0 !important; /* Removing explicit margins for flex centering */
-  position: relative;
-  border: 1px solid transparent;
-}
-#quick-search-modal .auth-card { width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;}
-.switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-.switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider { background-color: var(--pri); }
-input:checked + .slider:before { transform: translateX(20px); }
-
 /* ========================================= */
-/* 6. ADVANCED A4 PRINT STYLES               */
+/* 7. ADVANCED A4 PRINT STYLES               */
 /* ========================================= */
 @media print {
     @page { size: A4 landscape; margin: 12mm; }
