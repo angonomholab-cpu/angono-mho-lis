@@ -229,7 +229,7 @@
                     <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" class="logo-side" style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
                 </div>
 
-                <div class="controls-area" style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
+                                 <div class="controls-area" style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
                     <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                         <div style="font-weight:700; color:var(--text-main);"><i class="ph ph-sliders"></i> SETTINGS:</div>
                         <div style="display: flex; gap: 12px; align-items: center;">
@@ -245,7 +245,7 @@
                         </select>
                         <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
                         <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i class="ph ph-lightning"></i> GENERATE</button>
-                        <button onclick="printCurrentReport()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
+                        <button onclick="printReport()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
                     </div>
 
                     <div class="chip-group" style="margin-top: 16px;">
@@ -259,7 +259,9 @@
                 </div>
 
                 <div class="content-area table-responsive" style="padding: 24px; flex-grow: 1; overflow: auto; width: 100%;">
-                    
+                   
+
+
                     <div id="tab-fhsis" class="tab-view" style="display: block;">
                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">FHSIS REPORT - MATERNAL SCREENING <span class="rep-period"></span></h3>
                         <table class="data-table" style="width: 100%; font-size: 0.75rem; min-width: 900px;">
@@ -347,7 +349,7 @@
                         </table>
                     </div>
 
-                    <div id="tab-tb" class="tab-view" style="display: none;">
+                                       <div id="tab-tb" class="tab-view" style="display: none;">
                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">NATIONAL TB PROGRAM (NTP) <span class="rep-period"></span></h3>
                         <div style="display:flex; justify-content:center; gap:24px; margin-bottom:24px; flex-wrap:wrap;">
                             <table class="data-table" style="flex:1; min-width: 300px;">
@@ -359,14 +361,14 @@
                                 <tbody id="tb-res-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
                             </table>
                         </div>
-                        <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap;">
-                            <div style="flex:1; text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:300px; border-radius:var(--radius-lg);">
+                        <div style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:600px; margin:0 auto; border-radius:var(--radius-lg); display: flex; justify-content: space-around;">
+                            <div>
                                 <span class="text-muted font-bold text-sm">TOTAL CARTRIDGES USED</span><br>
                                 <span id="tb-cart" style="color:var(--pri); font-size:2.5rem; font-weight:800;">0</span>
                             </div>
-                            <div style="flex:1; text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:300px; border-radius:var(--radius-lg);">
-                                <span class="text-muted font-bold text-sm">TOTAL DSSM EXAMINED</span><br>
-                                <span id="tb-dssm-count" style="color:#BA68C8; font-size:2.5rem; font-weight:800;">0</span>
+                            <div>
+                                <span class="text-muted font-bold text-sm">TOTAL DSSM DONE</span><br>
+                                <span id="tb-dssm" style="color:#BA68C8; font-size:2.5rem; font-weight:800;">0</span>
                             </div>
                         </div>
                     </div>
