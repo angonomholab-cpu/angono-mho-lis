@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCaR8MlAUFHn3E2r1ZdDs1nkB-jyO-0yfuXZaeBkmlEFA3_mcsLY33UrQqrEkSaH6IjQ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyuqPVJ4ovb-jqikXteA3GRXIbSNKOByPtBDVAuX_Lkluf90LfNjZfbbhqpuBjx4BvZ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -106,14 +106,28 @@ async function attemptPatientLogin() {
 function showPatientResend() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-resend-card').style.display = 'block'; }
 function showPatientInfo() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'block'; }
 function backToLoginFromPatient() { document.getElementById('patient-resend-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
-
 async function resendPatientPassword() { 
     const email = document.getElementById('resend_pat_email').value.trim(); 
     if(!email) return showAppAlert("Required", "Please enter your email.", "error"); 
-    const btn = document.querySelector('#patient-resend-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; 
-    try { const res = await apiPost("resendPatientPassword", { email: email }); if (res.status === "success") { showAppAlert("Success", res.data, "success"); backToLoginFromPatient(); } else { showAppAlert("Failed to Send", res.message, "error"); } } catch(e) { showAppAlert("Connection Error", String(e), "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
+    
+    const btn = document.querySelector('#patient-resend-card .btn-primary'); 
+    const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; 
+    
+    try { 
+        const res = await apiPost("resendPatientPassword", { email: email }); 
+        if (res.status === "success" && res.data.includes("Success")) { 
+            showAppAlert("Success", "Password sent to your email.", "success"); 
+            backToLoginFromPatient(); 
+        } else { 
+            // Ipapalabas natin ung ginawa nating error message kung not recorded
+            showAppAlert("Notice", res.message, "error"); 
+        } 
+    } catch(e) { 
+        showAppAlert("Error", "Unable to connect to the server.", "error"); 
+    } finally { 
+        btn.innerHTML = oldText; btn.disabled = false; 
+    } 
 }
-
 function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const sidebar = document.getElementById('main-sidebar'); if (sidebar && sidebar.classList.contains('show')) toggleSidebar(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
@@ -525,28 +539,7 @@ async function moveToPendingRepeat(idStr) {
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 async function deleteEntry(id) { try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
 
-   async function saveResult(id, safeId, btn) {
-  const inputs = document.querySelectorAll('.res-' + safeId); 
-  const item = window.pendingData.find(d => String(d.id) === String(id).trim());
-  let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-  let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-  let tCodePrint = getTestCodeFromName(item.test);
-  
-  if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
-      if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
-  }
-  
-  let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-  btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
-
-  try {
-      const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-      if (res.status === "success") {
-          btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
-          await loadPendingData(); 
-      }
-  } catch (err) { btn.disabled = false; btn.innerHTML = "Save Result"; }
-}
+   
 
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName);
@@ -555,24 +548,7 @@ async function printDirect(e, id, testName) {
 }
 
 // BAGO: DOWNLOAD PDF DIRECTLY
-async function downloadDirect(e, id, testName) {
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName);
-    showAppAlert("Downloading", "Please wait while we generate your PDF...", "info");
-    try { 
-        const res = await apiPost("downloadPdfFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
-        if (res.status === "success" && res.data) { 
-            const linkSource = `data:application/pdf;base64,${res.data}`;
-            const downloadLink = document.createElement("a");
-            downloadLink.href = linkSource;
-            downloadLink.download = `${correctCode}_Result.pdf`;
-            downloadLink.click();
-            closeCustomAlert();
-        } else { 
-            showAppAlert("Error", "Document not found.", "error"); 
-        } 
-    } catch (err) { showAppAlert("Error", "Download Error.", "error"); }
-}
+
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
@@ -853,13 +829,6 @@ function renderHIV(h) { const buildRow = (grid) => `<tr><td style="font-weight:6
 function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style="font-weight:700; vertical-align:middle;">${name}</td><td>NON-REACTIVE</td><td class="text-center">${d.m - d.m_r}</td><td class="text-center">${d.f - d.f_r}</td><td class="text-center">${d.mat - d.mat_r}</td><td class="text-center">${d.total - d.react}</td></tr><tr style="color:var(--danger); font-weight:600;"><td>REACTIVE</td><td class="text-center">${d.m_r}</td><td class="text-center">${d.f_r}</td><td class="text-center">${d.mat_r}</td><td class="text-center">${d.react}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.m}</td><td class="text-center">${d.f}</td><td class="text-center">${d.mat}</td><td class="text-center">${d.total}</td></tr>`; document.getElementById('sti-body').innerHTML = buildSTI("HIV", s.hiv) + buildSTI("SYPHILIS", s.syph) + buildSTI("HBsAg", s.hbsag); }
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
-async function batchDownload() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
-    showAppAlert("Downloading", "Generating Batch PDF, please wait...", "info");
-    try { const res = await apiPost("downloadPdfFromRegistry", { requests: requests, role: currentUser.role }); if (res.status === "success" && res.data) { const linkSource = `data:application/pdf;base64,${res.data}`; const downloadLink = document.createElement("a"); downloadLink.href = linkSource; downloadLink.download = `Batch_Results.pdf`; downloadLink.click(); closeCustomAlert(); } else { showAppAlert("Error", "Document not found.", "error"); } } catch (e) { showAppAlert("Error", "Print Error.", "error"); }
-}
-
 function printReport() {
     const header = document.querySelector('.rep-header').outerHTML;
     const footer = document.querySelector('.rep-footer').outerHTML;
@@ -870,11 +839,12 @@ function printReport() {
         <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
         <style>
             @page { size: A4 landscape; margin: 10mm; }
-            body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;}
+            body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; background: #e2e8f0; padding-top: 70px; display: flex; flex-direction: column; align-items: center;}
+            .report-container { width: 297mm; min-height: 210mm; background: white; padding: 10mm; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
             table.main-layout { width: 100%; border-collapse: collapse; }
             .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; }
             .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; }
-            .data-table th { background-color: #f0f0f0 !important; }
+            .data-table th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
             .text-center { text-align: center; }
             .rep-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
             .rep-header-text { text-align: center; flex-grow: 1; }
@@ -887,56 +857,91 @@ function printReport() {
             thead { display: table-header-group; }
             tfoot { display: table-footer-group; }
             .controls-area, .chip-group, button { display: none !important; }
+            
+            .no-print { position: fixed; top: 0; left: 0; width: 100%; background: #1e293b; padding: 12px; text-align: center; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); } 
+            .no-print button { padding: 10px 20px; margin: 0 5px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif; font-size: 14px; } 
+            .btn-print { background: #10b981; color: white; } 
+            .btn-close { background: #ef4444; color: white; } 
+            .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
+            
+            @media print { .no-print { display: none !important; } body { background: white; padding-top: 0 !important; display: block; margin: 0; } .report-container { width: auto; min-height: auto; padding: 0; border: none; box-shadow: none;} }
         </style>
         </head><body>
-            <table class="main-layout">
-                <thead><tr><td>${header}</td></tr></thead>
-                <tbody><tr><td>${activeTab}</td></tr></tbody>
-                <tfoot><tr><td>${footer}</td></tr></tfoot>
-            </table>
+            <div class="no-print">
+                <span class="preview-text">⏳ PREVIEW: Wait for logos to load</span>
+                <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
+                <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
+            </div>
+            <div class="report-container">
+                <table class="main-layout">
+                    <thead><tr><td>${header}</td></tr></thead>
+                    <tbody><tr><td>${activeTab}</td></tr></tbody>
+                    <tfoot><tr><td>${footer}</td></tr></tfoot>
+                </table>
+            </div>
         </body></html>`;
     
     const win = window.open('', '_blank');
     win.document.write(htmlContent);
     win.document.close();
-    setTimeout(() => { win.print(); win.close(); }, 800);
 }
 
 async function downloadReport() {
-    showAppAlert("Downloading", "Generating Report PDF, please wait...", "info");
-    const header = document.querySelector('.rep-header').outerHTML;
-    const footer = document.querySelector('.rep-footer').outerHTML;
-    let activeTab = "";
-    document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
+    showAppAlert("PDF Download", "Wait for the preview to load, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF'.", "info");
+    printReport();
+}
 
-    const htmlContent = `<html><head><style>
-            body { font-family: sans-serif; padding: 0; color: #333; margin: 0; background: white;}
-            table.main-layout { width: 100%; border-collapse: collapse; }
-            .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; }
-            .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; }
-            .data-table th { background-color: #f0f0f0 !important; }
-            .text-center { text-align: center; }
-            .rep-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
-            .rep-header-text { text-align: center; flex-grow: 1; }
-            .rep-header-text h1 { font-size: 16px; margin: 2px 0; color: #00695C; }
-            .rep-header-text h3 { font-size: 12px; margin: 2px 0; color: #555; }
-            .rep-header-text p { font-size: 10px; margin: 2px 0; color: #555; }
-            .logo-side { width: 60px; height: 60px; }
-            .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; }
-            .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; }
-            thead { display: table-header-group; }
-            tfoot { display: table-footer-group; }
-            .controls-area, .chip-group, button { display: none !important; }
-        </style></head><body><table class="main-layout"><thead><tr><td>${header}</td></tr></thead><tbody><tr><td>${activeTab}</td></tr></tbody><tfoot><tr><td>${footer}</td></tr></tfoot></table></body></html>`;
+async function saveResult(id, safeId, btn) {
+  const inputs = document.querySelectorAll('.res-' + safeId); 
+  const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+  let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+  let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+  let tCodePrint = getTestCodeFromName(item.test);
+  
+  if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
+      if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
+  }
+  
+  let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+  btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
+  try {
+      const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+      if (res.status === "success") {
+          btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
+          await loadPendingData(); 
+      }
+  } catch (err) { btn.disabled = false; btn.innerHTML = "Save Result"; }
+}
+
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName);
+    const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
     try { 
-        const res = await apiPost("downloadReportPdf", { htmlContent: htmlContent }); 
+        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
         if (res.status === "success" && res.data) { 
-            const linkSource = `data:application/pdf;base64,${res.data}`;
-            const downloadLink = document.createElement("a");
-            downloadLink.href = linkSource; downloadLink.download = `MHO_Report.pdf`;
-            downloadLink.click(); closeCustomAlert();
-        } else { showAppAlert("Error", "Failed to generate report PDF.", "error"); }
-    } catch (err) { showAppAlert("Error", "Download Error.", "error"); }
+            win.document.open(); win.document.write(res.data); win.document.close(); 
+        } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } 
+    } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+}
+
+// BAGO: Pareho na ang download sa printDirect kasi nandun ang manual Save As PDF
+async function downloadDirect(e, id, testName) {
+    if(e) e.stopPropagation(); 
+    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
+    printDirect(e, id, testName);
+}
+
+async function batchDownload() {
+    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
+    
+    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
+    const printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Batch Preview... Please wait.</h2>');
+    try { 
+        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role }); 
+        if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } 
+        else { printWin.document.body.innerHTML = "Error generating preview."; } 
+    } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
 }
 
