@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOJdEysB8PILzgwwVe2Q1bBdkHxdWSdRGUOUT4-FDC28NnYKdI_nCWL7aIj_daVbfiAA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyi4ZyJYxqTf8grXVWX635Jggy2jJ7VkXXEiAYLwztzTSDe0sY8sFyXZaYz5cvYwj2ZQ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -13,7 +13,6 @@ window.CURRENT_TEST_TYPE = "";
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
-// --- Custom Alerts ---
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
@@ -25,30 +24,13 @@ function showAppAlert(title, message, type = 'info') {
     else { iconEl.className = 'ph ph-info'; iconEl.style.color = 'var(--pri)'; }
     modal.style.display = 'flex';
 }
-function customConfirm(message, callback) {
-    document.getElementById('custom-confirm-msg').innerText = message;
-    document.getElementById('custom-confirm').style.display = 'flex';
-    confirmActionCallback = callback;
-}
-function closeCustomConfirm(isConfirmed) {
-    document.getElementById('custom-confirm').style.display = 'none';
-    if (isConfirmed && confirmActionCallback) confirmActionCallback();
-    confirmActionCallback = null;
-}
+function customConfirm(message, callback) { document.getElementById('custom-confirm-msg').innerText = message; document.getElementById('custom-confirm').style.display = 'flex'; confirmActionCallback = callback; }
+function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
-// --- API Functions ---
-async function apiGet(action, params = {}) { 
-    let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); 
-    for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); 
-    const res = await fetch(url); return await res.json(); 
-}
-async function apiPost(action, payload) { 
-    const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); 
-    return await res.json(); 
-}
+async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); const res = await fetch(url); return await res.json(); }
+async function apiPost(action, payload) { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); }
 
-// --- Startup ---
 document.addEventListener('DOMContentLoaded', () => {
     try {
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
@@ -73,26 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
             else showPage('workspace');
         }
-    } catch (e) { 
-        localStorage.removeItem('labUser'); 
-        document.getElementById('login-overlay').style.display = 'flex';
-    } finally {
-        document.getElementById('app-loader').style.display = 'none';
-    }
+    } catch (e) { localStorage.removeItem('labUser'); document.getElementById('login-overlay').style.display = 'flex'; } finally { document.getElementById('app-loader').style.display = 'none'; }
 });
 
-// --- UI Toggles ---
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 function applyLimitedMode(isLimited) {
-    const hiddenTests = ['btn-viral', 'btn-hema', 'btn-chem', 'btn-uria', 'btn-feca'];
-    const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
+    const hiddenTests = ['btn-viral', 'btn-hema', 'btn-chem', 'btn-uria', 'btn-feca']; const hiddenRegistries = ['GXVL', 'HEMA', 'CHEM', 'UA', 'FA'];
     hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
     document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const onclickAttr = card.getAttribute('onclick'); if(onclickAttr) { let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r)); if(isLimited && isHidden) card.classList.add('disabled-test'); else card.classList.remove('disabled-test'); } });
 }
 function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
 
-// --- Modals & Login ---
 function switchLoginTab(type) {
     if(type === 'staff') {
         document.getElementById('staff-login-form').style.display = 'block'; document.getElementById('patient-login-form').style.display = 'none';
@@ -114,7 +88,7 @@ async function attemptLogin() {
         const res = await apiGet("loginUser", { username: u, password: p });
         if (res.status === "SUCCESS") { currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
         else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
-    } catch (e) { alert("Server Error."); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
+    } catch (e) { showAppAlert("Error", "Server Error.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
 async function attemptPatientLogin() {
@@ -136,34 +110,11 @@ function backToLoginFromPatient() { document.getElementById('patient-resend-card
 async function resendPatientPassword() { 
     const email = document.getElementById('resend_pat_email').value.trim(); 
     if(!email) return showAppAlert("Required", "Please enter your email.", "error"); 
-    
-    const btn = document.querySelector('#patient-resend-card .btn-primary'); 
-    const oldText = btn.innerHTML; 
-    btn.innerHTML = "Sending..."; 
-    btn.disabled = true; 
-    
-    try { 
-        const res = await apiPost("resendPatientPassword", { email: email }); 
-        if (res.status === "success") {
-            showAppAlert("Success", res.data, "success"); 
-            backToLoginFromPatient();
-        } else {
-            showAppAlert("Failed to Send", res.message, "error"); 
-        }
-    } catch(e) { 
-        showAppAlert("Connection Error", String(e), "error"); 
-    } finally { 
-        btn.innerHTML = oldText; 
-        btn.disabled = false; 
-    } 
+    const btn = document.querySelector('#patient-resend-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; 
+    try { const res = await apiPost("resendPatientPassword", { email: email }); if (res.status === "success") { showAppAlert("Success", res.data, "success"); backToLoginFromPatient(); } else { showAppAlert("Failed to Send", res.message, "error"); } } catch(e) { showAppAlert("Connection Error", String(e), "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
 }
 
-function logoutUser() { 
-    const modal = document.getElementById('logout-modal'); 
-    if (modal) modal.style.display = 'flex'; 
-    const sidebar = document.getElementById('main-sidebar'); 
-    if (sidebar && sidebar.classList.contains('show')) toggleSidebar(); 
-}
+function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const sidebar = document.getElementById('main-sidebar'); if (sidebar && sidebar.classList.contains('show')) toggleSidebar(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
@@ -211,11 +162,11 @@ function applyPermissions() {
         document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none'; });
     } 
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
-        if(navReg) navReg.style.display = 'flex'; if(role === 'NTP_CHECKER' && navRep) navRep.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex';
+        if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex'; // DOH TB Access to reports added
         document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
         if(role === 'NTP_CHECKER') { document.querySelectorAll('.chip-group .chip').forEach(chip => { if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; }); switchTab('tb'); }
     }
-}
+} 
 const availableTests = {
     "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select" data-key="History of Treatment"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" data-key="Source of Request" class="form-input" placeholder="e.g. Dr. Cruz"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" data-key="X-Ray Result" class="form-input" placeholder="e.g. Normal"></div>`},
     "dssm": { testName: "DSSM", testCode: "DSSM", title: "DSSM Microscopy", html: `<div class="field-group"><label class="field-label">TB Case No</label><input type="text" id="ds_case" data-key="TB Case Number" class="form-input" placeholder="Case Number"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" id="ds_month" data-key="Month of Treatment" class="form-input" placeholder="e.g. 2nd Month"></div>` },
@@ -267,13 +218,7 @@ async function runDirectSearch(q) {
   }, 600);
 }
 
-function openQuickSearch() { 
-    document.getElementById('quick-search-modal').style.display='flex'; 
-    const input = document.getElementById('quick-search-input'); 
-    input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; 
-    document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); 
-}
-
+function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
 async function runQuickSearch(q) {
   const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
   clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
@@ -292,26 +237,16 @@ async function runQuickSearch(q) {
 }
 
 async function viewQuickProfile(p) {
-    currentQuickPatient = p; 
-    document.getElementById('quick-profile-view').style.display = 'flex'; 
-    document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; 
-    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true, false); 
 }
 
-function editPatientDemographicsQS() { 
-    if(!currentQuickPatient) return; 
-    document.getElementById('qs-edit-form').style.display = 'block'; 
-    document.getElementById('qs_edit_name').value = currentQuickPatient.name; 
-    document.getElementById('qs_edit_age').value = currentQuickPatient.age; 
-    document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; 
-}
+function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
 function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
 
 async function loadPatientResults() {
-    const histContainer = document.getElementById('my-portal-history'); 
-    if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
+    const histContainer = document.getElementById('my-portal-history'); if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
     const nameEl = document.getElementById('my-portal-name'); if(nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
     const metaEl = document.getElementById('my-portal-meta'); if(metaEl) metaEl.innerText = `Patient ID: ${currentUser.username}`;
     fetchHistory(currentUser.username, null, 'my-portal-history', false, true); 
@@ -354,7 +289,13 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                 }
                 summaryHtml += '</div>'; editInputsHtml += '</div>';
                 let editBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>` : '';
-                let printBtnHtml = (isQuickSearch || isPatientPortal) ? `<button class="btn-icon" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>` : '';
+                
+                // MAY DINAGDAG NA DOWNLOAD PDF BUTTON PARA SA PATIENT PORTAL
+                let printBtnHtml = (isQuickSearch || isPatientPortal) ? `
+                    <button class="btn-icon" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button>
+                    <button class="btn-icon" onclick="downloadDirect(event, '${testCodeForPrint}', '${h.test}')" title="Download PDF" style="color:var(--pri); margin-left: 5px;"><i class="ph ph-download-simple"></i></button>
+                ` : '';
+                
                 let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
                 
                 return `
@@ -411,7 +352,8 @@ async function finalSubmit() {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") { 
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
-          clearForm(); if (currentUser.role !== 'ENCODER') await loadPendingData(); 
+          clearForm(); 
+          await loadPendingData(); // INAYOS: Laging magre-refresh ang pending ngayon!
           
           const savedEmail = res.data ? res.data.email : pEmail;
           const savedPass = res.data ? res.data.generatedPassword : generatedPassword;
@@ -453,14 +395,22 @@ async function submitPendingUpdate() {
     let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
     try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { showAppAlert("Error", String(e), "error"); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
-
+// ==========================================
+// PENDING, REPEAT, & COMPLETED LISTS FIX
+// ==========================================
 async function loadPendingData() {
   const icon = document.getElementById('refresh-icon'); if(icon) icon.classList.add('ph-spin');
   try {
       const res = await apiGet("getPendingWorkload", { role: currentUser.role, facility: currentUser.facility });
       const data = typeof res === 'string' ? JSON.parse(res) : res;
       window.pendingData = (data.pending || []).map(item => { item.id = String(item.id).trim(); return item; }).reverse(); 
-      window.completedData = (data.completed || data.encoded || []).map(item => { item.id = String(item.id).trim(); return item; }).reverse();
+      
+      // INAYOS: Binabasa na ng system ang "dateEncoded" kaya hindi na maglalaho ang Completed/Repeat!
+      window.completedData = (data.completed || data.encoded || []).map(item => { 
+          item.id = String(item.id).trim(); 
+          try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; item.dateEncoded = d.dateEncoded; } catch(e){}
+          return item; 
+      }).reverse();
       renderLists();
   } catch (e) { } finally { if(icon) icon.classList.remove('ph-spin'); }
 }
@@ -486,7 +436,13 @@ function renderLists() {
         if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
-        if (isCompleted) { if (item.isSessionCompleted) return true; const dStr = item.dateResult || item.dateEncoded || item.date; if (dStr && new Date(dStr).toDateString() !== new Date().toDateString()) return false; }
+        
+        // INAYOS NA DATE FILTER (Hindi na mawawala)
+        if (isCompleted) { 
+            if (item.isSessionCompleted) return true; 
+            const dStr = item.dateEncoded || item.dateResult || item.date; 
+            if (dStr && new Date(dStr).toDateString() !== new Date().toDateString()) return false; 
+        }
         return true;
     };
 
@@ -578,7 +534,7 @@ async function saveResult(id, safeId, btn, doPrint) {
       if (res.status === "success") {
           btn.style.background = "var(--success)"; btn.innerHTML = 'Saved';
           if(doPrint) { 
-              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}] });
+              const printRes = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: tCodePrint}], role: currentUser.role }); // Pinasok ang Role para confidential mask
               if(printRes.status === "success" && printRes.data) { printWin.document.open(); printWin.document.write(printRes.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; }
           }
           await loadPendingData(); 
@@ -589,7 +545,27 @@ async function saveResult(id, safeId, btn, doPrint) {
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName);
     const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
-    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}] }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+}
+
+// BAGO: DOWNLOAD PDF DIRECTLY
+async function downloadDirect(e, id, testName) {
+    if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName);
+    showAppAlert("Downloading", "Please wait while we generate your PDF...", "info");
+    try { 
+        const res = await apiPost("downloadPdfFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+        if (res.status === "success" && res.data) { 
+            const linkSource = `data:application/pdf;base64,${res.data}`;
+            const downloadLink = document.createElement("a");
+            downloadLink.href = linkSource;
+            downloadLink.download = `${correctCode}_Result.pdf`;
+            downloadLink.click();
+            closeCustomAlert();
+        } else { 
+            showAppAlert("Error", "Document not found.", "error"); 
+        } 
+    } catch (err) { showAppAlert("Error", "Download Error.", "error"); }
 }
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
@@ -614,7 +590,8 @@ function getResultTemplate(code, safeId, item) {
      default: return `<div class="form-grid grid-1">${input('Result','Result')}</div>${rem}`;
  }
 }
- async function openRegistryModal(type) {
+
+async function openRegistryModal(type) {
     document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
     window.CURRENT_TEST_TYPE = type; 
     document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
@@ -704,12 +681,8 @@ async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
     let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
     const printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Batch PDF... Please wait.</h2>');
-    try { const res = await apiPost("printFromRegistry", { requests: requests }); if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; } } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
+    try { const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role }); if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; } } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
 }
-
-// ==========================================
-// 9. SETTINGS & REPORTS (Lahat ng System Configs)
-// ==========================================
 
 async function loadSettingsData() { 
     try {
@@ -722,7 +695,6 @@ async function loadSettingsData() {
             renderStaffList();
             renderSettings(data.users); 
             
-            // I-load ang facilities sa dropdown ng Add User at Edit User
             const dropdowns = [document.getElementById('u_facility'), document.getElementById('edit_u_fac')];
             dropdowns.forEach(drop => {
                 if(drop) {
@@ -755,7 +727,6 @@ function renderSettings(users) {
             statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${status}</span></div>`; 
         } 
         
-        // Pinasa na natin ang buong data papunta sa Edit Modal
         let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.fullname}', '${u.role}', '${u.status}', '${u.facility}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; 
         
         return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; 
@@ -770,7 +741,7 @@ function openEditUser(username, name, role, status, fac) {
     document.getElementById('edit_u_role').value = role; 
     document.getElementById('edit_u_status').value = status; 
     document.getElementById('edit_u_fac').value = fac;
-    document.getElementById('edit_u_pass').value = ""; // blanko lagi initially
+    document.getElementById('edit_u_pass').value = ""; 
     document.getElementById('edit-user-modal').style.display = 'flex'; 
 } 
 
@@ -780,7 +751,7 @@ async function saveUserChangesFull() {
     const updatedData = {
         u: document.getElementById('edit_u_user').value,
         name: document.getElementById('edit_u_name').value,
-        p: document.getElementById('edit_u_pass').value, // isasave lang kung may tinype
+        p: document.getElementById('edit_u_pass').value,
         role: document.getElementById('edit_u_role').value,
         status: document.getElementById('edit_u_status').value,
         fac: document.getElementById('edit_u_fac').value
@@ -828,7 +799,6 @@ async function saveUser() {
     } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } 
 }
 
-// Facility Management
 let globalFacilityList = []; 
 function renderFacilityList() { 
     const container = document.getElementById('list-facilities'); 
@@ -846,7 +816,6 @@ function editFacility(index) { const f = globalFacilityList[index]; document.get
 function deleteFacility(index) { globalFacilityList.splice(index, 1); renderFacilityList(); } 
 function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
 
-// Staff Management
 let globalStaffList = []; let editingStaffIndex = -1; 
 function renderStaffList() { 
     const container = document.getElementById('staffListContainer'); if (!container) return; 
