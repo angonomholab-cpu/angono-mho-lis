@@ -480,30 +480,41 @@ async function submitPendingUpdate() {
 // ==========================================
 // PENDING, REPEAT, & COMPLETED LISTS FIX
 // ==========================================
-async function loadPendingData() {
+  async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon');
-    if(refIcon) refIcon.classList.add('ph-spin');
+    if (refIcon) refIcon.classList.add('ph-spin');
+    
     try {
-        // Binalik natin sa apiGet at nilagyan ng time bypass para laging fresh ang data!
-        const res = await apiGet("getPendingTests", { _t: new Date().getTime() }); 
-        if (res.status === "success") {
+        // Ibalik sa pinaka-basic na tawag para hindi mag-error ang API mo
+        let res = await apiGet("getPendingTests"); 
+        
+        // KUNG HINDI GUMANA ANG GET, SUSUBUKAN NIYA ANG POST (Smart Fallback)
+        if (!res || res.status !== "success") {
+            res = await apiPost("getPendingTests", {});
+        }
+
+        if (res && res.status === "success") {
             window.pendingData = res.data.pending || [];
             window.completedData = res.data.completed || [];
             renderLists();
+        } else {
+            console.error("Failed to load data from server.");
         }
     } catch(e) { 
-        console.log("Refresh Error:", e); 
-    }
-    finally { 
-        if(refIcon) refIcon.classList.remove('ph-spin'); 
+        console.error("Refresh Error:", e); 
+    } finally { 
+        if (refIcon) refIcon.classList.remove('ph-spin'); 
     }
 }
 
-  
 function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const rList = document.getElementById('list-repeat');
     const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return;
+
+    // Safety net: Siguraduhing may array kahit walang data
+    window.pendingData = window.pendingData || [];
+    window.completedData = window.completedData || [];
     
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     const isViewer = (role === 'VIEWER');
@@ -511,45 +522,44 @@ function renderLists() {
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
 
-    const uniqueTests = [...new Set(window.pendingData.map(item => item.test.toUpperCase()))];
+    // Crash protection: Nilagyan ng (item.test || "")
+    const uniqueTests = [...new Set(window.pendingData.map(item => String(item.test || "").toUpperCase()))];
     const currentVal = filterSelect ? filterSelect.value : 'ALL';
     let dropHtml = '<option value="ALL">All Sections</option>';
     uniqueTests.forEach(t => { let tCode = getTestCodeFromName(t); if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; } });
     if(filterSelect) { filterSelect.innerHTML = dropHtml; filterSelect.value = currentVal; }
 
     const filterFn = (item, isCompleted) => {
-        let t = (item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t);
+        let t = String(item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t);
         if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
-        
-        // 🟢 FIX: Tinanggal ang date restriction dito para laging lumabas ang Completed! 🟢
-        return true;
+        return true; // Pinapayagan lumabas ang lahat ng date
     };
 
     const fPending = window.pendingData.filter(i => filterFn(i, false)); 
     const fComp = window.completedData.filter(i => filterFn(i, true));
 
     let latestCompleted = {};
-    window.completedData.forEach(item => { let key = item.patientId + "_" + item.test.toUpperCase(); if(!latestCompleted[key]) latestCompleted[key] = item; });
+    window.completedData.forEach(item => { let key = item.patientId + "_" + String(item.test || "").toUpperCase(); if(!latestCompleted[key]) latestCompleted[key] = item; });
     const fRepeat = [];
     Object.values(latestCompleted).forEach(item => {
-        let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+        let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
         let rpt = d.Repeat || d["Test Type"] || "";
         if (String(rpt).toUpperCase() === 'INITIAL' || String(d.ResultCode || "").toUpperCase().includes("INITIAL")) {
-            let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && p.test.toUpperCase() === item.test.toUpperCase());
-            let typeMatch = !filterSelect || filterSelect.value === "ALL" || item.test.toUpperCase().includes(filterSelect.value);
+            let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && String(p.test || "").toUpperCase() === String(item.test || "").toUpperCase());
+            let typeMatch = !filterSelect || filterSelect.value === "ALL" || String(item.test || "").toUpperCase().includes(filterSelect.value);
             if(!isAlreadyPending && typeMatch) fRepeat.push(item); 
         }
     });
 
     pList.innerHTML = fPending.map(item => {
-        const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; let repeatBadge = ""; 
         try { 
-            let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); 
             if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
-            let hasInitial = window.completedData.some(c => c.patientId === item.patientId && c.test.toUpperCase() === item.test.toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : c.details; return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
+            let hasInitial = window.completedData.some(c => c.patientId === item.patientId && String(c.test || "").toUpperCase() === String(item.test || "").toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : (c.details || {}); return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
             if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px; box-shadow: 0 2px 4px rgba(231,76,60,0.3);">REPEAT</span>`;
         } catch(e){}
         
@@ -564,7 +574,6 @@ function renderLists() {
         if (role === 'ADMIN' || role === 'STAFF') {
             clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
             
-            // 🟢 FIX: IDINAGDAG ANG SAVE & PRINT BUTTON 🟢
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area">
                 <div style="display:flex; gap:10px; margin-bottom: 16px;">
                     <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>
@@ -591,7 +600,7 @@ function renderLists() {
 
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
-            const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
+            const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
             return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
@@ -600,7 +609,7 @@ function renderLists() {
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test);
         let repeatBadge = ""; 
-        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
+        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
         return `<div class="completed-card" style="margin-bottom:8px;">
             <div style="overflow:hidden; flex-grow:1;">
                 <div class="pc-name">${item.name} ${repeatBadge}</div>
@@ -614,6 +623,7 @@ function renderLists() {
     }).join('');
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
+
 async function saveAndPrintResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); 
     const item = window.pendingData.find(d => String(d.id) === String(id).trim());
