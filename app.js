@@ -481,20 +481,22 @@ async function submitPendingUpdate() {
 // PENDING, REPEAT, & COMPLETED LISTS FIX
 // ==========================================
 async function loadPendingData() {
-  const icon = document.getElementById('refresh-icon'); if(icon) icon.classList.add('ph-spin');
-  try {
-      const res = await apiGet("getPendingWorkload", { role: currentUser.role, facility: currentUser.facility });
-      const data = typeof res === 'string' ? JSON.parse(res) : res;
-      window.pendingData = (data.pending || []).map(item => { item.id = String(item.id).trim(); return item; }).reverse(); 
-      
-      // INAYOS: Binabasa na ng system ang "dateEncoded" kaya hindi na maglalaho ang Completed/Repeat!
-      window.completedData = (data.completed || data.encoded || []).map(item => { 
-          item.id = String(item.id).trim(); 
-          try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; item.dateEncoded = d.dateEncoded; } catch(e){}
-          return item; 
-      }).reverse();
-      renderLists();
-  } catch (e) { } finally { if(icon) icon.classList.remove('ph-spin'); }
+    const refIcon = document.getElementById('refresh-icon');
+    if(refIcon) refIcon.classList.add('ph-spin');
+    try {
+        // Piliting kumuha ng fresh data sa server (walang cache)
+        const res = await apiPost("getPendingTests", {}); 
+        if (res.status === "success") {
+            window.pendingData = res.data.pending || [];
+            window.completedData = res.data.completed || [];
+            renderLists();
+        }
+    } catch(e) { 
+        console.log("Refresh Error:", e); 
+    }
+    finally { 
+        if(refIcon) refIcon.classList.remove('ph-spin'); 
+    }
 }
 
   
@@ -520,7 +522,8 @@ function renderLists() {
         if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
         if (!typeMatch) return false;
-        if (isCompleted) { if (item.isSessionCompleted) return true; const dStr = item.dateEncoded || item.dateResult || item.date; if (dStr && new Date(dStr).toDateString() !== new Date().toDateString()) return false; }
+        
+        // 🟢 FIX: Tinanggal ang date restriction dito para laging lumabas ang Completed! 🟢
         return true;
     };
 
@@ -540,7 +543,7 @@ function renderLists() {
         }
     });
 
-       pList.innerHTML = fPending.map(item => {
+    pList.innerHTML = fPending.map(item => {
         const safeId = item.id.replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; let repeatBadge = ""; 
         try { 
@@ -560,15 +563,17 @@ function renderLists() {
         
         if (role === 'ADMIN' || role === 'STAFF') {
             clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
+            
+            // 🟢 FIX: IDINAGDAG ANG SAVE & PRINT BUTTON 🟢
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area">
                 <div style="display:flex; gap:10px; margin-bottom: 16px;">
-                    <button class="btn btn-primary full-width" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Result</button>
+                    <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>
+                    <button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button>
                 </div>
                 <div>${getResultTemplate(tCode, safeId, item)}</div>
             </div>`;
         }
         
-        // 🟢 BAGO: ISININGIT ANG LAB TEST NUMBER (item.id) BILANG HIGHLIGHTED BADGE 🟢
         return `<div class="pending-card" id="card-${safeId}">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div ${clickAttr}>
@@ -583,7 +588,61 @@ function renderLists() {
                     ${expandAreaHtml}
                 </div>`;
     }).join('');
+
+    if (rList) {
+        rList.innerHTML = fRepeat.map(item => {
+            const safeId = item.id.replace(/[^a-zA-Z0-9]/g, "");
+            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
+        }).join('');
+        const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
+    }
+
+    cList.innerHTML = fComp.map(item => {
+        let tCodePrint = getTestCodeFromName(item.test);
+        let repeatBadge = ""; 
+        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
+        return `<div class="completed-card" style="margin-bottom:8px;">
+            <div style="overflow:hidden; flex-grow:1;">
+                <div class="pc-name">${item.name} ${repeatBadge}</div>
+                <div class="pc-meta">${item.test}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button>
+                <button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button>
+            </div>
+        </div>`;
+    }).join('');
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
+}
+async function saveAndPrintResult(id, safeId, btn) {
+    const inputs = document.querySelectorAll('.res-' + safeId); 
+    const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+    let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+    let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+    let tCodePrint = getTestCodeFromName(item.test);
+    
+    if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
+        if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
+    }
+    
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+    const oldText = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+
+    try {
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        if (res.status === "success") {
+            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
+            
+            await loadPendingData(); // I-refresh ang lists para malipat sa Completed
+            
+            // Auto trigger ng Print Preview
+            printDirect(null, id, tCodePrint); 
+        }
+    } catch (err) { 
+        btn.disabled = false; btn.innerHTML = oldText; 
+        showAppAlert("Error", "Failed to save and print.", "error");
+    }
 }
 
 async function moveToPendingRepeat(idStr) {
