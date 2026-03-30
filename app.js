@@ -484,8 +484,8 @@ async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon');
     if(refIcon) refIcon.classList.add('ph-spin');
     try {
-        // Piliting kumuha ng fresh data sa server (walang cache)
-        const res = await apiPost("getPendingTests", {}); 
+        // Binalik natin sa apiGet at nilagyan ng time bypass para laging fresh ang data!
+        const res = await apiGet("getPendingTests", { _t: new Date().getTime() }); 
         if (res.status === "success") {
             window.pendingData = res.data.pending || [];
             window.completedData = res.data.completed || [];
