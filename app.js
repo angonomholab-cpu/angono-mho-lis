@@ -478,27 +478,27 @@ async function submitPendingUpdate() {
     try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { showAppAlert("Error", String(e), "error"); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
 }
 // ==========================================
-// PENDING, REPEAT, & COMPLETED LISTS FIX
+// 100% FIXED DATA LOADER (TUGMA NA SA BACKEND)
 // ==========================================
-  async function loadPendingData() {
+async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon');
     if (refIcon) refIcon.classList.add('ph-spin');
     
     try {
-        // Ibalik sa pinaka-basic na tawag para hindi mag-error ang API mo
-        let res = await apiGet("getPendingTests"); 
-        
-        // KUNG HINDI GUMANA ANG GET, SUSUBUKAN NIYA ANG POST (Smart Fallback)
-        if (!res || res.status !== "success") {
-            res = await apiPost("getPendingTests", {});
-        }
+        // 🟢 FIX 1: Ginamit natin ang TAMANG action name na nasa Code.gs ("getPendingWorkload")
+        let res = await apiGet("getPendingWorkload", { 
+            facility: currentUser.facility, 
+            role: currentUser.role,
+            _t: new Date().getTime() 
+        }); 
 
-        if (res && res.status === "success") {
-            window.pendingData = res.data.pending || [];
-            window.completedData = res.data.completed || [];
+        // 🟢 FIX 2: Tugma na sa binabato ng backend (res.pending at res.encoded)
+        if (res && (res.pending || res.encoded)) {
+            window.pendingData = res.pending || [];
+            window.completedData = res.encoded || []; // 'encoded' pala ang term mo para sa completed!
             renderLists();
         } else {
-            console.error("Failed to load data from server.");
+            console.error("Backend returned empty data.");
         }
     } catch(e) { 
         console.error("Refresh Error:", e); 
