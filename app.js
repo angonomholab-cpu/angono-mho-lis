@@ -508,8 +508,11 @@ async function loadPendingData() {
 }
 
 function renderLists() {
-    const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const rList = document.getElementById('list-repeat');
+    const pList = document.getElementById('list-pending'); 
+    const cList = document.getElementById('list-completed'); 
+    const rList = document.getElementById('list-repeat');
     const filterSelect = document.getElementById('test-filter');
+    
     if (!pList || !cList) return;
 
     // Safety net: Siguraduhing may array kahit walang data
@@ -522,50 +525,74 @@ function renderLists() {
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
 
-    // Crash protection: Nilagyan ng (item.test || "")
+    // --- 1. SETUP FILTER DROPDOWN ---
     const uniqueTests = [...new Set(window.pendingData.map(item => String(item.test || "").toUpperCase()))];
     const currentVal = filterSelect ? filterSelect.value : 'ALL';
     let dropHtml = '<option value="ALL">All Sections</option>';
-    uniqueTests.forEach(t => { let tCode = getTestCodeFromName(t); if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; } });
+    uniqueTests.forEach(t => { 
+        let tCode = getTestCodeFromName(t); 
+        if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; } 
+    });
     if(filterSelect) { filterSelect.innerHTML = dropHtml; filterSelect.value = currentVal; }
 
-    const filterFn = (item, isCompleted) => {
-        let t = String(item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t);
+    const filterFn = (item) => {
+        let t = String(item.test || "").toUpperCase(); 
+        let filterVal = filterSelect ? filterSelect.value : "ALL"; 
+        let tCode = getTestCodeFromName(t);
         if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
-        if (!typeMatch) return false;
-        return true; // Pinapayagan lumabas ang lahat ng date
+        return typeMatch; // 🟢 FIX: Walang date restriction para laging kita ang records
     };
 
-    const fPending = window.pendingData.filter(i => filterFn(i, false)); 
-    const fComp = window.completedData.filter(i => filterFn(i, true));
+    // --- 2. FILTER DATA ---
+    const fPending = window.pendingData.filter(i => filterFn(i)); 
+    const fComp = window.completedData.filter(i => filterFn(i));
 
-    let latestCompleted = {};
-    window.completedData.forEach(item => { let key = item.patientId + "_" + String(item.test || "").toUpperCase(); if(!latestCompleted[key]) latestCompleted[key] = item; });
+    // --- 3. LOGIC PARA SA FOR REPEAT LIST ---
     const fRepeat = [];
-    Object.values(latestCompleted).forEach(item => {
-        let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
-        let rpt = d.Repeat || d["Test Type"] || "";
-        if (String(rpt).toUpperCase() === 'INITIAL' || String(d.ResultCode || "").toUpperCase().includes("INITIAL")) {
-            let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && String(p.test || "").toUpperCase() === String(item.test || "").toUpperCase());
-            let typeMatch = !filterSelect || filterSelect.value === "ALL" || String(item.test || "").toUpperCase().includes(filterSelect.value);
-            if(!isAlreadyPending && typeMatch) fRepeat.push(item); 
-        }
+    let latestCompleted = {};
+    window.completedData.forEach(item => { 
+        let key = item.patientId + "_" + String(item.test || "").toUpperCase(); 
+        if(!latestCompleted[key]) latestCompleted[key] = item; 
     });
 
+    Object.values(latestCompleted).forEach(item => {
+        try {
+            const status = String(item.status || "").toUpperCase();
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+            let rpt = d.Repeat || d["Test Type"] || "";
+            let resCode = d.ResultCode || d.Diagnosis || d.Result || "";
+            
+            // 🟢 LALABAS SA REPEAT LIST KUNG: Status ay "FOR REPEAT" OR Result ay "INITIAL"
+            const isRepeatStatus = (status === "FOR REPEAT");
+            const isInitialInDetails = (String(rpt).toUpperCase() === 'INITIAL' || String(resCode).toUpperCase().includes("INITIAL"));
+
+            if (isRepeatStatus || isInitialInDetails) {
+                let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && String(p.test || "").toUpperCase() === String(item.test || "").toUpperCase());
+                let typeMatch = !filterSelect || filterSelect.value === "ALL" || String(item.test || "").toUpperCase().includes(filterSelect.value);
+                if(!isAlreadyPending && typeMatch) fRepeat.push(item); 
+            }
+        } catch(e) {}
+    });
+
+    // --- 4. RENDER PENDING LIST (With ID Badge & Save+Print) ---
     pList.innerHTML = fPending.map(item => {
-        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test);
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); 
+        let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; let repeatBadge = ""; 
         try { 
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); 
             if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; 
-            let hasInitial = window.completedData.some(c => c.patientId === item.patientId && String(c.test || "").toUpperCase() === String(item.test || "").toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : (c.details || {}); return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL'; })());
-            if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px; box-shadow: 0 2px 4px rgba(231,76,60,0.3);">REPEAT</span>`;
+            let hasInitial = window.completedData.some(c => c.patientId === item.patientId && String(c.test || "").toUpperCase() === String(item.test || "").toUpperCase() && (() => { 
+                let cd = typeof c.details === 'string' ? JSON.parse(c.details) : (c.details || {}); 
+                return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL' || String(c.status).toUpperCase() === "FOR REPEAT"; 
+            })());
+            if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px;">REPEAT</span>`;
         } catch(e){}
         
         let actionsHtml = '';
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) {
-            actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Are you sure you want to delete this pending request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
+            actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         }
 
         let clickAttr = `style="flex-grow:1;"`; 
@@ -573,7 +600,6 @@ function renderLists() {
         
         if (role === 'ADMIN' || role === 'STAFF') {
             clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
-            
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area">
                 <div style="display:flex; gap:10px; margin-bottom: 16px;">
                     <button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>
@@ -586,7 +612,7 @@ function renderLists() {
         return `<div class="pending-card" id="card-${safeId}">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div ${clickAttr}>
-                            <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal;">${subTxt}</span> ${repeatBadge}</div>
+                            <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div>
                             <div class="pc-meta" style="margin-top: 6px;">
                                 <span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.id}</span>
                                 ${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span>
@@ -598,14 +624,16 @@ function renderLists() {
                 </div>`;
     }).join('');
 
+    // --- 5. RENDER REPEAT LIST ---
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
             const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
-            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;">${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
+            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;"><span style="background:var(--bg-subtle); color:var(--warning); padding:2px 5px; border-radius:4px; font-family:monospace; font-weight:bold; margin-right:5px;">${item.id}</span>${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
     }
 
+    // --- 6. RENDER COMPLETED LIST ---
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test);
         let repeatBadge = ""; 
@@ -613,7 +641,7 @@ function renderLists() {
         return `<div class="completed-card" style="margin-bottom:8px;">
             <div style="overflow:hidden; flex-grow:1;">
                 <div class="pc-name">${item.name} ${repeatBadge}</div>
-                <div class="pc-meta">${item.test}</div>
+                <div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.id}</span>${item.test}</div>
             </div>
             <div style="display:flex; gap:8px;">
                 <button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button>
@@ -621,6 +649,7 @@ function renderLists() {
             </div>
         </div>`;
     }).join('');
+
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
 
