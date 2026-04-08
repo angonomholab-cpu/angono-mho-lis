@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFpW6MoQlYztMJQG6uoTERDxzc-hcLo_ok1UtPSMsHemDnxgB1O6GZNjIyn48sOCHaAQ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLZ3CtA32zSRkEcesRJJ7aaG-JOcngpO1s8RzGlI1xLT-sTQq3EOhk5Hu0uX41Y1NaWA/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -662,12 +662,27 @@ async function moveToPendingRepeat(idStr) {
 
     let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
     let cleanDetails = { age: d.age || d.Age || "", sex: d.sex || d.Sex || "", facility: d.facility || d.Facility || "", address: d.address || d.Address || "", contact: d.contact || d.Contact || "", bday: d.bday || d.Bday || "", "History of Treatment": d["History of Treatment"] || "", "Source of Request": d["Source of Request"] || "", "X-Ray Result": d["X-Ray Result"] || "" };
-    const tCode = getTestCodeFromName(item.test);
+    
+    let tCode = ""; try { tCode = getTestCodeFromName(item.test); } catch(e){}
     const testEntry = { name: item.test, code: tCode, details: cleanDetails };
     const formData = { patientId: item.patientId, fullName: item.name, bday: cleanDetails.bday, sex: cleanDetails.sex, age: cleanDetails.age, address: cleanDetails.address, contact: cleanDetails.contact, email: "", facility: cleanDetails.facility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify([testEntry]) };
 
-    try { const res = await apiPost("submitForm", { formObject: formData }); if (res.status === "success") { await loadPendingData(); } else { showAppAlert("Error", res.message, "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } } } catch (err) { showAppAlert("Error", "Error moving.", "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
+    try { 
+        const res = await apiPost("submitForm", { formObject: formData }); 
+        if (res && res.status === "success") { 
+            // 🟢 BAGO: BUBURAHIN NA ANG LUMANG "FOR REPEAT" TICKET PARA HINDI NA MAGDOBLE 🟢
+            await apiPost("deletePendingTestById", { testId: item.id });
+            await loadPendingData(); 
+        } else { 
+            showAppAlert("Error", res ? res.message : "Error", "error"); 
+            if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } 
+        } 
+    } catch (err) { 
+        showAppAlert("Error", "Error moving.", "error"); 
+        if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } 
+    }
 }
+
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 async function deleteEntry(id) { try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
