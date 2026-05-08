@@ -865,7 +865,7 @@ function printRegistryLogbook() {
     let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
     
     let excludeCols = ["PATIENT ID", "ID"]; 
-    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST"); // Removed X-RAY RESULT from exclusions
+    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST"); 
     else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
     
     let printHeaders = []; let headerIndices = [];
@@ -885,7 +885,7 @@ function printRegistryLogbook() {
     let fontSize = is10Rows ? "11px" : "8px"; 
     let tdPadding = is10Rows ? "6px" : "3px"; 
     
-    // GXP overrides to maintain 10 patients per page with the added column
+    // GXP overrides to maintain 10 patients per page
     if(window.CURRENT_TEST_TYPE === 'GXP') {
         fontSize = "9px";
         tdPadding = "4px";
@@ -913,8 +913,8 @@ function printRegistryLogbook() {
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
         
         printHeaders.forEach(h => {
-            // Force X-RAY RESULT to be wider if we are in GXP view
-            let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP') ? 'style="width: 25%;"' : '';
+            // Pinababa natin from 25% to 15% ang width para mas narrow
+            let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP') ? 'style="width: 15%; max-width: 100px;"' : '';
             html += `<th ${widthStyle}>${h}</th>`
         }); 
         
@@ -936,6 +936,7 @@ function printRegistryLogbook() {
                 let hName = printHeaders[i].toUpperCase().trim();
                 let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
                 let isPerformedBy = hName === 'PERFORMED BY';
+                let isXrayCol = (hName === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP');
                 
                 let bgStyle = "";
                 let textWeight = "normal";
@@ -958,6 +959,11 @@ function printRegistryLogbook() {
                     fontStyle = `font-size: ${pfSize}; color: #555;`; 
                 }
 
+                // Eto ang logic na nagpapaliit ng font (7px) at nagka-cut off sa text ng X-Ray
+                if (isXrayCol) {
+                    fontStyle += `font-size: 7px; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
+                }
+
                 html += `<td style="${bgStyle} font-weight: ${textWeight}; ${fontStyle}">${val}</td>`; 
             }); 
             html += `</tr>`; 
@@ -971,7 +977,6 @@ function printRegistryLogbook() {
     
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
-
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
     let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
