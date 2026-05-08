@@ -515,7 +515,6 @@ function renderLists() {
     
     if (!pList || !cList) return;
 
-    // Safety net: Siguraduhing may array kahit walang data
     window.pendingData = window.pendingData || [];
     window.completedData = window.completedData || [];
     
@@ -525,7 +524,6 @@ function renderLists() {
     const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
     const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
 
-    // --- 1. SETUP FILTER DROPDOWN ---
     const uniqueTests = [...new Set(window.pendingData.map(item => String(item.test || "").toUpperCase()))];
     const currentVal = filterSelect ? filterSelect.value : 'ALL';
     let dropHtml = '<option value="ALL">All Sections</option>';
@@ -541,14 +539,20 @@ function renderLists() {
         let tCode = getTestCodeFromName(t);
         if(isLimited && !allowedTests.includes(tCode)) return false; 
         let typeMatch = (filterVal === "ALL") || t.includes(filterVal);
-        return typeMatch; // 🟢 FIX: Walang date restriction para laging kita ang records
+        return typeMatch;
     };
 
-    // --- 2. FILTER DATA ---
+    // --- 1. FILTER DATA & RESET COMPLETED DAILY ---
     const fPending = window.pendingData.filter(i => filterFn(i)); 
-    const fComp = window.completedData.filter(i => filterFn(i));
+    const fComp = window.completedData.filter(i => {
+        // Fallback to today if date is missing to avoid breaks, but check exact date encoded if available
+        let dStr = TODAY_STR; 
+        if (i.date) dStr = new Date(i.date).toLocaleDateString();
+        else if (i.timestamp) dStr = new Date(i.timestamp).toLocaleDateString();
+        return filterFn(i) && (dStr === TODAY_STR);
+    });
 
-    // --- 3. LOGIC PARA SA FOR REPEAT LIST ---
+    // --- 2. LOGIC PARA SA FOR REPEAT LIST ---
     const fRepeat = [];
     let latestCompleted = {};
     window.completedData.forEach(item => { 
@@ -563,7 +567,6 @@ function renderLists() {
             let rpt = d.Repeat || d["Test Type"] || "";
             let resCode = d.ResultCode || d.Diagnosis || d.Result || "";
             
-            // 🟢 LALABAS SA REPEAT LIST KUNG: Status ay "FOR REPEAT" OR Result ay "INITIAL"
             const isRepeatStatus = (status === "FOR REPEAT");
             const isInitialInDetails = (String(rpt).toUpperCase() === 'INITIAL' || String(resCode).toUpperCase().includes("INITIAL"));
 
@@ -575,8 +578,20 @@ function renderLists() {
         } catch(e) {}
     });
 
-    // --- 4. RENDER PENDING LIST (With ID Badge & Save+Print) ---
-    pList.innerHTML = fPending.map(item => {
+    // --- 3. BATCH ACTIONS HEADER ---
+    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF') ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border: 1px dashed var(--border-color);">
+        <label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All
+        </label>
+        <div style="display:flex; gap:6px;">
+            <button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button>
+            <button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button>
+        </div>
+    </div>` : '';
+
+    // --- 4. RENDER PENDING LIST ---
+    const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); 
         let tCode = getTestCodeFromName(item.test);
         let subTxt = ""; let repeatBadge = ""; 
@@ -591,6 +606,8 @@ function renderLists() {
         } catch(e){}
         
         let actionsHtml = '';
+        let checkboxHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="padding-top:2px;"><input type="checkbox" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);"></div>` : '';
+
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) {
             actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`;
         }
@@ -610,7 +627,8 @@ function renderLists() {
         }
         
         return `<div class="pending-card" id="card-${safeId}">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                        ${checkboxHtml}
                         <div ${clickAttr}>
                             <div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div>
                             <div class="pc-meta" style="margin-top: 6px;">
@@ -623,12 +641,23 @@ function renderLists() {
                     ${expandAreaHtml}
                 </div>`;
     }).join('');
+    
+    pList.innerHTML = batchActionsHtml + pendingCardsHtml;
 
-    // --- 5. RENDER REPEAT LIST ---
+    // --- 5. RENDER COMPACT REPEAT LIST ---
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
             const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
-            return `<div class="pending-card" style="border-left: 4px solid var(--warning); background: var(--warning-light-bg);"><div class="pc-name" style="color: var(--warning);">${item.name}</div><div class="pc-meta" style="margin-bottom:8px;"><span style="background:var(--bg-subtle); color:var(--warning); padding:2px 5px; border-radius:4px; font-family:monospace; font-weight:bold; margin-right:5px;">${item.id}</span>${item.test}</div>${isViewer || isEncoder ? '' : `<button class="btn btn-secondary text-xs full-width" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:bold;" onclick="moveToPendingRepeat('${item.id}')"><i class="ph ph-arrow-circle-left"></i> Move to Pending</button>`}</div>`;
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+            let fac = d.facility || d.Facility || "N/A";
+            
+            return `<div class="pending-card" style="border-left: 3px solid var(--warning); background: var(--warning-light-bg); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <div style="flex: 1; overflow: hidden;">
+                    <div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
+                    <div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div>
+                </div>
+                ${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}
+            </div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
     }
@@ -834,8 +863,9 @@ function printRegistryLogbook() {
     const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
     if (checkedBoxes.length === 0) { showAppAlert("Required", "Please select at least one record to print.", "error"); return; }
     let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
+    
     let excludeCols = ["PATIENT ID", "ID"]; 
-    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST", "X-RAY RESULT");
+    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST"); // Removed X-RAY RESULT from exclusions
     else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
     
     let printHeaders = []; let headerIndices = [];
@@ -850,11 +880,16 @@ function printRegistryLogbook() {
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
     
-    // 🟢 BAGO: DYNAMIC SIZING (10 rows for GXP/DSSM, 20 rows for others) 🟢
     const is10Rows = (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'DSSM');
     const chunk = is10Rows ? 10 : 20;
-    const fontSize = is10Rows ? "11px" : "8px"; // Mas malaki kung 10 rows lang
-    const tdPadding = is10Rows ? "6px" : "3px"; // Mas matangkad ang box kung 10 rows lang
+    let fontSize = is10Rows ? "11px" : "8px"; 
+    let tdPadding = is10Rows ? "6px" : "3px"; 
+    
+    // GXP overrides to maintain 10 patients per page with the added column
+    if(window.CURRENT_TEST_TYPE === 'GXP') {
+        fontSize = "9px";
+        tdPadding = "4px";
+    }
 
     let html = `<html><head><title>Registry Logbook</title>
         <style>
@@ -876,12 +911,18 @@ function printRegistryLogbook() {
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
-        printHeaders.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
+        
+        printHeaders.forEach(h => {
+            // Force X-RAY RESULT to be wider if we are in GXP view
+            let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP') ? 'style="width: 25%;"' : '';
+            html += `<th ${widthStyle}>${h}</th>`
+        }); 
+        
+        html += `</tr></thead><tbody>`;
         
         pageRows.forEach(row => { 
             html += `<tr>`; 
             
-            // 🟢 BAGO: HAHANAPIN KUNG "INITIAL" ANG ROW NA ITO BAGO KULAYAN 🟢
             let isInitialRow = false;
             headerIndices.forEach((idx, i) => {
                 let hName = printHeaders[i].toUpperCase().trim();
@@ -900,22 +941,20 @@ function printRegistryLogbook() {
                 let textWeight = "normal";
                 let fontStyle = "";
                 
-                // 🟢 BAGO: PRINT COLOR CODES WITH INITIAL OVERRIDE 🟢
                 if (isResCol && val !== "") {
                     let vU = String(val).toUpperCase().trim();
                     textWeight = "bold";
                     
-                    if (vU === "CONFIDENTIAL" || isInitialRow) bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; // Gray Override
-                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; // Black bg, white text
-                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; // Pale Red
-                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; // Pale Green
-                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; // Deep Red
-                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; // Orange
-                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;"; // Yellow
+                    if (vU === "CONFIDENTIAL" || isInitialRow) bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; 
+                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; 
+                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; 
+                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; 
+                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; 
+                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; 
+                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;"; 
                 } 
                 else if (isPerformedBy && val !== "") {
-                    // Mas maliit nang onti sa actual font size
-                    const pfSize = is10Rows ? "8px" : "6px";
+                    const pfSize = is10Rows ? "7px" : "6px";
                     fontStyle = `font-size: ${pfSize}; color: #555;`; 
                 }
 
@@ -1233,7 +1272,58 @@ async function downloadReport() {
     showAppAlert("PDF Download", "Wait for the preview to load, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF'.", "info");
     printReport();
 }
+async function batchSaveResults(isPrint) {
+    const checked = document.querySelectorAll('.chk-pending:checked');
+    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
 
+    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
+    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
+    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+
+    let successCount = 0;
+    let printRequests = [];
+
+    for (let chk of checked) {
+        const id = chk.value;
+        const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+        if(!item) continue;
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+        const inputs = document.querySelectorAll('.res-' + safeId);
+
+        let newResults = {};
+        inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+        let tCodePrint = getTestCodeFromName(item.test);
+
+        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
+            if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
+        }
+
+        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+
+        try {
+            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+            if (res.status === "success") {
+                successCount++;
+                if (isPrint) printRequests.push({testCode: id, testName: tCodePrint});
+            }
+        } catch(e) { console.error("Error saving " + id, e); }
+    }
+
+    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
+    await loadPendingData();
+
+    if (isPrint && printRequests.length > 0) {
+        const printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Batch Print... Please wait.</h2>');
+        try {
+            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
+            if (res.status === "success" && res.data) {
+                printWin.document.open(); printWin.document.write(res.data); printWin.document.close();
+            } else { printWin.document.body.innerHTML = "Error generating print view."; }
+        } catch(e) { printWin.document.body.innerHTML = "Print Error."; }
+    }
+}
 async function saveResult(id, safeId, btn) {
   const inputs = document.querySelectorAll('.res-' + safeId); 
   const item = window.pendingData.find(d => String(d.id) === String(id).trim());
