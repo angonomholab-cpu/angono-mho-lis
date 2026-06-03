@@ -978,10 +978,38 @@ function printRegistryLogbook() {
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
 async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
-    const printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Batch PDF... Please wait.</h2>');
-    try { const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role }); if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } else { printWin.document.body.innerHTML = "Error generating print view."; } } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
+    const checked = document.querySelectorAll('.chk-reg:checked');
+    if (checked.length === 0) {
+        showAppAlert("Required", "Select at least one record.", "error");
+        return;
+    }
+
+    let requests = [];
+    checked.forEach(chk => {
+        const rowData = JSON.parse(decodeURIComponent(chk.value));
+        
+        // Find the index for 'TEST CODE' instead of 'PATIENT ID'
+        const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE'));
+        const tCode = rowData[codeCol];
+        
+        requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
+    });
+
+    const printWin = window.open('', '_blank');
+    printWin.document.write('<h2>Generating Batch PDF... Please wait.</h2>');
+
+    try {
+        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
+        if (res.status === "success" && res.data) {
+            printWin.document.open();
+            printWin.document.write(res.data);
+            printWin.document.close();
+        } else {
+            printWin.document.body.innerHTML = "Error generating print view.";
+        }
+    } catch (e) {
+        printWin.document.body.innerHTML = "Print Error.";
+    }
 }
 
 
