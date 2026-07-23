@@ -940,6 +940,11 @@ function printRegistryLogbook() {
                 let isPerformedBy = hName === 'PERFORMED BY';
                 let isXrayCol = (hName === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP');
                 
+                // 🟢 BAGO: BUBURAHIN ANG "REACTIVE" HIV PARA BLANK LANG ANG LALABAS SA LOGBOOK 🟢
+                if (hName === 'HIV' && String(val).toUpperCase().includes('REACTIVE') && !String(val).toUpperCase().includes('NON')) {
+                    val = ""; 
+                }
+
                 let bgStyle = "";
                 let textWeight = "normal";
                 let fontStyle = "";
@@ -961,7 +966,6 @@ function printRegistryLogbook() {
                     fontStyle = `font-size: ${pfSize}; color: #555;`; 
                 }
 
-                // Eto ang logic na nagpapaliit ng font (7px) at nagka-cut off sa text ng X-Ray
                 if (isXrayCol) {
                     fontStyle += `font-size: 7px; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
                 }
@@ -979,6 +983,7 @@ function printRegistryLogbook() {
     
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
+
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked');
     if (checked.length === 0) {
