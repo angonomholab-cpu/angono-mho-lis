@@ -431,12 +431,13 @@ async function finalSubmit() {
           clearForm(); 
           await loadPendingData(); 
           
-          const savedEmail = res.data ? res.data.email : pEmail;
-          const savedPass = res.data ? res.data.generatedPassword : generatedPassword;
-          const debugLog = res.data ? res.data.emailStatus : "No log available.";
+          // 🟢 FIX: Gumamit ng optional chaining (?. ) para kapag undefined, aayos ang fallback
+          const savedEmail = res.data?.email || pEmail;
+          const savedPass = res.data?.generatedPassword || generatedPassword;
+          const debugLog = res.data?.log || "No log available.";
           
-          // 🟢 MAG-A-ALERT NA MISMO KUNG ANO ANG NANGYARI SA EMAIL 🟢
-          if (debugLog.includes("SUCCESS")) {
+          // 🟢 FIX: Hanapin ang exact phrase na ibinabato ng backend log natin
+          if (debugLog.includes("Email Notification Sent")) {
               showAppAlert("Patient Portal Created", `Credentials automatically emailed!\n\nEmail: ${savedEmail}\nPassword: ${savedPass}\n\nSystem Log: ${debugLog}`, "success");
           } else {
               showAppAlert("Record Saved", `Record saved successfully.\n\nSystem Log: ${debugLog}`, "info");
@@ -449,6 +450,7 @@ async function finalSubmit() {
       btn.disabled = false; btn.innerHTML = originalText; 
   }
 }
+
 
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
