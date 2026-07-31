@@ -777,7 +777,7 @@ function getResultTemplate(code, safeId, item) {
      case 'GRAM': return `<div class="form-grid grid-2"><div class="full-width font-bold" style="color:var(--pri);">Gram Positive</div>${input('GP_Quantity','Qty')}${input('GP_Morphology','Morph')}${input('GP_Arrangement','Arrange')}<div class="full-width font-bold" style="color:var(--sec); margin-top:8px;">Gram Negative</div>${input('GN_Quantity','Qty')}${input('GN_Morphology','Morph')}${input('GN_Arrangement','Arrange')}</div>${rem}`;
      case 'SERO': return `<div class="form-grid grid-3">${select('HIV','HIV',['NONREACTIVE','REACTIVE'],['HIV','SERO'])}${select('HBSAG','HBsAg',['NONREACTIVE','REACTIVE'],['HBSAG','SERO'])}${select('SYPHILIS','Syphilis',['NONREACTIVE','REACTIVE'],['SYPHILIS','SERO'])}</div>${rem}`;
      case 'DENGUE': 
-    return `<div class="form-grid grid-2">
+    return `<div class="form-grid grid-3">
         ${select('Dengue_Result', 'Dengue NS1', ['', 'Negative', 'Positive'])}
         ${select('Dengue_IgG', 'Dengue IgG', ['', 'Negative', 'Positive'])}
         ${select('Dengue_IgM', 'Dengue IgM', ['', 'Negative', 'Positive'])}
