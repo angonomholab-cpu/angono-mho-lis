@@ -451,7 +451,6 @@ async function finalSubmit() {
   }
 }
 
-
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
     editingPendingId = item.id; isExistingPatient = true; 
@@ -459,6 +458,11 @@ function editPendingFull(id) {
     document.getElementById('finalPatientId').value = item.patientId; document.getElementById('p_name').value = item.name || "";
     let d = {}; try { d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; } catch(e){}
     document.getElementById('p_age').value = d.age || d.Age || ""; document.getElementById('p_address').value = d.address || d.Address || ""; document.getElementById('p_contact').value = d.contact || d.Contact || "";
+    
+    // 🟢 BAGO: Load email during Edit mode
+    const pEmailEl = document.getElementById('p_email');
+    if (pEmailEl) pEmailEl.value = d.email || d.Email || "";
+    
     setSelectValue('p_sex', d.sex || d.Sex); setSelectValue('p_facility', d.facility || d.Facility);
     if(d.bday || d.Bday) { try { const bd = new Date(d.bday||d.Bday); document.getElementById('p_bday').value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; } catch(e){} }
     document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
@@ -475,9 +479,43 @@ function cancelEditPending() { clearForm(); }
 async function submitPendingUpdate() {
     if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
+    
     let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
-    let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails});
-    try { await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); cancelEditPending(); await loadPendingData(); } catch(e) { showAppAlert("Error", String(e), "error"); } finally { btn.innerHTML = oldTxt; btn.disabled = false; }
+    
+    // 🟢 BAGO: Kunin ang mga binagong Patient Info galing sa textboxes
+    const pEmailEl = document.getElementById('p_email');
+    let demogUpdates = {
+        age: document.getElementById('p_age').value,
+        sex: document.getElementById('p_sex').value,
+        address: document.getElementById('p_address').value,
+        contact: document.getElementById('p_contact').value,
+        facility: document.getElementById('p_facility').value,
+        email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : ""
+    };
+    const pBday = document.getElementById('p_bday').value;
+    if(pBday) demogUpdates.bday = pBday;
+
+    let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
+    
+    // 🟢 BAGO: Pagsasamahin ang Test Results at ang Patient Info
+    let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); 
+    
+    try { 
+        const res = await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); 
+        cancelEditPending(); 
+        await loadPendingData(); 
+        
+        // 🟢 BAGO: Ichecheck kung nagpadala ng Email ang backend
+        if (res.data && res.data.includes("Email Notification Sent")) {
+            showAppAlert("Success", "Record updated and login credentials automatically emailed to the patient!", "success");
+        } else {
+            showAppAlert("Success", "Record updated successfully!", "success");
+        }
+    } catch(e) { 
+        showAppAlert("Error", String(e), "error"); 
+    } finally { 
+        btn.innerHTML = oldTxt; btn.disabled = false; 
+    }
 }
 // ==========================================
 // 100% FIXED DATA LOADER (TUGMA NA SA BACKEND)
