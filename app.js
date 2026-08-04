@@ -450,71 +450,133 @@ async function finalSubmit() {
       btn.disabled = false; btn.innerHTML = originalText; 
   }
 }
-
 function editPendingFull(id) {
-    const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
-    editingPendingId = item.id; isExistingPatient = true; 
-    document.getElementById('col-entry').classList.add('edit-mode-pane'); document.getElementById('entry-main-header').classList.add('edit-mode-header'); document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-pencil-simple"></i> Editing Pending Record</h2><button class="btn-icon" onclick="cancelEditPending()" style="color:white;"><i class="ph ph-x"></i></button>`;
-    document.getElementById('finalPatientId').value = item.patientId; document.getElementById('p_name').value = item.name || "";
-    let d = {}; try { d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; } catch(e){}
-    document.getElementById('p_age').value = d.age || d.Age || ""; document.getElementById('p_address').value = d.address || d.Address || ""; document.getElementById('p_contact').value = d.contact || d.Contact || "";
+    const item = window.pendingData.find(i => String(i.id) === String(id).trim()); 
+    if(!item) return;
     
-    // 🟢 BAGO: Load email during Edit mode
-    const pEmailEl = document.getElementById('p_email');
-    if (pEmailEl) pEmailEl.value = d.email || d.Email || "";
+    editingPendingId = item.id; 
+    isExistingPatient = true; 
     
-    setSelectValue('p_sex', d.sex || d.Sex); setSelectValue('p_facility', d.facility || d.Facility);
-    if(d.bday || d.Bday) { try { const bd = new Date(d.bday||d.Bday); document.getElementById('p_bday').value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; } catch(e){} }
-    document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
-    fetchHistory(item.patientId, 'history-section', 'history-list'); 
-    document.getElementById('test-buttons-container').style.display = 'none'; const area = document.getElementById('test-details-area'); area.style.display = 'block';
-    let testKey = Object.keys(availableTests).find(k => availableTests[k].testName.toUpperCase() === item.test.toUpperCase() || availableTests[k].testCode.toUpperCase() === item.test.toUpperCase());
-    let dynamicHtml = testKey ? availableTests[testKey].html : `<textarea id="edit-pending-fallback-box" class="form-input" style="min-height:100px;">${JSON.stringify(d,null,2)}</textarea>`;
-    area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div><div id="temp-form-data" class="form-grid grid-1">${dynamicHtml}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
-    setTimeout(() => { document.querySelectorAll('#test-details-area [data-key]').forEach(el => { let val = d[el.getAttribute('data-key')]; if(val) el.value = val; }); }, 100);
-    const saveBtn = document.getElementById('save-btn-action'); saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record'; saveBtn.onclick = submitPendingUpdate; saveBtn.style.background = 'var(--warning)'; saveBtn.style.color = 'white';
+    document.getElementById('col-entry').classList.add('edit-mode-pane'); 
+    const header = document.getElementById('entry-main-header');
+    if (header) {
+        header.classList.add('edit-mode-header'); 
+        header.innerHTML = `<h2><i class="ph ph-pencil-simple"></i> Editing Pending Record</h2><button class="btn-icon" onclick="cancelEditPending()" style="color:white;"><i class="ph ph-x"></i></button>`;
+    }
+    
+    const pIdEl = document.getElementById('finalPatientId'); if (pIdEl) pIdEl.value = item.patientId || "";
+    const pNameEl = document.getElementById('p_name'); if (pNameEl) pNameEl.value = item.name || "";
+    
+    let d = {}; 
+    try { d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; } catch(e){}
+    
+    const pAgeEl = document.getElementById('p_age'); if(pAgeEl) pAgeEl.value = d.age || d.Age || ""; 
+    const pAddressEl = document.getElementById('p_address'); if(pAddressEl) pAddressEl.value = d.address || d.Address || ""; 
+    const pContactEl = document.getElementById('p_contact'); if(pContactEl) pContactEl.value = d.contact || d.Contact || "";
+    const pEmailEl = document.getElementById('p_email'); if(pEmailEl) pEmailEl.value = d.email || d.Email || "";
+    
+    if (typeof setSelectValue === 'function') {
+        setSelectValue('p_sex', d.sex || d.Sex); 
+        setSelectValue('p_facility', d.facility || d.Facility);
+    }
+    
+    // 🟢 ITO ANG FIX SA "SYNTAX ERROR": SAFE DATE PARSER
+    const bdayVal = d.bday || d.Bday;
+    if(bdayVal) { 
+        try { 
+            const bd = new Date(bdayVal); 
+            if (!isNaN(bd.getTime())) { // I-che-check muna kung valid ang date bago ipasok
+                const pBdayEl = document.getElementById('p_bday');
+                if (pBdayEl) pBdayEl.value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; 
+            }
+        } catch(e){} 
+    }
+    
+    const newEntryH = document.getElementById('new-entry-header'); if(newEntryH) newEntryH.style.display = 'none'; 
+    const profileH = document.getElementById('profile-header'); if(profileH) profileH.style.display = 'flex';
+    
+    if (typeof fetchHistory === 'function') fetchHistory(item.patientId, 'history-section', 'history-list'); 
+    
+    const btnCont = document.getElementById('test-buttons-container'); if(btnCont) btnCont.style.display = 'none'; 
+    
+    const area = document.getElementById('test-details-area'); 
+    if (area) {
+        area.style.display = 'block';
+        let testKey = Object.keys(availableTests).find(k => availableTests[k].testName.toUpperCase() === item.test.toUpperCase() || availableTests[k].testCode.toUpperCase() === item.test.toUpperCase());
+        let dynamicHtml = testKey ? availableTests[testKey].html : `<textarea class="form-input" style="min-height:100px;">${JSON.stringify(d,null,2)}</textarea>`;
+        
+        area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div><div id="temp-form-data" class="form-grid">${dynamicHtml}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
+        
+        setTimeout(() => { 
+            document.querySelectorAll('#test-details-area [data-key]').forEach(el => { 
+                let val = d[el.getAttribute('data-key')]; 
+                if(val) el.value = val; 
+            }); 
+        }, 100);
+    }
+    
+    const saveBtn = document.getElementById('save-btn-action'); 
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record'; 
+        saveBtn.onclick = submitPendingUpdate; 
+        saveBtn.style.background = 'var(--warning)'; 
+        saveBtn.style.color = 'white';
+    }
 }
-
 function cancelEditPending() { clearForm(); } 
 async function submitPendingUpdate() {
-    if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
-    const btn = document.getElementById('save-btn-action'); const oldTxt = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true;
-    
-    let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
-    
-    // 🟢 BAGO: Kunin ang mga binagong Patient Info galing sa textboxes
-    const pEmailEl = document.getElementById('p_email');
-    let demogUpdates = {
-        age: document.getElementById('p_age').value,
-        sex: document.getElementById('p_sex').value,
-        address: document.getElementById('p_address').value,
-        contact: document.getElementById('p_contact').value,
-        facility: document.getElementById('p_facility').value,
-        email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : ""
-    };
-    const pBday = document.getElementById('p_bday').value;
-    if(pBday) demogUpdates.bday = pBday;
+    if(!editingPendingId) return; 
+    const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim());
+    if(!item) return;
 
-    let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
+    const btn = document.getElementById('save-btn-action'); 
+    const oldTxt = btn ? btn.innerHTML : 'Update'; 
+    if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true; }
     
-    // 🟢 BAGO: Pagsasamahin ang Test Results at ang Patient Info
-    let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); 
-    
-    try { 
-        const res = await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: document.getElementById('p_name').value, newTestType: item.test, newJsonDetails: finalJsonStr }); 
-        cancelEditPending(); 
-        await loadPendingData(); 
+    try {
+        let newDetails = {}; 
+        document.querySelectorAll('#test-details-area [data-key]').forEach(el => { 
+            newDetails[el.getAttribute('data-key')] = el.value; 
+        });
         
-        // 🟢 BAGO: Ichecheck kung nagpadala ng Email ang backend
+        // 🟢 KUNIN ANG MGA DEMOGRAPHICS (Kasama na ang email at brgy para sa Masterlist sync)
+        const pEmailEl = document.getElementById('p_email');
+        let demogUpdates = {
+            age: document.getElementById('p_age') ? document.getElementById('p_age').value : "",
+            sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "",
+            address: document.getElementById('p_address') ? document.getElementById('p_address').value : "",
+            contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "",
+            facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "",
+            email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : ""
+        };
+        const pBdayEl = document.getElementById('p_bday');
+        if(pBdayEl && pBdayEl.value) demogUpdates.bday = pBdayEl.value;
+
+        let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; 
+        let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); 
+        const pNameEl = document.getElementById('p_name');
+        
+        // Ipapadala sa backend
+        const res = await apiPost("updatePatientAndTestDetails", { 
+            testId: editingPendingId, 
+            patientId: item.patientId, 
+            newName: pNameEl ? pNameEl.value : item.name, 
+            newTestType: item.test, 
+            newJsonDetails: finalJsonStr 
+        }); 
+        
+        cancelEditPending(); 
+        if (typeof loadPendingData === 'function') await loadPendingData(); 
+        
         if (res.data && res.data.includes("Email Notification Sent")) {
-            showAppAlert("Success", "Record updated and login credentials automatically emailed to the patient!", "success");
+            showAppAlert("Success", "Record updated and login credentials automatically emailed!", "success");
         } else {
             showAppAlert("Success", "Record updated successfully!", "success");
         }
     } catch(e) { 
         showAppAlert("Error", String(e), "error"); 
     } finally { 
-        btn.innerHTML = oldTxt; btn.disabled = false; 
+        if (btn) { btn.innerHTML = oldTxt; btn.disabled = false; }
     }
 }
 // ==========================================
