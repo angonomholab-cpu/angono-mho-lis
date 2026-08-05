@@ -1545,7 +1545,8 @@ function startAutoSync() {
     const syncInterval = 60000; 
     
     setInterval(async () => {
-        const pendingSection = document.getElementById('pending-section'); 
+        // 🟢 FIX: Pinalitan ang 'pending-section' ng 'col-pending'
+        const pendingSection = document.getElementById('col-pending'); 
         const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
         
         // Mag-sync lang kung nasa Workspace tab at HINDI kasalukuyang nag-eedit
