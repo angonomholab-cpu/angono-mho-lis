@@ -932,7 +932,8 @@ function getResultTemplate(code, safeId, item) {
 
 async function openRegistryTab(type) {
     window.CURRENT_TEST_TYPE = type; 
-    document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
+    const titleEl = document.getElementById('regTitle');
+    if(titleEl) titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
     
     // Highlight active tab
     document.querySelectorAll('#registry-tabs .chip').forEach(c => c.classList.remove('active'));
@@ -940,22 +941,37 @@ async function openRegistryTab(type) {
     if(activeBtn) activeBtn.classList.add('active');
 
     const cont = document.getElementById('registry-table-content');
+    if(!cont) return;
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading data...</div>';
     
     try {
         const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
-        if (res.status === "success" && res.data && res.data.rows) {
-            window.CURRENT_REGISTRY_HEADERS = res.data.headers; window.CURRENT_REGISTRY_TITLE = res.data.title;
+        
+        if (res && res.status === "success" && res.data) {
+            // Safety check kung restricted o walang laman
+            if (res.data.error || (res.data.rows && res.data.rows.length > 0 && res.data.rows[0][0] && String(res.data.rows[0][0]).includes("RESTRICTED"))) {
+                cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger); font-weight:bold;"><i class="ph ph-lock-key" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${res.data.rows ? res.data.rows[0][0] : "Access Restricted."}</div>`;
+                return;
+            }
+
+            window.CURRENT_REGISTRY_HEADERS = res.data.headers || []; 
+            window.CURRENT_REGISTRY_TITLE = res.data.title || type;
+            
             const hMap = res.data.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
             
-            const colFilter = document.getElementById('colFilter'); colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
+            const colFilter = document.getElementById('colFilter'); 
+            if(colFilter) {
+                colFilter.innerHTML = '<option value="ALL">All Columns</option>'; 
+                hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
+            }
 
-            const sorted = res.data.rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
+            const rows = res.data.rows || [];
+            const sorted = rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
             
             let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
-            sorted.forEach((row, rIndex) => {
+            sorted.forEach((row) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 
                 let isInitialRow = false;
@@ -996,10 +1012,13 @@ async function openRegistryTab(type) {
                 html += `</tr>`;
             });
             cont.innerHTML = html + `</tbody></table>`;
-        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">No records found.</div>'; }
-    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data.</div>'; }
+        } else { 
+            cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; 
+        }
+    } catch (e) { 
+        cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; 
+    }
 }
-
 
 
 function filterRegistryTable() {
