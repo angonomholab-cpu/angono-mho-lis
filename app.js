@@ -1538,6 +1538,47 @@ function showStaffRegister() {
     });
 }
 
+// ==========================================
+// SILENT BACKGROUND AUTO-SYNC (Every 60 secs)
+// ==========================================
+function startAutoSync() {
+    const syncInterval = 60000; 
+    
+    setInterval(async () => {
+        const pendingSection = document.getElementById('pending-section'); 
+        const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
+        
+        // Mag-sync lang kung nasa Workspace tab at HINDI kasalukuyang nag-eedit
+        if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
+            console.log("Auto-syncing background data...");
+            
+            try {
+                const res = await apiGet("getPendingWorkload", { 
+                    role: currentUser.role, 
+                    facility: currentUser.facility,
+                    _t: new Date().getTime() 
+                });
+                
+                if (res && (res.pending || res.encoded)) {
+                    window.pendingData = res.pending || [];
+                    window.completedData = res.encoded || [];
+                    
+                    if (typeof renderLists === 'function') {
+                        renderLists();
+                    }
+                }
+            } catch (e) {
+                console.error("Silent sync failed, will try again later.");
+            }
+        }
+    }, syncInterval);
+}
+
+// I-trigger ang auto-sync pagka-load ng mismong app
+window.addEventListener('load', () => {
+    startAutoSync();
+});
+
 function backToLoginFromRegister() {
     document.getElementById('staff-register-card').style.display = 'none';
     document.getElementById('login-card').style.display = 'block';
