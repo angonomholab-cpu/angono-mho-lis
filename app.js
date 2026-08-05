@@ -69,10 +69,14 @@ function toggleFab() {
     const icon = document.getElementById('fab-main-icon'); 
     if (menu.classList.contains('show')) { 
         menu.classList.remove('show'); 
-        icon.classList.remove('ph-caret-down'); icon.classList.add('ph-list'); 
+        // Kapag naka-hide: Left Arrow
+        icon.classList.remove('ph-caret-right'); 
+        icon.classList.add('ph-caret-left'); 
     } else { 
         menu.classList.add('show'); 
-        icon.classList.remove('ph-list'); icon.classList.add('ph-caret-down'); 
+        // Kapag naka-open: Right Arrow para i-close
+        icon.classList.remove('ph-caret-left'); 
+        icon.classList.add('ph-caret-right'); 
     } 
 }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('fab-theme-icon'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); } }
