@@ -45,9 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentUser.username) throw new Error("Invalid");
             
             document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('display-full-name').innerText = currentUser.fullName || currentUser.username;
-            document.getElementById('display-role-facility').innerText = `${currentUser.role} | ${currentUser.facility}`;
-            document.getElementById('pill-avatar').innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+            
+            // Safety checks para hindi mag-crash
+            const dName = document.getElementById('display-full-name');
+            if(dName) dName.innerText = currentUser.fullName || currentUser.username;
+            
+            const dRole = document.getElementById('display-role-facility');
+            if(dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
+            
+            const dAvatar = document.getElementById('pill-avatar');
+            if(dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
             
             applyPermissions(); 
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
@@ -192,20 +199,12 @@ function applyPermissions() {
     else if (role === 'VIEWER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
-        
-        // 🟢 RESTRICTION: Tago ang Viral Load (GXVL) at Serology/HIV (SERO) sa Viewer Modal
-        document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => { 
-            const attr = card.getAttribute('onclick') || '';
-            if(attr.includes('GXVL') || attr.includes('SERO')) {
-                card.style.display = 'none'; 
-            }
-        });
     } 
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; 
         
         // 🟢 RESTRICTION: Tago lahat maliban sa GXP at DSSM
-        document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => { 
+        document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || ''; 
             if (!attr.includes('GXP') && !attr.includes('DSSM')) {
                 card.style.display = 'none'; 
@@ -218,6 +217,24 @@ function applyPermissions() {
             }); 
             switchTab('tb'); 
         }
+    }
+
+    // 🟢 STRICT ADMIN-ONLY RULE 🟢
+    // Kung HINDI ADMIN ang naka-login, itatago ang Viral Load (GXVL) at Serology/HIV (SERO)
+    if (role !== 'ADMIN') {
+        // 1. Tago sa Lab Registry Tabs
+        document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
+            const attr = card.getAttribute('onclick') || '';
+            if(attr.includes('GXVL') || attr.includes('SERO')) {
+                card.style.display = 'none'; 
+            }
+        });
+        
+        // 2. Tago sa Workspace (Patient Entry Buttons)
+        const btnViral = document.getElementById('btn-viral');
+        const btnSero = document.getElementById('btn-sero');
+        if(btnViral) btnViral.style.display = 'none';
+        if(btnSero) btnSero.style.display = 'none';
     }
 }
 
@@ -913,12 +930,18 @@ function getResultTemplate(code, safeId, item) {
  }
 }
 
-async function openRegistryModal(type) {
-    document.getElementById('registry-selection-modal').style.display = 'none'; showPage('registry');
+async function openRegistryTab(type) {
     window.CURRENT_TEST_TYPE = type; 
-    document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> ${type} Registry`;
+    document.getElementById('regTitle').innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
+    
+    // Highlight active tab
+    document.querySelectorAll('#registry-tabs .chip').forEach(c => c.classList.remove('active'));
+    const activeBtn = document.querySelector(`#registry-tabs .chip[data-tab="${type}"]`);
+    if(activeBtn) activeBtn.classList.add('active');
+
     const cont = document.getElementById('registry-table-content');
-    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i></div>';
+    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading data...</div>';
+    
     try {
         const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
         if (res.status === "success" && res.data && res.data.rows) {
@@ -935,7 +958,6 @@ async function openRegistryModal(type) {
             sorted.forEach((row, rIndex) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 
-                // 🟢 BAGO: HAHANAPIN KUNG "INITIAL" ANG ROW NA ITO BAGO KULAYAN 🟢
                 let isInitialRow = false;
                 hMap.forEach(c => {
                     let hName = c.original.toUpperCase().trim();
@@ -954,9 +976,8 @@ async function openRegistryModal(type) {
                         let vU = String(val).toUpperCase().trim();
                         let bg = "transparent", col = "inherit"; 
                         
-                        // 🟢 BAGO: COLOR LOGIC (OVERRIDE TO GRAY IF INITIAL) 🟢
                         if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } 
-                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } // FORCED BLACK & WHITE
+                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } 
                         else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } 
                         else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } 
                         else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } 
