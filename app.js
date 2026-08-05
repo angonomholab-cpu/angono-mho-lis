@@ -64,8 +64,18 @@ function applyLimitedMode(isLimited) {
     hiddenTests.forEach(id => { const btn = document.getElementById(id); if(btn) { if(isLimited) btn.classList.add('disabled-test'); else btn.classList.remove('disabled-test'); } });
     document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const onclickAttr = card.getAttribute('onclick'); if(onclickAttr) { let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r)); if(isLimited && isHidden) card.classList.add('disabled-test'); else card.classList.remove('disabled-test'); } });
 }
-function toggleSidebar() { const sidebar = document.getElementById('main-sidebar'); const overlay = document.getElementById('sidebar-overlay'); if (sidebar.classList.contains('show')) { sidebar.classList.remove('show'); overlay.style.display = 'none'; overlay.style.opacity = '0'; } else { sidebar.classList.add('show'); overlay.style.display = 'block'; setTimeout(()=>overlay.style.opacity = '1', 10); } }
-function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('theme-icon'); const text = document.getElementById('theme-text'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); if(text) text.innerText = "Light Mode"; } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); if(text) text.innerText = "Dark Mode"; } }
+function toggleFab() { 
+    const menu = document.getElementById('fab-menu'); 
+    const icon = document.getElementById('fab-main-icon'); 
+    if (menu.classList.contains('show')) { 
+        menu.classList.remove('show'); 
+        icon.classList.remove('ph-caret-down'); icon.classList.add('ph-list'); 
+    } else { 
+        menu.classList.add('show'); 
+        icon.classList.remove('ph-list'); icon.classList.add('ph-caret-down'); 
+    } 
+}
+function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('fab-theme-icon'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); } }
 
 function switchLoginTab(type) {
     if(type === 'staff') {
@@ -128,7 +138,7 @@ async function resendPatientPassword() {
         btn.innerHTML = oldText; btn.disabled = false; 
     } 
 }
-function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const sidebar = document.getElementById('main-sidebar'); if (sidebar && sidebar.classList.contains('show')) toggleSidebar(); }
+function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const menu = document.getElementById('fab-menu'); if (menu && menu.classList.contains('show')) toggleFab(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
 function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
@@ -142,57 +152,70 @@ function showPage(targetId) {
 
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
-    document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); if (item.id === 'nav-' + targetId) item.classList.add('active'); });
+    document.querySelectorAll('.fab-btn').forEach(item => { item.style.background = ''; item.style.color = ''; if (item.id === 'fab-nav-' + targetId) { item.style.background = 'var(--pri)'; item.style.color = 'white'; } });
     if (targetId === 'workspace' && (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER' || role === 'VIEWER')) loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
 
 function applyPermissions() {
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
-    const navWork = document.getElementById('nav-workspace'); const navReg = document.getElementById('nav-registry'); const navRep = document.getElementById('nav-reports'); const navSet = document.getElementById('nav-settings');
+    
+    // 🟢 BAGONG FAB MENU IDs
+    const navWork = document.getElementById('fab-nav-workspace'); 
+    const navReg = document.getElementById('fab-nav-registry'); 
+    const navRep = document.getElementById('fab-nav-reports'); 
+    const navSet = document.getElementById('fab-nav-settings');
     const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed'); const colRepeat = document.getElementById('col-repeat');
-    const floatBtns = document.querySelector('.float-actions');
-
+    
+    // Tago lahat muna by default bago i-filter
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none'; if(colRepeat) colRepeat.style.display = 'none';
-    if(floatBtns) floatBtns.style.display = 'none';
 
-    if (role === 'PATIENT') { const sidebarBtn = document.getElementById('menu-toggle-btn'); if(sidebarBtn) sidebarBtn.style.display = 'none'; }
+    if (role === 'PATIENT') { 
+        const fabMain = document.getElementById('fab-main-btn'); 
+        if(fabMain) fabMain.style.display = 'none'; // Wag ipakita ang circle menu sa patient
+    }
     else if (role === 'ADMIN' || role === 'STAFF') {
+        // LAB PERSONNEL - ALL ACCESS
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
-        if(floatBtns) floatBtns.style.display = 'flex';
     } 
     else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
-        if(floatBtns) floatBtns.style.display = 'flex';
     } 
     else if (role === 'VIEWER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
-        if(floatBtns) floatBtns.style.display = 'flex';
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { if(card.getAttribute('onclick') && card.getAttribute('onclick').includes('GXVL')) card.style.display = 'none'; });
+        
+        // 🟢 RESTRICTION: Tago ang Viral Load (GXVL) at Serology/HIV (SERO) sa Viewer Modal
+        document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => { 
+            const attr = card.getAttribute('onclick') || '';
+            if(attr.includes('GXVL') || attr.includes('SERO')) {
+                card.style.display = 'none'; 
+            }
+        });
     } 
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
-        if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; if(floatBtns) floatBtns.style.display = 'flex'; // DOH TB Access to reports added
-        document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const attr = card.getAttribute('onclick') || ''; if (!attr.includes('GXP') && !attr.includes('DSSM')) card.style.display = 'none'; });
-        if(role === 'NTP_CHECKER') { document.querySelectorAll('.chip-group .chip').forEach(chip => { if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; }); switchTab('tb'); }
+        if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; 
+        
+        // 🟢 RESTRICTION: Tago lahat maliban sa GXP at DSSM
+        document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => { 
+            const attr = card.getAttribute('onclick') || ''; 
+            if (!attr.includes('GXP') && !attr.includes('DSSM')) {
+                card.style.display = 'none'; 
+            }
+        });
+        
+        if(role === 'NTP_CHECKER') { 
+            document.querySelectorAll('.chip-group .chip').forEach(chip => { 
+                if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; 
+            }); 
+            switchTab('tb'); 
+        }
     }
-} 
-const availableTests = {
-    "mtb": { testName: "GeneXpert MTB/Rif Ultra", testCode: "GXP", title: "GeneXpert Details", html: `<div class="field-group"><label class="field-label">History</label><select id="gx_hist" class="form-select" data-key="History of Treatment"><option>New</option><option>Retreatment</option></select></div><div class="field-group"><label class="field-label">Source</label><input type="text" id="gx_src" data-key="Source of Request" class="form-input" placeholder="e.g. Dr. Cruz"></div><div class="field-group"><label class="field-label">X-Ray</label><input type="text" id="gx_xray" data-key="X-Ray Result" class="form-input" placeholder="e.g. Normal"></div>`},
-    "dssm": { testName: "DSSM", testCode: "DSSM", title: "DSSM Microscopy", html: `<div class="field-group"><label class="field-label">TB Case No</label><input type="text" id="ds_case" data-key="TB Case Number" class="form-input" placeholder="Case Number"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" id="ds_month" data-key="Month of Treatment" class="form-input" placeholder="e.g. 2nd Month"></div>` },
-    "viral": { testName: "GeneXpert Viral Load", testCode: "GXVL", isSimple: true },
-    "sero": { testName: "Serology", testCode: "SERO", title: "Serology", html: `<label class="field-label">Test(s):</label><div class="chip-group" id="sero-sub-tests">${['HIV Screening','Syphilis Screening','HBsAg Screening'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div><div class="form-grid grid-1" style="margin-top:8px;"><div class="field-group"><label class="field-label">Classification</label><select id="sr_class" data-key="Classification" class="form-select"><option>Maternal</option><option>SHC</option><option>TB Patient</option></select></div><div class="field-group"><label class="field-label">KAP Category</label><select id="sr_kap" data-key="KAP Category" class="form-select"><option value="None">None</option><option>MSM</option><option>TGW</option><option>FSW</option><option>MSW</option><option>PDL</option><option>PWID</option></select></div></div>` },
-    "gram": { testName: "Gram Stain", testCode: "GRAM", title: "Gram Stain", html: `<div class="field-group"><label class="field-label">Source</label><input type="text" id="gs_src" data-key="Source of Specimen" class="form-input" placeholder="e.g. Urethral Discharge"></div>` },
-    "dengue": { testName: "Dengue", testCode: "DENG", title: "Dengue Setup", html: `<div class="field-group"><label class="field-label">Days of Illness</label><input type="number" id="dn_onset" data-key="Day/s of Onset of Illness" class="form-input" placeholder="e.g. 3"></div> <div class="field-group" style="margin-top:12px;"><label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:var(--text-main); font-size:0.85rem;"><input type="checkbox" id="dn_duo_check" style="accent-color:var(--pri); width:16px; height:16px;"> Include Dengue Duo (IgG/IgM)</label></div>` },
-    "hema": { testName: "Hematology", testCode: "HEMA", title: "Hematology", html: `<div class="chip-group">${['CBC','Platelet Count','Blood Typing'].map(t => `<div class="chip" onclick="toggleSub(this)" data-val="${t}">${t}</div>`).join('')}</div>` },
-    "uria": { testName: "Urinalysis", testCode: "UA", isSimple: true },
-    "feca": { testName: "Fecalysis", testCode: "FA", isSimple: true },
-    "chem": { testName: "Blood Chemistry", testCode: "CHEM", title: "Chemistry", html: `<div class="chip-group">${['FBS','OGTT','BUN','Uric Acid','Cholesterol','Triglycerides','Lipid Profile','HBA1C','Creatinine'].map(a => `<div class="chip" onclick="toggleSub(this)" data-val="${a}">${a}</div>`).join('')}</div>` }
-};
+}
 
 function openTestDetails(id) { const config = availableTests[id]; if (!config) return; document.getElementById('test-buttons-container').style.display = 'none'; const area = document.getElementById('test-details-area'); area.style.display = 'block'; area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> ${config.title}</div><div class="form-grid grid-1">${config.html}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelDetail()">Cancel</button><button class="btn btn-primary" style="flex:1;" onclick="confirmDetail('${id}')">Confirm</button></div>`; }
 function toggleSub(btn) { btn.classList.toggle('active'); }
