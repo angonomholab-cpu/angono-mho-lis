@@ -747,7 +747,7 @@
                 let entryBtn = document.getElementById(m.entry);
                 if(entryBtn) { if(isEnabled) entryBtn.classList.remove('disabled-test'); else entryBtn.classList.add('disabled-test'); }
                 
-                document.querySelectorAll('#registry-selection-modal .test-btn-vert').forEach(card => {
+                document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => {
                     let onclickAttr = card.getAttribute('onclick') || "";
                     if(onclickAttr.includes(`'${m.reg}'`) || onclickAttr.includes(`"${m.reg}"`)) {
                         if(isEnabled) card.classList.remove('disabled-test'); else card.classList.add('disabled-test');
