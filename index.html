@@ -81,7 +81,7 @@
             <button class="fab-btn" onclick="toggleDarkMode()" title="Dark / Light Mode"><i class="ph ph-moon-stars" id="fab-theme-icon"></i></button>
             <button class="fab-btn" id="fab-nav-settings" onclick="showPage('settings'); toggleFab()" title="Settings"><i class="ph ph-gear-six"></i></button>
             <button class="fab-btn" id="fab-nav-reports" onclick="showPage('reports'); toggleFab()" title="Reports"><i class="ph ph-chart-bar"></i></button>
-            <button class="fab-btn" id="fab-nav-registry" onclick="showRegistrySelectionModal(); toggleFab()" title="Lab Registry"><i class="ph ph-books"></i></button>
+            <button class="fab-btn" id="fab-nav-registry" onclick="showPage('registry'); toggleFab()" title="Lab Registry"><i class="ph ph-books"></i></button>
             <button class="fab-btn" id="fab-nav-workspace" onclick="showPage('workspace'); toggleFab()" title="Workspace"><i class="ph ph-desktop"></i></button>
             <button class="fab-btn" onclick="openQuickSearch(); toggleFab()" title="Search Patient"><i class="ph ph-magnifying-glass"></i></button>
         </div>
@@ -216,22 +216,41 @@
 
         <div id="page-registry" class="page-area">
             <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 24px;">
+                
                 <div class="section-header" style="border-bottom: 2px solid var(--pri); padding-bottom:15px; margin-bottom: 15px;">
-                    <h2 id="regTitle" style="font-size: 1.2rem;"><i class="ph ph-books" style="color: var(--pri);"></i> Registry</h2>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <select id="colFilter" class="form-select" style="width: auto;"><option value="ALL">All Columns</option></select>
-                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 200px;" onkeyup="filterRegistryTable()">
-                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto;">
+                    <h2 id="regTitle" style="font-size: 1.2rem; margin-bottom: 12px;"><i class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
+                    
+                    <!-- 🟢 BAGONG INLINE REGISTRY TABS 🟢 -->
+                    <div id="registry-tabs" class="chip-group" style="margin-bottom: 15px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 5px;">
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GXP')" data-tab="GXP">GXP MTB</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('DSSM')" data-tab="DSSM">DSSM</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GXVL')" data-tab="GXVL">Viral Load</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('SERO')" data-tab="SERO">Serology</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('HEMA')" data-tab="HEMA">Hematology</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('CHEM')" data-tab="CHEM">Chemistry</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('UA')" data-tab="UA">Urinalysis</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('FA')" data-tab="FA">Fecalysis</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('DENGUE')" data-tab="DENGUE">Dengue NS1</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GRAM')" data-tab="GRAM">Gram Stain</button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items: center;">
+                        <select id="colFilter" class="form-select" style="width: auto; margin-bottom: 0;"><option value="ALL">All Columns</option></select>
+                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 200px; margin-bottom: 0;" onkeyup="filterRegistryTable()">
+                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; margin-bottom: 0;">
                             <option value="">All Months</option><option value="January">January</option><option value="February">February</option><option value="March">March</option><option value="April">April</option><option value="May">May</option><option value="June">June</option><option value="July">July</option><option value="August">August</option><option value="September">September</option><option value="October">October</option><option value="November">November</option><option value="December">December</option>
                         </select>
                     </div>
                 </div>
                 
-                <div class="table-responsive" style="flex-grow: 1; overflow: auto; width: 100%;" id="registry-table-content"></div>
+                <div class="table-responsive" style="flex-grow: 1; overflow: auto; width: 100%;" id="registry-table-content">
+                    <div style="padding:40px; text-align:center; color:var(--text-muted); font-style:italic;">Please select a registry category above.</div>
+                </div>
                 
                 <div style="padding-top: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
                     <div class="text-sm font-bold" style="color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
-                                     <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px;">
                         <button onclick="printRegistryLogbook()" class="btn btn-secondary"><i class="ph ph-notebook"></i> Logbook</button>
                         <button id="btn-batch-print" onclick="batchPrint()" class="btn btn-primary"><i class="ph ph-printer"></i> Print</button>
                         <button id="btn-batch-download" onclick="batchDownload()" class="btn btn-secondary" style="color:var(--pri);"><i class="ph ph-download-simple"></i> Download</button>
@@ -632,26 +651,7 @@
         </div>
     </div>
 
-    <div id="registry-selection-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
-        <div class="auth-card" style="width: 500px; padding: 25px; text-align: left;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-size: 1.1rem; color: var(--pri);"><i class="ph ph-books"></i> Select Registry Logbook</h2>
-                <button onclick="document.getElementById('registry-selection-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                <div class="test-btn-vert" onclick="openRegistryModal('GXP')"><i class="ph ph-virus" style="color:#BA68C8;"></i><span>GXP MTB</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('DSSM')"><i class="ph ph-microscope" style="color:#BA68C8;"></i><span>DSSM</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('GXVL')"><i class="ph ph-dna" style="color:#BA68C8;"></i><span>Viral Load</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('SERO')"><i class="ph ph-drop" style="color:#FF8A80;"></i><span>Serology</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('HEMA')"><i class="ph ph-drop-half" style="color:#F06292;"></i><span>Hematology</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('CHEM')"><i class="ph ph-flask" style="color:#FFB74D;"></i><span>Chemistry</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('UA')"><i class="ph ph-toilet-paper" style="color:#4DB6AC;"></i><span>Urinalysis</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('FA')"><i class="ph ph-bug" style="color:#4DB6AC;"></i><span>Fecalysis</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('DENGUE')"><i class="ph ph-warning-circle" style="color:#FF8A80;"></i><span>Dengue NS1</span></div>
-                <div class="test-btn-vert" onclick="openRegistryModal('GRAM')"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
-            </div>
-        </div>
-    </div>
+    
 
        <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
         <div class="auth-card" style="width:350px; text-align: left; padding: 25px;">
