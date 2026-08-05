@@ -13,6 +13,14 @@
         .pass-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
         .pass-wrapper input { width: 100%; margin-bottom: 0 !important; padding-right: 35px; }
         .pass-wrapper i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem; }
+        /* 🟢 ANIMATION PARA SA REFRESH ICON 🟢 */
+        @keyframes spinAnimation {
+            100% { transform: rotate(360deg); }
+        }
+        .ph-spin {
+            animation: spinAnimation 1s linear infinite;
+            display: inline-block; /* Kailangan ito para maka-ikot ang icon */
+        }
     </style>
 </head>
 <body>
