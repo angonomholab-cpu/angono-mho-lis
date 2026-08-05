@@ -63,11 +63,11 @@
         </div>
     </div>
 
-<!-- 🟢 BAGONG FLOATING CIRCLE MENU 🟢 -->
+<!-- 🟢 BAGONG FLOATING CIRCLE MENU (HALF-CIRCLE SLIDE LEFT) 🟢 -->
     <div class="fab-wrapper">
         <div id="fab-menu" class="fab-menu">
             
-            <!-- 🟢 MINI PROFILE PILL (Babalik dito ang pangalan mo) 🟢 -->
+            <!-- Profile Pill (Pinaka-kaliwa) -->
             <div class="fab-profile-pill">
                 <div class="fab-profile-text">
                     <span id="display-full-name">Loading...</span>
@@ -76,7 +76,7 @@
                 <div id="pill-avatar" class="fab-avatar"><i class="ph ph-user"></i></div>
             </div>
 
-            <!-- Icon Buttons -->
+            <!-- Icon Buttons (Pahalang papuntang kanan) -->
             <button class="fab-btn" style="border-color:var(--danger);" onclick="logoutUser(); toggleFab()" title="Log Out"><i class="ph ph-sign-out" style="color:var(--danger);"></i></button>
             <button class="fab-btn" onclick="toggleDarkMode()" title="Dark / Light Mode"><i class="ph ph-moon-stars" id="fab-theme-icon"></i></button>
             <button class="fab-btn" id="fab-nav-settings" onclick="showPage('settings'); toggleFab()" title="Settings"><i class="ph ph-gear-six"></i></button>
@@ -85,10 +85,12 @@
             <button class="fab-btn" id="fab-nav-workspace" onclick="showPage('workspace'); toggleFab()" title="Workspace"><i class="ph ph-desktop"></i></button>
             <button class="fab-btn" onclick="openQuickSearch(); toggleFab()" title="Search Patient"><i class="ph ph-magnifying-glass"></i></button>
         </div>
+        
+        <!-- MAIN HALF-CIRCLE BUTTON (Pinaka-kanan, nakadikit sa dulo) -->
         <button class="fab-main" id="fab-main-btn" onclick="toggleFab()">
-            <i class="ph ph-list" id="fab-main-icon"></i>
+            <i class="ph ph-caret-left" id="fab-main-icon"></i>
         </button>
-    </div>    
+    </div>
 
     <main class="main-content">
         <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
