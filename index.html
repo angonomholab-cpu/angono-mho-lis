@@ -30,6 +30,12 @@
         .fab-btn:hover { background: var(--bg-subtle); transform: scale(1.1); color: var(--pri); border-color: var(--pri); }
         .fab-main { background: var(--pri); color: white; font-size: 1.8rem; z-index: 100000; }
         .fab-main:hover { transform: scale(1.05); box-shadow: 0 6px 14px rgba(0,0,0,0.3); }
+        /* MINI PROFILE PILL STYLES */
+        .fab-profile-pill { display: flex; align-items: center; gap: 10px; background: var(--bg-body); border: 1px solid var(--border-color); padding: 5px 5px 5px 15px; border-radius: 50px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); align-self: flex-end; margin-bottom: 8px; cursor: default; }
+        .fab-profile-text { display: flex; flex-direction: column; text-align: right; }
+        #display-full-name { font-size: 0.8rem; font-weight: bold; color: var(--text-main); white-space: nowrap; line-height: 1.2; }
+        #display-role-facility { font-size: 0.6rem; color: var(--text-muted); white-space: nowrap; }
+        .fab-avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--pri); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -55,9 +61,20 @@
         </div>
     </div>
 
-    <!-- 🟢 BAGONG FLOATING CIRCLE MENU 🟢 -->
+<!-- 🟢 BAGONG FLOATING CIRCLE MENU 🟢 -->
     <div class="fab-wrapper">
         <div id="fab-menu" class="fab-menu">
+            
+            <!-- 🟢 MINI PROFILE PILL (Babalik dito ang pangalan mo) 🟢 -->
+            <div class="fab-profile-pill">
+                <div class="fab-profile-text">
+                    <span id="display-full-name">Loading...</span>
+                    <span id="display-role-facility">Please Log In</span>
+                </div>
+                <div id="pill-avatar" class="fab-avatar"><i class="ph ph-user"></i></div>
+            </div>
+
+            <!-- Icon Buttons -->
             <button class="fab-btn" style="border-color:var(--danger);" onclick="logoutUser(); toggleFab()" title="Log Out"><i class="ph ph-sign-out" style="color:var(--danger);"></i></button>
             <button class="fab-btn" onclick="toggleDarkMode()" title="Dark / Light Mode"><i class="ph ph-moon-stars" id="fab-theme-icon"></i></button>
             <button class="fab-btn" id="fab-nav-settings" onclick="showPage('settings'); toggleFab()" title="Settings"><i class="ph ph-gear-six"></i></button>
@@ -69,7 +86,7 @@
         <button class="fab-main" id="fab-main-btn" onclick="toggleFab()">
             <i class="ph ph-list" id="fab-main-icon"></i>
         </button>
-    </div>
+    </div>    
 
     <main class="main-content">
         <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
