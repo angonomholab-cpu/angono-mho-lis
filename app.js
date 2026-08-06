@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvecuVNEiqr7BK4Gv888R2I-7_S4L-HKmR2HsQdcoieRGq0G-8csvi-67U7mmbmIxFvQ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7iHMYqw1_r_nKoLjmHTJwj9pjQDnZQ4eQJUMxsyK9yrblphiHUZYoAXlxEeVChxVSYg/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -1064,12 +1064,6 @@ async function deleteEntry(id) { try { await apiPost("deletePendingTestById", { 
 
    
 
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName);
-    const win = window.open('', '_blank'); win.document.write('<h2>Loading Document...</h2>');
-    try { const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); if (res.status === "success" && res.data) { win.document.open(); win.document.write(res.data); win.document.close(); } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } } catch (e) { win.document.body.innerHTML = "Print Error."; } 
-}
-
 // BAGO: DOWNLOAD PDF DIRECTLY
 
 
@@ -1327,39 +1321,212 @@ function printRegistryLogbook() {
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
 
+// ==========================================
+// 🟢 BAGO: INSTANT CLIENT-SIDE PRINTING (A5)
+// ==========================================
+
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName);
+    const win = window.open('', '_blank'); 
+    win.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Loading Document...</h2>');
+    
+    try { 
+        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+        if (res.status === "success" && res.data) { 
+            const printData = res.data;
+            let finalHtml = "";
+            
+            if (printData.type === "HTML") {
+                finalHtml = printData.content; // NTP: Galing pa rin sa server
+            } else {
+                finalHtml = localGenerateA5Html(printData.content); // A5: Instant sa browser!
+            }
+            
+            win.document.open(); win.document.write(finalHtml); win.document.close(); 
+        } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } 
+    } catch (e) { win.document.body.innerHTML = "Print Error."; } 
+}
+
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked');
-    if (checked.length === 0) {
-        showAppAlert("Required", "Select at least one record.", "error");
-        return;
-    }
+    if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
 
     let requests = [];
     checked.forEach(chk => {
         const rowData = JSON.parse(decodeURIComponent(chk.value));
-        
-        // Find the index for 'TEST CODE' instead of 'PATIENT ID'
         const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE'));
         const tCode = rowData[codeCol];
-        
         requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
     });
 
     const printWin = window.open('', '_blank');
-    printWin.document.write('<h2>Generating Batch PDF... Please wait.</h2>');
+    printWin.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
 
     try {
         const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
         if (res.status === "success" && res.data) {
-            printWin.document.open();
-            printWin.document.write(res.data);
-            printWin.document.close();
-        } else {
-            printWin.document.body.innerHTML = "Error generating print view.";
+            const printData = res.data;
+            let finalHtml = "";
+            
+            if (printData.type === "HTML") {
+                finalHtml = printData.content;
+            } else {
+                finalHtml = localGenerateA5Html(printData.content);
+            }
+            
+            printWin.document.open(); printWin.document.write(finalHtml); printWin.document.close();
+        } else { printWin.document.body.innerHTML = "Error generating print view."; }
+    } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
+}
+
+async function batchDownload() {
+    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
+    batchPrint(); // Gamitin na rin ang mabilis na batch print para sa preview!
+}
+
+// Ang Taga-Drawing ng HTML sa Frontend
+function localGenerateA5Html(patientsArray) {
+    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
+    let combinedHtml = "";
+    
+    const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
+    const getNormal = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "M:140-170 F:120-150"; if (n.includes("HEMATOCRIT")) return "M:0.40-0.54 F:0.37-0.47"; if (n.includes("WBC")) return "4.5 - 11.0"; if (n.includes("RBC")) return "4.0 - 6.0"; if (n.includes("PLATELET")) return "150 - 450"; if (n.includes("NEUTROPHIL")) return "0.50 - 0.70"; if (n.includes("LYMPHOCYTE")) return "0.20 - 0.40"; if (n.includes("MONOCYTE")) return "0.02 - 0.08"; if (n.includes("EOSINOPHIL")) return "0.01 - 0.04"; if (n.includes("BASOPHIL")) return "0.00 - 0.01"; if (n.includes("HBA1C")) return "4.0 - 6.0"; if (n.includes("RBS")) return "< 7.8"; if (n.includes("OG0") || n.includes("FASTING")) return "< 5.1"; if (n.includes("OG1") || n.includes("1 HR")) return "< 10.0"; if (n.includes("OG2") || n.includes("2 HR")) return "< 8.5"; if (n.includes("GLUCOSE") || n.includes("FBS")) return "3.89 - 6.11"; if (n.includes("CHOLESTEROL")) return "< 5.17"; if (n.includes("TRIGLYCERIDE")) return "< 2.2"; if (n.includes("HDL")) return "> 0.9"; if (n.includes("LDL")) return "< 3.3"; if (n.includes("CREATININE")) return "M:62-106 F:44-80"; if (n.includes("URIC") || n.includes("BUA")) return "M:0.21-0.42 F:0.16-0.36"; if (n.includes("BUN")) return "2.5 - 7.1"; if (n.includes("SGPT") || n.includes("ALT")) return "M:<41 F:<31"; if (n.includes("SGOT") || n.includes("AST")) return "M:<40 F:<32"; return ""; };
+
+    const getStaff = (name) => {
+        if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
+        const search = String(name).trim().toLowerCase();
+        const found = (window.globalStaffList || []).find(s => s.name.toLowerCase() === search);
+        return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" };
+    };
+
+    patientsArray.forEach((p, index) => {
+        let verifier = getStaff(p.verifier); let performer = getStaff(p.encoder);
+        const tName = (p.testName || "").toUpperCase(); 
+        const isDengue = tName.includes("DENGUE") || tName.includes("NS1"); 
+        const isGram = tName.includes("GRAM"); 
+        const isViral = tName.includes("VIRAL") || tName.includes("HIV-1") || tName.includes("GXVL"); 
+        const isFecal = tName.includes("FECAL"); 
+        const isUrine = tName.includes("URIN") || tName.includes("UA"); 
+        const isSero = tName.includes("SERO") || tName.includes("HIV") || tName.includes("SYPHILIS") || tName.includes("HBSAG"); 
+        const isChem = tName.includes("CHEM"); 
+        const isHema = tName.includes("HEMA") || tName.includes("CBC");
+        
+        if (!p.remarks && p.results) { let remarkObj = p.results.find(r => r.param === "Remarks" || r.param === "REMARKS"); if (remarkObj) { p.remarks = remarkObj.res; } }
+        if (p.results) { p.results = p.results.filter(r => { const P = String(r.param).toUpperCase(); if (P === "REMARKS" || P.includes("REMARK")) return false; if (P.includes("REQUEST")) return false; if (isSero && (P.includes("KAP") || P.includes("CLASSIFICATION"))) return false; if (isUrine && (P.includes("KETONES") || P.includes("BLOOD") || P.includes("BILIRUBIN") || P.includes("NITRITE"))) return false; return true; }); }
+
+        let mainContent = "";
+        
+        if (isViral) { let choiceObj = p.results.find(r => r.param.toUpperCase().includes("CHOIC") || r.param.toUpperCase().includes("RESULT")); let numObj = p.results.find(r => r.param.toUpperCase().includes("NUMB") || r.param.toUpperCase().includes("COPIES")); let resultVal = choiceObj ? choiceObj.res : "N/A"; let copiesVal = numObj ? numObj.res : ""; let logVal = "N/A"; let cleanNum = String(copiesVal).replace(/[^0-9.]/g, ''); if (cleanNum && !isNaN(cleanNum)) { logVal = Math.log10(parseFloat(cleanNum)).toFixed(2); } else if (String(copiesVal).includes("<")) { logVal = "< 1.60"; } mainContent = `<div style="width:90%; margin-top:10px; border:2px solid #000; padding:15px;"><div style="font-weight:bold; font-size:12px; text-decoration:underline; margin-bottom:15px; text-align:center;">HIV-1 VIRAL LOAD QUANTIFICATION</div><table style="width:100%; border:none;"><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">HIV-1 QUALITATIVE RESULT:</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${resultVal}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">RESULT (Copies/mL):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${copiesVal || "N/A"}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">LOG VALUE (log10):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${logVal}</td></tr></table><div style="font-size:8px; font-style:italic; margin-top:15px; text-align:center;">Test Method: Real-Time PCR (GeneXpert). Linear Range: 40 to 10,000,000 copies/mL.</div></div>`; }
+        else if (isGram) { const findRes = (keyPart) => { let found = p.results.find(r => r.param.toUpperCase().includes(keyPart)); return (found && found.res && found.res.trim() !== "") ? found.res : "NONE SEEN"; }; let posQuant = findRes("GP_QUANT"); let posMorph = findRes("GP_MORPH"); let posArr = findRes("GP_ARRANG"); let negQuant = findRes("GN_QUANT"); let negMorph = findRes("GN_MORPH"); let negArr = findRes("GN_ARRANG"); mainContent = `<table class="res-table" style="width: 100%; margin-top: 10px;"><thead><tr><th width="20%">TEST</th><th width="20%">QUANTITY</th><th width="30%">MORPHOLOGY</th><th width="30%">ARRANGEMENT</th></tr></thead><tbody><tr><td style="font-weight:bold; padding:8px;">Gram Positive</td><td style="text-align:center;">${posQuant}</td><td style="text-align:center;">${posMorph}</td><td style="text-align:center;">${posArr}</td></tr><tr><td style="font-weight:bold; padding:8px;">Gram Negative</td><td style="text-align:center;">${negQuant}</td><td style="text-align:center;">${negMorph}</td><td style="text-align:center;">${negArr}</td></tr></tbody></table>`; }
+        else if (isDengue) { let resVal = p.results.find(r => r.param.toUpperCase().includes("RESULT") || r.param.toUpperCase().includes("ANTIGEN"))?.res || ""; let color = (resVal.toUpperCase().includes("POS") || resVal.toUpperCase().includes("REACTIVE")) ? "red" : "black"; mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 90%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody><tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE NS1 ANTIGEN</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${color};">${resVal}</td></tr></tbody></table></div>`; }
+        else if (isSero) {
+            let hivRes = p.results.find(r => r.param.toUpperCase().includes("HIV"))?.res;
+            let syphRes = p.results.find(r => r.param.toUpperCase().includes("SYPHILIS"))?.res;
+            let hbsagRes = p.results.find(r => r.param.toUpperCase().includes("HBSAG"))?.res;
+            let rowsHtml = "";
+            if (hivRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HIV 1/2 SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hivRes}</td></tr>`;
+            if (syphRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">SYPHILIS SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${syphRes}</td></tr>`;
+            if (hbsagRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HBsAg SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hbsagRes}</td></tr>`;
+            mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 85%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
         }
-    } catch (e) {
-        printWin.document.body.innerHTML = "Print Error.";
-    }
+        else if (isHema || isChem || isUrine) { const mid = Math.ceil(p.results.length / 2); const left = p.results.slice(0, mid); const right = p.results.slice(mid); let rowsHtml = ""; const hasUnits = isHema || isChem; for(let i=0; i < mid; i++) { const l = left[i]; const r = right[i]; let leftHtml = ""; if (l) { if (hasUnits) { leftHtml = `<td style="font-weight:bold; padding-left:5px;">${l.param}</td><td style="text-align:center; font-weight:bold;">${l.res||""}</td><td style="text-align:center; font-size:8px;">${getUnit(l.param)}</td><td style="text-align:center; font-size:8px;">${getNormal(l.param)}</td>`; } else { leftHtml = `<td style="font-weight:bold; padding-left:5px;">${l.param}</td><td style="text-align:center; font-weight:bold;">${l.res||""}</td>`; } } else { leftHtml = hasUnits ? `<td colspan="4"></td>` : `<td colspan="2"></td>`; } let rightHtml = ""; if (r) { if (hasUnits) { rightHtml = `<td style="font-weight:bold; padding-left:5px;">${r.param}</td><td style="text-align:center; font-weight:bold;">${r.res||""}</td><td style="text-align:center; font-size:8px;">${getUnit(r.param)}</td><td style="text-align:center; font-size:8px;">${getNormal(r.param)}</td>`; } else { rightHtml = `<td style="font-weight:bold; padding-left:5px;">${r.param}</td><td style="text-align:center; font-weight:bold;">${r.res||""}</td>`; } } else { rightHtml = hasUnits ? `<td colspan="4"></td>` : `<td colspan="2"></td>`; } rowsHtml += `<tr>${leftHtml}${rightHtml}</tr>`; } let headerHtml = hasUnits ? `<tr><th width="20%">TEST</th><th width="10%">RESULT</th><th width="10%">UNIT</th><th width="10%">NORMAL</th><th width="20%">TEST</th><th width="10%">RESULT</th><th width="10%">UNIT</th><th width="10%">NORMAL</th></tr>` : `<tr><th width="30%">TEST</th><th width="20%">RESULT</th><th width="30%">TEST</th><th width="20%">RESULT</th></tr>`; mainContent = `<table class="res-table" style="width: 100%; margin-top: 5px; font-size: 9px;"><thead>${headerHtml}</thead><tbody>${rowsHtml}</tbody></table>`; }
+        else { let rowsHtml = ""; const tableStyle = isFecal ? "width: 75%; margin: 10px auto;" : "width: 100%; margin-top: 10px;"; const padStyle = "padding:4px;"; p.results.forEach(r => { const val = (r.res === "" || r.res === undefined || r.res === null) ? "&nbsp;" : r.res; rowsHtml += `<tr><td style="text-align:left; padding-left:10px; font-weight:bold; ${padStyle} width:40%;">${r.param}</td><td style="font-weight:bold; text-align:center; ${padStyle} width:60%;">${val}</td></tr>`; }); mainContent = `<div style="flex-grow:1; display:flex; justify-content:center; width:100%;"><table class="res-table" style="${tableStyle}"><thead><tr><th width="40%">TEST / PARAMETER</th><th width="60%">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`; }
+
+        const pageHtml = `
+        <div class="page-container">
+            <div class="header">
+                <img src="${logos.left}" class="logo-side">
+                <div class="header-center">
+                    <img src="${logos.lab}" class="logo-lab">
+                    <h3>Republic of the Philippines<br>Province of Rizal<br>Municipality of Angono</h3>
+                    <h1>Municipal Health Office</h1>
+                    <h3>P. Tolentino St. Brgy. San Isidro, Angono, Rizal</h3>
+                </div>
+                <img src="${logos.right}" class="logo-side">
+            </div>
+            <div class="form-title">${p.testName}</div>
+            <table class="info-table">
+                <tr><td width="12%" class="label">Name:</td><td width="48%" class="data"><strong>${p.name}</strong></td><td width="15%" class="label">Age/Sex:</td><td width="25%" class="data">${p.age} / ${p.sex}</td></tr>
+                <tr><td class="label">Patient ID:</td><td class="data">${p.id} <span style="font-size:8px; color:#555; margin-left:8px;">(${p.testCode || ""})</span></td><td class="label">Date Recv:</td><td class="data">${p.dateRequest || ""}</td></tr>
+                <tr><td class="label">Facility:</td><td class="data">${p.facility}</td><td class="label">Date Rel:</td><td class="data">${p.dateResult || p.dateRequest || ""}</td></tr>
+            </table>
+            <div style="flex-grow:1; display:flex; flex-direction:column; width:100%;">
+                ${mainContent}
+            </div>
+            <div class="remarks-box"><strong>Remarks:</strong> ${p.remarks || ""}</div>
+            <div class="footer-section">
+              <div class="sig-container">
+                    <div class="sig-block" style="text-align:left;">
+                        <div class="sig-label">Performed By:</div>
+                        <div class="sig-visual-area" style="justify-content: flex-start;">
+                            ${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}
+                            <div class="sig-name" style="text-align:left;">${p.encoder}</div>
+                        </div>
+                        <div class="sig-info">${performer.role}<br>Lic No. ${performer.license}</div>
+                    </div>
+                    <div class="sig-block" style="text-align:right;">
+                        <div class="sig-label" style="text-align:right;">Noted By:</div>
+                        <div class="sig-visual-area" style="justify-content: flex-end;">
+                            <div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div>
+                        </div>
+                        <div class="sig-info">Municipal Health Officer</div>
+                    </div>
+                </div>
+                <div class="system-footer">This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.</div>
+                <div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div>
+            </div>
+        </div>`;
+
+        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : '';
+        combinedHtml += pageHtml + breakTag;
+    });
+
+    return `<!DOCTYPE html><html><head><title>Batch Print</title>
+    <style>
+        @page { size: A5 landscape; margin: 0; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
+        .page-container { width: 210mm; height: 148mm; background: white; padding: 5mm 10mm; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; break-after: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;}
+        .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 5px; height: 90px; display: flex; align-items: center; justify-content: space-between; -webkit-print-color-adjust: exact; flex-shrink: 0; }
+        .header-center { text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .header h3 { font-size: 9px; margin: 0; font-weight: normal; line-height: 1.0; }
+        .header h1 { font-size: 11px; margin: 2px 0; font-weight: bold; line-height: 1.0; }
+        .header p { font-size: 9px; margin: 2px 0 0 0; font-weight: bold; line-height: 1.0; }
+        .logo-side { width: 65px; height: 65px; background: #fff; border-radius: 50%; object-fit: contain; }
+        .logo-lab { width: 40px; height: 40px; background: #fff; border-radius: 50%; margin-bottom: 2px; align-self: center; margin-top: 10px; }
+        .form-title { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0; text-transform: uppercase; border: 1px solid black; background: #eee; -webkit-print-color-adjust: exact; flex-shrink: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .info-table td { border: 1px solid black; padding: 2px 5px; }
+        .label { background: #f0f0f0; font-weight: bold; -webkit-print-color-adjust: exact; width: 15%; }
+        .res-table { border: 2px solid black; }
+        .res-table th { background: #ddd; border: 1px solid black; padding: 4px; font-size: 10px; -webkit-print-color-adjust: exact; }
+        .res-table td { border: 1px solid black; padding: 2px; font-size: 10px; }
+        .remarks-box { border: 1px solid black; padding: 2px 5px; margin-top: 5px; font-size: 10px; min-height: 20px; flex-shrink: 0; }
+        .footer-section { margin-top: auto; padding-top: 5px; flex-shrink: 0; }
+        .sig-container { display: flex; justify-content: space-between; }
+        .sig-block { width: 32%; text-align: center; }
+        .sig-visual-area { height: 40px; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+        .esig-img { position: absolute; bottom: 5px; height: 45px; mix-blend-mode: multiply; }
+        .sig-name { font-weight: bold; font-size: 10px; border-top: 1px solid black; width: 100%; padding-top: 2px; }
+        .sig-info { font-size: 9px; }
+        .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
+        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
+        
+        .no-print { position: fixed; top: 0; left: 0; width: 100%; background: #1e293b; padding: 12px; text-align: center; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); } 
+        .no-print button { padding: 10px 20px; margin: 0 5px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif; font-size: 14px; } 
+        .btn-print { background: #10b981; color: white; } 
+        .btn-close { background: #ef4444; color: white; } 
+        .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
+        
+        @media print { .no-print { display: none !important; } body { background: white; padding-top: 0 !important; display: block; margin: 0; } .page-container { width: 210mm; height: 148mm; break-after: auto; margin: 0; border: none; box-shadow: none;} .page-break { break-after: page; page-break-after: always; height: 0; display: block; } }
+    </style>
+    </head><body>
+    <div class="no-print">
+        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
+        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
+        <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
+    </div>
+    ${combinedHtml}</body></html>`;
 }
 
 
