@@ -217,6 +217,10 @@ function showPage(targetId) {
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
 
+// ==========================================
+// 🔴 REPLACE APPLYPERMISSIONS FUNCTION 🔴
+// ==========================================
+
 function applyPermissions() {
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     
@@ -225,7 +229,10 @@ function applyPermissions() {
     const navReg = document.getElementById('fab-nav-registry'); 
     const navRep = document.getElementById('fab-nav-reports'); 
     const navSet = document.getElementById('fab-nav-settings');
-    const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed'); const colRepeat = document.getElementById('col-repeat');
+    const colEntry = document.getElementById('col-entry'); 
+    const colPending = document.getElementById('col-pending'); 
+    const colCompleted = document.getElementById('col-completed'); 
+    const colRepeat = document.getElementById('col-repeat');
     
     // Tago lahat muna by default bago i-filter
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
@@ -252,37 +259,46 @@ function applyPermissions() {
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; 
         
-        // 🟢 RESTRICTION: Tago lahat maliban sa GXP at DSSM
+        // 🟢 RESTRICTION: Tago lahat maliban sa GXP, DSSM (At Serology para sa NTP Checker)
         document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || ''; 
-            if (!attr.includes('GXP') && !attr.includes('DSSM')) {
-                card.style.display = 'none'; 
+            if (role === 'NTP_CHECKER') {
+                if (!attr.includes('GXP') && !attr.includes('DSSM') && !attr.includes('SERO')) {
+                    card.style.display = 'none'; 
+                }
+            } else { // DOH_TB
+                if (!attr.includes('GXP') && !attr.includes('DSSM')) {
+                    card.style.display = 'none'; 
+                }
             }
         });
         
         if(role === 'NTP_CHECKER') { 
             document.querySelectorAll('.chip-group .chip').forEach(chip => { 
-                if (!chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; 
+                if (chip.getAttribute('onclick') && !chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; 
             }); 
-            switchTab('tb'); 
+            if(typeof switchTab === 'function') switchTab('tb'); 
         }
     }
 
-    // 🟢 STRICT ADMIN-ONLY RULE 🟢
-    // Kung HINDI ADMIN ang naka-login, itatago ang Viral Load (GXVL) at Serology/HIV (SERO)
+    // 🟢 VIRAL LOAD STRICTLY ADMIN ONLY 🟢
+    // Kapag hindi ADMIN, itatago lang ang GXVL. Ang SERO ay bukas na sa Staff/Viewer/NTP!
     if (role !== 'ADMIN') {
-        // 1. Tago sa Lab Registry Tabs
         document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || '';
-            if(attr.includes('GXVL') || attr.includes('SERO')) {
+            if(attr.includes('GXVL')) {
                 card.style.display = 'none'; 
             }
         });
         
-        // 2. Tago sa Workspace (Patient Entry Buttons)
         const btnViral = document.getElementById('btn-viral');
-        const btnSero = document.getElementById('btn-sero');
         if(btnViral) btnViral.style.display = 'none';
+    }
+
+    // 🟢 WORKSPACE RESTRICTION (SEROLOGY ENTRY) 🟢
+    // Ang makakapag-request at makakapag-encode lang ng Serology sa Workspace ay ADMIN at STAFF.
+    if (role !== 'ADMIN' && role !== 'STAFF') {
+        const btnSero = document.getElementById('btn-sero');
         if(btnSero) btnSero.style.display = 'none';
     }
 }
