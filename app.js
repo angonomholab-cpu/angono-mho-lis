@@ -1638,19 +1638,6 @@ async function saveResult(id, safeId, btn) {
   } catch (err) { btn.disabled = false; btn.innerHTML = "Save Result"; }
 }
 
-async function batchDownload() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
-    
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const idCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('PATIENT ID')); const pid = rowData[idCol]; requests.push({ testCode: pid, testName: window.CURRENT_TEST_TYPE }); });
-    const printWin = window.open('', '_blank'); printWin.document.write('<h2>Generating Batch Preview... Please wait.</h2>');
-    try { 
-        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role }); 
-        if (res.status === "success" && res.data) { printWin.document.open(); printWin.document.write(res.data); printWin.document.close(); } 
-        else { printWin.document.body.innerHTML = "Error generating preview."; } 
-    } catch (e) { printWin.document.body.innerHTML = "Print Error."; }
-}
-
 // 🟢 BAGO: LOGIC PARA SA CREATE STAFF ACCOUNT 🟢
 function showStaffRegister() {
     document.getElementById('login-card').style.display = 'none';
@@ -1809,6 +1796,67 @@ async function batchPrint() {
     } catch (err) { printWin.document.body.innerHTML = "Print Error."; }
 }
 
+async function downloadDirect(e, id, testName) {
+    if(e) e.stopPropagation(); 
+    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
+    printDirect(e, id, testName);
+}
+
+async function batchDownload() {
+    const checked = document.querySelectorAll('.chk-reg:checked'); 
+    if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
+    batchPrint(); 
+}
+
+async function batchSaveResults(isPrint) {
+    const checked = document.querySelectorAll('.chk-pending:checked');
+    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
+
+    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
+    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
+    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+
+    let successCount = 0; let printRequests = [];
+
+    for (let chk of checked) {
+        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+        const inputs = document.querySelectorAll('.res-' + safeId);
+
+        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+        let tCodePrint = getTestCodeFromName(item.test);
+
+        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+
+        try {
+            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+            if (res.status === "success") { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); }
+        } catch(e) {}
+    }
+
+    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
+    await loadPendingData();
+
+    if (isPrint && printRequests.length > 0) {
+        const printWin = window.open('', '_blank'); printWin.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+        try {
+            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
+            if (res.status === "success" && res.data) {
+                const printData = res.data; let finalHtml = "";
+                const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+                if (printData.type === "HTML") { finalHtml = printData.content; } 
+                else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+                else { finalHtml = localGenerateA5Html(printData.content); }
+                printWin.document.open(); printWin.document.write(finalHtml); printWin.document.close();
+            } else { printWin.document.body.innerHTML = "Error generating print view."; }
+        } catch(e) { printWin.document.body.innerHTML = "Print Error."; }
+    }
+}
+
 // 🟢 Taga-process ng data para sa NTP Form
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
@@ -1852,7 +1900,6 @@ function processNtpResultsClient(p) {
 
 // 🟢 Ang mismong Taga-Drawing ng NTP Form (Kasama na ang CSS Fixes)
 function localGenerateNTPHtml(patientsArray) {
-    // ⚡ Mabilis na Google Drive URLs
     const logos = { 
         left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", 
         lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", 
@@ -2198,65 +2245,7 @@ function localGenerateNTPHtml(patientsArray) {
     ${combinedHtml}</body></html>`;
 }
 
-async function downloadDirect(e, id, testName) {
-    if(e) e.stopPropagation(); 
-    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
-    printDirect(e, id, testName);
-}
-
-async function batchDownload() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); 
-    if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
-    batchPrint(); 
-}
-
-async function batchSaveResults(isPrint) {
-    const checked = document.querySelectorAll('.chk-pending:checked');
-    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
-
-    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
-    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
-    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-
-    let successCount = 0; let printRequests = [];
-
-    for (let chk of checked) {
-        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
-        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
-        const inputs = document.querySelectorAll('.res-' + safeId);
-
-        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
-        let tCodePrint = getTestCodeFromName(item.test);
-
-        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-
-        try {
-            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-            if (res.status === "success") { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); }
-        } catch(e) {}
-    }
-
-    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
-    await loadPendingData();
-
-    if (isPrint && printRequests.length > 0) {
-        const printWin = window.open('', '_blank'); printWin.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-        try {
-            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
-            if (res.status === "success" && res.data) {
-                const printData = res.data; let finalHtml = "";
-                if (printData.type === "HTML") { finalHtml = printData.content; } else { finalHtml = localGenerateA5Html(printData.content); }
-                printWin.document.open(); printWin.document.write(finalHtml); printWin.document.close();
-            } else { printWin.document.body.innerHTML = "Error generating print view."; }
-        } catch(e) { printWin.document.body.innerHTML = "Print Error."; }
-    }
-}
-
-// 🟢 Taga-Drawing ng HTML sa Frontend
+// 🟢 Taga-Drawing ng HTML para sa Normal A5 Forms
 function localGenerateA5Html(patientsArray) {
     const logos = { left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", right: "https://lh3.googleusercontent.com/d/1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs" };
     let combinedHtml = "";
