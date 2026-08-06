@@ -1,9 +1,10 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCmX8CmmzkqElWLfqum_tl69HeGPHir2Fi4s3Y-cbfT8q-c8HD55hCyGePR2zHvTeuTA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvecuVNEiqr7BK4Gv888R2I-7_S4L-HKmR2HsQdcoieRGq0G-8csvi-67U7mmbmIxFvQ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
 let pendingData = [];
 let completedData = [];
+let cachedPatients = []; // 🟢 BAGO: Dito iipunin ang lahat ng patients para instant
 let isExistingPatient = false; 
 let editingPendingId = null;
 let currentQuickPatient = null;
@@ -107,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             applyPermissions(); 
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
+            if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
+                loadPatientCache(); 
+            }
             if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
             else showPage('workspace');
@@ -375,50 +379,91 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
-async function runDirectSearch(q) {
-  const box = document.getElementById('direct-results-box'); const stat = document.getElementById('search-status');
-  if(q.length < 2) { box.style.display='none'; stat.style.display='none'; return; }
-  stat.style.display='block'; clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(async () => {
-      try {
-          const res = await apiGet("searchPatients", { query: q });
-          if (res.status === "success" && res.data.length > 0) {
-              box.style.display = 'block'; 
-              box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
-              res.data.forEach(p => {
-                  const div = document.createElement('div'); div.className = "search-item";
-                  div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
-                  div.onclick = () => {
-                      isExistingPatient = true; document.getElementById('finalPatientId').value = p.id; document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || ""; document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; 
-                      if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
-                      setSelectValue('p_sex', p.sex); setSelectValue('p_facility', p.facility || p.Facility);
-                      if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } catch(e){} }
-                      box.style.display = 'none'; document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
-                      fetchHistory(p.id, 'history-section', 'history-list'); 
-                  }; box.appendChild(div);
-              });
-          } else { box.style.display = 'none'; }
-      } catch(e) {} finally { stat.style.display='none'; }
-  }, 600);
+// ==========================================
+// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (LOCAL CACHE)
+// ==========================================
+
+async function loadPatientCache() {
+    try {
+        const res = await apiGet("getAllPatientsLight");
+        if (res.status === "success") {
+            cachedPatients = res.data;
+            console.log("⚡ Instant Search Ready: Loaded " + cachedPatients.length + " patients locally.");
+        }
+    } catch(e) { console.error("Failed to load patient cache"); }
+}
+
+function runDirectSearch(q) {
+    const box = document.getElementById('direct-results-box'); 
+    const stat = document.getElementById('search-status');
+    
+    if(q.length < 2) { box.style.display='none'; return; }
+    
+    // ⚡ INSTANT LOCAL SEARCH (Wala nang 'await' o 'setTimeout')
+    const query = q.toLowerCase();
+    const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 8);
+    
+    if (results.length > 0) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
+        
+        results.forEach(p => {
+            const div = document.createElement('div'); div.className = "search-item";
+            div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
+            
+            div.onclick = () => {
+                isExistingPatient = true; 
+                document.getElementById('finalPatientId').value = p.id; 
+                document.getElementById('p_name').value = p.name || ""; 
+                document.getElementById('p_age').value = p.age || ""; 
+                document.getElementById('p_address').value = p.address || ""; 
+                document.getElementById('p_contact').value = p.contact || ""; 
+                if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
+                
+                setSelectValue('p_sex', p.sex); 
+                setSelectValue('p_facility', p.facility || p.Facility);
+                
+                if (p.bday) { 
+                    try { 
+                        const d = new Date(p.bday); 
+                        document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
+                    } catch(e){} 
+                }
+                
+                box.style.display = 'none'; 
+                document.getElementById('new-entry-header').style.display = 'none'; 
+                document.getElementById('profile-header').style.display = 'flex';
+                fetchHistory(p.id, 'history-section', 'history-list'); 
+            }; 
+            box.appendChild(div);
+        });
+    } else { 
+        box.style.display = 'none'; 
+    }
+}
+
+function runQuickSearch(q) {
+    const box = document.getElementById('quick-search-results'); 
+    if(q.length < 2) { box.style.display='none'; return; }
+    
+    // ⚡ INSTANT LOCAL SEARCH
+    const query = q.toLowerCase();
+    const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 15);
+    
+    if (results.length > 0) {
+        box.style.display = 'block'; box.innerHTML = '';
+        results.forEach(p => {
+            const div = document.createElement('div'); div.className = "search-item";
+            div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+            div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; 
+            box.appendChild(div);
+        });
+    } else { 
+        box.style.display = 'none'; 
+    }
 }
 
 function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
-async function runQuickSearch(q) {
-  const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-  clearTimeout(searchTimeout); searchTimeout = setTimeout(async () => {
-      try {
-          const res = await apiGet("searchPatients", { query: q });
-          if (res.status === "success" && res.data.length > 0) {
-              box.style.display = 'block'; box.innerHTML = '';
-              res.data.forEach(p => {
-                  const div = document.createElement('div'); div.className = "search-item";
-                  div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
-                  div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
-              });
-          } else { box.style.display = 'none'; }
-      } catch(e) {}
-  }, 500);
-}
 
 async function viewQuickProfile(p) {
     currentQuickPatient = p; 
