@@ -1736,35 +1736,33 @@ async function submitStaffRegister() {
 // ==========================================
 // 🟢 INSTANT CLIENT-SIDE PRINTING (A5 & NTP)
 // ==========================================
-
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); 
     const correctCode = getTestCodeFromName(testName);
-    const win = window.open('', '_blank'); 
-    win.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    
+    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
     
     try { 
         const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
         if (res.status === "success" && res.data) { 
             const printData = res.data;
             let finalHtml = "";
-            
-            // Dito nag-bbranch: Kung GXP/DSSM, papasok sa NTP template. Kung iba, sa A5.
             const isNTP = correctCode === "GXP" || correctCode === "DSSM";
             
-            if (printData.type === "HTML") {
-                finalHtml = printData.content; // Fallback lang kung hindi na-update ang Code.gs
-            } else if (isNTP) {
-                finalHtml = localGenerateNTPHtml(printData.content);
-            } else {
-                finalHtml = localGenerateA5Html(printData.content); 
-            }
+            if (printData.type === "HTML") { finalHtml = printData.content; } 
+            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+            else { finalHtml = localGenerateA5Html(printData.content); }
             
-            win.document.open(); win.document.write(finalHtml); win.document.close(); 
-        } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } 
-    } catch (err) { win.document.body.innerHTML = "Print Error."; } 
+            // 🟢 BAGO: Papasok na ang Result Form sa Pop-up!
+            showPrintModal(finalHtml); 
+        } else { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+        } 
+    } catch (err) { 
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    } 
 }
-
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked');
     if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
@@ -1777,8 +1775,8 @@ async function batchPrint() {
         requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
     });
 
-    const printWin = window.open('', '_blank');
-    printWin.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
 
     try {
         const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
@@ -1791,9 +1789,14 @@ async function batchPrint() {
             else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
             else { finalHtml = localGenerateA5Html(printData.content); }
             
-            printWin.document.open(); printWin.document.write(finalHtml); printWin.document.close();
-        } else { printWin.document.body.innerHTML = "Error generating print view."; }
-    } catch (err) { printWin.document.body.innerHTML = "Print Error."; }
+            // 🟢 BAGO: Papasok na ang Batch Form sa Pop-up!
+            showPrintModal(finalHtml);
+        } else { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); 
+        }
+    } catch (err) { 
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    }
 }
 
 async function downloadDirect(e, id, testName) {
@@ -1842,7 +1845,8 @@ async function batchSaveResults(isPrint) {
     await loadPendingData();
 
     if (isPrint && printRequests.length > 0) {
-        const printWin = window.open('', '_blank'); printWin.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+        // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
         try {
             const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
             if (res.status === "success" && res.data) {
@@ -1851,12 +1855,13 @@ async function batchSaveResults(isPrint) {
                 if (printData.type === "HTML") { finalHtml = printData.content; } 
                 else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
                 else { finalHtml = localGenerateA5Html(printData.content); }
-                printWin.document.open(); printWin.document.write(finalHtml); printWin.document.close();
-            } else { printWin.document.body.innerHTML = "Error generating print view."; }
-        } catch(e) { printWin.document.body.innerHTML = "Print Error."; }
+                
+                // 🟢 BAGO: Papasok na ang Batch Form sa Pop-up!
+                showPrintModal(finalHtml);
+            } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
+        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
     }
 }
-
 // 🟢 Taga-process ng data para sa NTP Form
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
@@ -2387,4 +2392,50 @@ function localGenerateA5Html(patientsArray) {
         <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
     </div>
     ${combinedHtml}</body></html>`;
+}
+
+// ==========================================
+// 🟢 BAGO: POP-UP PRINT MODAL FUNCTIONS 🟢
+// ==========================================
+window.closePrintModal = function() {
+    const modal = document.getElementById('print-modal-overlay');
+    if (modal) modal.style.display = 'none';
+};
+
+function showPrintModal(htmlContent) {
+    let modal = document.getElementById('print-modal-overlay');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'print-modal-overlay';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+        modal.style.zIndex = '999999';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        
+        const iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.width = '100%';
+        iframe.style.flexGrow = '1';
+        iframe.style.border = 'none';
+        iframe.style.backgroundColor = '#e2e8f0';
+        
+        modal.appendChild(iframe);
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'flex';
+    
+    // 🟢 FIX: Pinapalitan natin yung "window.close()" papunta sa "window.parent.closePrintModal()"
+    // Para kapag kinlick nila yung ❌ CLOSE sa loob ng pop-up, magsasara yung pop-up.
+    const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
+    
+    const iframe = document.getElementById('print-iframe');
+    iframe.contentWindow.document.open();
+    iframe.contentWindow.document.write(safeHtml);
+    iframe.contentWindow.document.close();
 }
