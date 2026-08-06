@@ -15,12 +15,15 @@ const TODAY_STR = new Date().toLocaleDateString();
 // ==========================================
 // 🔴 IDAGDAG ITO PARA GUMANA ANG MGA BUTTONS 🔴
 // ==========================================
+// ==========================================
+// 🔴 PERFECT MATCH PARA SA INDEX.HTML MO 🔴
+// ==========================================
 const availableTests = {
-    'gxp': { 
+    'mtb': { 
         testName: 'GeneXpert', testCode: 'GXP', title: 'GeneXpert MTB/RIF', 
         html: '<div class="field-group"><label class="field-label">History of Treatment</label><select data-key="History of Treatment" class="form-select"><option value="New">New</option><option value="Retreatment">Retreatment</option></select></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' 
     },
-    'gxvl': { 
+    'viral': { 
         testName: 'Viral Load', testCode: 'GXVL', title: 'HIV-1 Viral Load', 
         html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Proceed to confirmation to add this test.</div>' 
     },
@@ -36,17 +39,17 @@ const availableTests = {
         testName: 'Blood Chemistry', testCode: 'CHEM', title: 'Blood Chemistry', 
         html: '<div class="chip-group"><div class="chip" data-val="FBS" onclick="toggleSub(this)">FBS</div><div class="chip" data-val="RBS" onclick="toggleSub(this)">RBS</div><div class="chip" data-val="Cholesterol" onclick="toggleSub(this)">Cholesterol</div><div class="chip" data-val="Triglycerides" onclick="toggleSub(this)">Triglycerides</div><div class="chip" data-val="HDL" onclick="toggleSub(this)">HDL</div><div class="chip" data-val="LDL" onclick="toggleSub(this)">LDL</div><div class="chip" data-val="BUN" onclick="toggleSub(this)">BUN</div><div class="chip" data-val="Creatinine" onclick="toggleSub(this)">Creatinine</div><div class="chip" data-val="Uric Acid" onclick="toggleSub(this)">Uric Acid</div><div class="chip" data-val="SGOT" onclick="toggleSub(this)">SGOT/AST</div><div class="chip" data-val="SGPT" onclick="toggleSub(this)">SGPT/ALT</div><div class="chip" data-val="HbA1c" onclick="toggleSub(this)">HbA1c</div></div>' 
     },
-    'ua': { 
+    'uria': { 
         testName: 'Urinalysis', testCode: 'UA', title: 'Clinical Microscopy - Urine', 
         html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Standard Urinalysis selected.</div>' 
     },
-    'fa': { 
+    'feca': { 
         testName: 'Fecalysis', testCode: 'FA', title: 'Clinical Microscopy - Feces', 
         html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Standard Fecalysis selected.</div>' 
     },
     'sero': { 
         testName: 'Serology', testCode: 'SERO', title: 'Serology / Immunology', 
-        html: '<div class="chip-group"><div class="chip" data-val="HIV" onclick="toggleSub(this)">HIV</div><div class="chip" data-val="Syphilis" onclick="toggleSub(this)">Syphilis</div><div class="chip" data-val="HBsAg" onclick="toggleSub(this)">HBsAg</div></div><div class="field-group" style="margin-top:10px;"><label class="field-label">Classification</label><select data-key="Classification" class="form-select"><option value="Walk-in">Walk-in</option><option value="Pregnant/Maternal">Pregnant/Maternal</option><option value="TB Patient">TB Patient</option></select></div><div class="field-group" style="margin-top:10px;"><label class="field-label">KAP Category</label><select data-key="KAP Category" class="form-select"><option value="None">None</option><option value="MSM">MSM</option><option value="TGW">TGW</option><option value="MSW">MSW</option><option value="FSW">FSW</option><option value="PWID">PWID</option></select></div>' 
+        html: '<div class="chip-group"><div class="chip" data-val="HIV" onclick="toggleSub(this)">HIV</div><div class="chip" data-val="Syphilis" onclick="toggleSub(this)">Syphilis</div><div class="chip" data-val="HBsAg" onclick="toggleSub(this)">HBsAg</div></div><div class="field-group" style="margin-top:10px;"><label class="field-label">Classification</label><select data-key="Classification" class="form-select"><option value="Maternal">Maternal</option><option value="SHC">SHC</option><option value="TB Patient">TB Patient</option></select></div><div class="field-group" style="margin-top:10px;"><label class="field-label">KAP Category</label><select data-key="KAP Category" class="form-select"><option value="None">None</option><option value="MSM">MSM</option><option value="TGW">TGW</option><option value="MSW">MSW</option><option value="FSW">FSW</option><option value="PWID">PWID</option></select></div>' 
     },
     'dengue': { 
         testName: 'Dengue', testCode: 'DENGUE', title: 'Dengue Rapid Test', 
