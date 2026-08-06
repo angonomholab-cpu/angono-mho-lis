@@ -2412,16 +2412,24 @@ function showPrintModal(htmlContent) {
         modal.style.left = '0';
         modal.style.width = '100vw';
         modal.style.height = '100vh';
-        modal.style.backgroundColor = 'rgba(0,0,0,0.85)';
+        // 🟢 BAGO: Medyo pinalinaw natin yung itim para makita mo yung app sa likod
+        modal.style.backgroundColor = 'rgba(0,0,0,0.6)'; 
         modal.style.zIndex = '999999';
         modal.style.display = 'flex';
-        modal.style.flexDirection = 'column';
+        // 🟢 BAGO: Ise-center natin ang box sa gitna ng screen
+        modal.style.alignItems = 'center';      
+        modal.style.justifyContent = 'center';  
         
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
-        iframe.style.width = '100%';
-        iframe.style.flexGrow = '1';
+        // 🟢 BAGO: Dito natin ginawang parang Windows Print Dialog (Hindi sagad sa dulo)
+        iframe.style.width = '90%';
+        iframe.style.maxWidth = '1100px'; // Para hindi rin sobrang lapad sa malalaking monitor
+        iframe.style.height = '90%';
+        iframe.style.maxHeight = '850px'; // Para hindi sagad sa ilalim
         iframe.style.border = 'none';
+        iframe.style.borderRadius = '12px'; // Curved corners para mas modern
+        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; // Shadow para lutang na lutang
         iframe.style.backgroundColor = '#e2e8f0';
         
         modal.appendChild(iframe);
@@ -2430,8 +2438,6 @@ function showPrintModal(htmlContent) {
     
     modal.style.display = 'flex';
     
-    // 🟢 FIX: Pinapalitan natin yung "window.close()" papunta sa "window.parent.closePrintModal()"
-    // Para kapag kinlick nila yung ❌ CLOSE sa loob ng pop-up, magsasara yung pop-up.
     const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
     const iframe = document.getElementById('print-iframe');
