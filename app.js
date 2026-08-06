@@ -1878,7 +1878,7 @@ async function batchSaveResults(isPrint) {
 
 // 🟢 Taga-Drawing ng HTML sa Frontend
 function localGenerateA5Html(patientsArray) {
-    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
+    const logos = { left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", right: "https://lh3.googleusercontent.com/d/1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs" };
     let combinedHtml = "";
     
     const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
