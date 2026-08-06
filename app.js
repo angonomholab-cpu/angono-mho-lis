@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQHEzKi9VHMdc96insIgQHpYiywWqq5xxkL2_CGx2fczFuRTsNPOTmUVxIheIt3OVWvw/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGOygrV8d-vOdTC3EiqJ1gVpxra7h4kg6-Gw8aatJx0AOHETLu9wh3HqGkbXVArDZ4nA/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -1747,7 +1747,7 @@ async function submitStaffRegister() {
 }
 
 // ==========================================
-// 🟢 INSTANT CLIENT-SIDE PRINTING (A5)
+// 🟢 INSTANT CLIENT-SIDE PRINTING (A5 & NTP)
 // ==========================================
 
 async function printDirect(e, id, testName) { 
@@ -1762,22 +1762,20 @@ async function printDirect(e, id, testName) {
             const printData = res.data;
             let finalHtml = "";
             
-            // Dito chine-check kung HTML o Data ang binato ng server
+            // Dito nag-bbranch: Kung GXP/DSSM, papasok sa NTP template. Kung iba, sa A5.
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM";
+            
             if (printData.type === "HTML") {
-                finalHtml = printData.content; 
+                finalHtml = printData.content; // Fallback lang kung hindi na-update ang Code.gs
+            } else if (isNTP) {
+                finalHtml = localGenerateNTPHtml(printData.content);
             } else {
                 finalHtml = localGenerateA5Html(printData.content); 
             }
             
-            win.document.open(); 
-            win.document.write(finalHtml); 
-            win.document.close(); 
-        } else { 
-            win.document.body.innerHTML = "Document not found. Test Code: " + id; 
-        } 
-    } catch (err) { 
-        win.document.body.innerHTML = "Print Error."; 
-    } 
+            win.document.open(); win.document.write(finalHtml); win.document.close(); 
+        } else { win.document.body.innerHTML = "Document not found. Test Code: " + id; } 
+    } catch (err) { win.document.body.innerHTML = "Print Error."; } 
 }
 
 async function batchPrint() {
@@ -1800,22 +1798,404 @@ async function batchPrint() {
         if (res.status === "success" && res.data) {
             const printData = res.data;
             let finalHtml = "";
+            const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
             
-            if (printData.type === "HTML") {
-                finalHtml = printData.content;
-            } else {
-                finalHtml = localGenerateA5Html(printData.content);
+            if (printData.type === "HTML") { finalHtml = printData.content; } 
+            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+            else { finalHtml = localGenerateA5Html(printData.content); }
+            
+            printWin.document.open(); printWin.document.write(finalHtml); printWin.document.close();
+        } else { printWin.document.body.innerHTML = "Error generating print view."; }
+    } catch (err) { printWin.document.body.innerHTML = "Print Error."; }
+}
+
+// 🟢 Taga-process ng data para sa NTP Form
+function processNtpResultsClient(p) {
+    p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
+    p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
+
+    const tName = (p.testName || "").toUpperCase();
+    p.isDSSM = tName.includes("DSSM") || tName.includes("AFB");
+    p.isGXP = tName.includes("GXP") || tName.includes("GEN");
+    
+    const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)";
+    const findRes = (key) => p.results?.find(r => r.param.toUpperCase() === key.toUpperCase())?.res || "";
+    
+    p.history = findRes("History of Treatment");
+    p.physician = findRes("Source of Request") || p.physician || "";
+    p.xray = findRes("X-Ray Result");
+    p.monthTreat = findRes("Month of Treatment");
+    p.reason = findRes("Reason for Examination") || "Diagnosis";
+
+    if(p.results) {
+        p.results.forEach(r => {
+            const k = String(r.param).trim(); const v = String(r.res || "").trim(); const vUpper = v.toUpperCase();
+            if (k === "ResultCode") {
+                let gradeRaw = findRes("Grade"); let repeatTag = findRes("Repeat");
+                let grades = { 'VL': 'Very Low', 'L': 'Low', 'M': 'Medium', 'H': 'High' };
+                let fullGrade = grades[gradeRaw.toUpperCase()] || gradeRaw;
+                let isInitial = repeatTag.toUpperCase().includes("INITIAL") || vUpper.includes("INITIAL");
+
+                if (vUpper === "N") { p.gxpText = "MTB NOT DETECTED."; p.gxpClass = "res-n"; } 
+                else if (vUpper === "T") { p.gxpText = `MTB DETECTED ${fullGrade}; Rifampicin resistance NOT detected.`; p.gxpClass = "res-t"; } 
+                else if (vUpper.startsWith("TT")) { p.gxpText = `MTB TRACE DETECTED; Rifampicin resistance INDETERMINATE.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-tt"; } 
+                else if (vUpper.startsWith("TI")) { p.gxpText = `MTB DETECTED; Rifampicin resistance INDETERMINATE.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-ti"; } 
+                else if (vUpper.startsWith("RR")) { p.gxpText = `MTB DETECTED ${fullGrade}; Rifampicin resistance DETECTED.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-rr"; } 
+                else if (vUpper === "I" || vUpper.includes("ERR") || vUpper.includes("INV")) { p.gxpText = `INVALID / ERROR.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-i"; }
             }
-            
-            printWin.document.open(); 
-            printWin.document.write(finalHtml); 
-            printWin.document.close();
-        } else { 
-            printWin.document.body.innerHTML = "Error generating print view."; 
-        }
-    } catch (err) { 
-        printWin.document.body.innerHTML = "Print Error."; 
+            if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; }
+            if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; }
+            if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
+        });
     }
+}
+
+// 🟢 Ang mismong Taga-Drawing ng NTP Form (Kasama na ang CSS Fixes)
+function localGenerateNTPHtml(patientsArray) {
+    // ⚡ Mabilis na Google Drive URLs
+    const logos = { 
+        left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", 
+        lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", 
+        right: "https://lh3.googleusercontent.com/d/1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs" 
+    };
+
+    const getStaff = (name) => {
+        if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
+        const search = String(name).trim().toLowerCase();
+        const found = (window.globalStaffList || []).find(s => s.name.toLowerCase() === search);
+        return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" };
+    };
+
+    let combinedHtml = "";
+
+    patientsArray.forEach((p, index) => {
+        processNtpResultsClient(p);
+        let performerStaff = getStaff(p.encoder);
+
+        const pageHtml = `
+        <div class="page-container">
+            <div class="header">
+                <img src="${logos.left}" class="logo-side" onerror="this.style.display='none'">
+                <div class="header-center">
+                    <img src="${logos.lab}" class="logo-lab" onerror="this.style.display='none'">
+                    <h3 style="font-size:8px; margin:0;">REPUBLIC OF THE PHILIPPINES</h3>
+                    <h3 style="font-size:8px; margin:0;">PROVINCE OF RIZAL</h3>
+                    <h2 style="font-size:10px; margin:1px 0;">Municipality of ANGONO</h2>
+                    <h1 style="font-size:14px; margin:1px 0;">Municipal Health Office</h1>
+                    <p style="font-size:8px; margin:0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p>
+                </div>
+                <img src="${logos.right}" class="logo-side" onerror="this.style.display='none'">
+            </div>
+
+            <div class="form-title">FORM 2A. LABORATORY REQUEST AND RESULT FORM</div>
+            <div class="content-spacer"></div> 
+            <div class="section-bar">To be filled out by the requesting facility health care worker</div>
+
+            <table class="main-table">
+            <tr>
+                <td width="60%">Name of Requesting Facility/Unit: <span class="line" style="width:200px;">${p.facility}</span></td>
+                <td width="40%">Date of Request: <span class="line" style="width:140px;">${p.dateRequest}</span></td>
+            </tr>
+            <tr>
+                <td>Facility Contact Information: <span class="line" style="width:220px;">&nbsp;</span></td>
+                <td>Requesting Physician: <span class="line" style="width:150px;">${p.physician}</span></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Patient's Full Name: <span class="line" style="width:300px; text-transform:uppercase;">${p.name}</span></span>
+                        <span>Age: <span class="line" style="width:30px; text-align:center;">${p.age}</span></span>
+                        <span>Sex: <span class="line" style="width:50px; text-align:center;">${p.sex}</span></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Address: <span class="line" style="width:420px; font-size:9px;">${p.address}</span></span>
+                        <span>Patient's Contact No.: <span class="line" style="width:120px;">${p.contact}</span></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding-top: 8px;">
+                    <div style="display:flex; align-items:flex-start;">
+                        <strong style="width:130px;">Reason for Examination:</strong>
+                        <div style="display:flex; gap:15px;">
+                                <span class="chk-item"><input type="checkbox" ${(!p.isDSSM && p.reason == 'Diagnosis') ? 'checked' : ''}> Diagnosis</span>
+                                <span class="chk-item"><input type="checkbox" ${(!p.isDSSM && p.reason == 'Baseline') ? 'checked' : ''}> Baseline</span>
+                                <span class="chk-item"><input type="checkbox" ${(p.isDSSM || p.reason == 'Follow-up') ? 'checked' : ''}> Follow-up</span>
+                        </div>
+                        <span style="margin-left:auto;">TB Case No.: <span class="line" style="width:70px;">${p.tbCase || ''}</span></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div style="display:flex; align-items:center;">
+                        <strong style="width:130px;">History of Treatment:</strong>
+                            <div style="display:flex; gap:15px;">
+                            <span class="chk-item"><input type="checkbox" ${(!p.isDSSM && String(p.history).toUpperCase() == 'NEW') ? 'checked' : ''}> New</span>
+                            <span class="chk-item"><input type="checkbox" ${(!p.isDSSM && String(p.history).toUpperCase() != 'NEW') ? 'checked' : ''}> Retreatment</span>
+                        </div>
+                        <span style="margin-left:auto;">Month of Treatment: <span class="line" style="width:70px;">${p.monthTreat || ''}</span></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding-top: 8px;">
+                    <div style="display:flex; align-items:flex-start;">
+                        <strong style="width:130px;">Test Requested:</strong>
+                        <table style="width:100%; border:none; margin:0;">
+                            <tr>
+                                <td style="border:none; padding:0; vertical-align:top; width:50%;">
+                                    <div class="chk-item"><input type="checkbox" ${(p.isGXP && !p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/RIF Ultra</div><br>
+                                    <div class="chk-item"><input type="checkbox" ${(p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/XDR</div><br>
+                                    <div class="chk-item"><input type="checkbox"> Line Probe Assay</div>
+                                </td>
+                                <td style="border:none; padding:0; vertical-align:top; width:50%;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div>
+                                            <div class="chk-item"><input type="checkbox"> TB LAMP</div><br>
+                                            <div class="chk-item"><input type="checkbox"> Truenat MTB-RIF</div><br>
+                                            <div class="chk-item"><input type="checkbox" ${(p.isDSSM) ? 'checked' : ''}> Smear Microscopy</div>
+                                        </div>
+                                        <div>
+                                            <div class="chk-item"><input type="checkbox"> TB Culture</div><br>
+                                            <div class="chk-item"><input type="checkbox"> Phenotypic DST</div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="pad-top-lg">Type of Specimen: <span class="line" style="width:200px; text-align:center;">Sputum</span></td>
+            </tr>
+            </table>
+
+            <table class="res-table-inner" style="margin-bottom:5px;">
+            <tr style="background:#ccc;">
+                <th width="20%">Specimen</th>
+                <th width="40%">Date Collected</th>
+                <th width="40%">Date Dispatched to Laboratory</th>
+            </tr>
+            <tr><td>1</td><td>${p.dateCollected}</td><td>${p.dateCollected}</td></tr>
+            <tr><td>2</td><td></td><td></td></tr>
+            </table>
+            
+            <div style="margin-bottom:15px;">
+            <strong>Remarks:</strong>
+            <div style="border-bottom:1px solid #000; width:100%; height:18px; line-height:18px; font-weight:bold; font-size:9px; text-align:center;">
+                ${p.remarks}
+            </div>
+            <div style="text-align:center; font-size:8px; font-style:italic;">(i.e. precollection details, existing medical conditions, medications...)</div>
+            </div>
+
+            <div style="border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                <div style="width: 50%;">
+                    <strong>Prepared By:</strong>
+                    <span class="line" style="width:200px; text-align:center; text-transform:uppercase;">${p.encoder}</span>
+                </div>
+                <div style="width: 50%;">
+                    <strong>Designation:</strong>
+                    <span class="line" style="width:200px;">&nbsp;</span>
+                </div>
+            </div>
+            <div style="font-size:8px; margin-left:100px;">Signature over Printed Name</div>
+            </div>
+
+            <div class="section-bar">To be filled out by the receiving Medical Technologist/Microscopist/Xpert Technician</div>
+
+            <table class="main-table">
+            <tr>
+                <td width="60%" style="padding: 8px;">Name of Laboratory: <strong>ANGONO RTDL</strong></td>
+                <td width="40%" style="padding: 8px;">
+                    <div style="display:flex; justify-content:space-between;">
+                            <span>Date Specimen Received:</span>
+                            <strong>${p.dateCollected}</strong>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                        <div style="display:flex; gap:10px; align-items: center; padding: 5px 0;">
+                        <span>Specimen Volume and Quality: <span class="line" style="width:150px;">${p.appearance || ''}</span></span>
+                        <span class="chk-item"><input type="checkbox" checked> Accepted</span>
+                        <span class="chk-item"><input type="checkbox"> Rejected, reason: <span class="line" style="width:100px;"></span></span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding-top:10px; padding-bottom:5px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <div>
+                                Laboratory Serial Number: <span class="line" style="width:180px; font-weight:bold;">${p.labSerialNumber}</span>
+                        </div>
+                        <div>
+                                Date Specimen Examined: <strong>${p.dateResult || p.dateExaminedStr || ''}</strong>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            </table>
+
+            <table class="res-table-inner">
+        <tr style="background:#d9d9d9;">
+            <th width="40%">DIAGNOSTIC TESTS</th>
+            <th width="60%">RESULTS</th>
+        </tr>
+        <tr>
+            <td style="text-align:left; padding-left:20px; height:50px; vertical-align:middle; width:40%;">Xpert MTB/RIF Ultra</td>
+            <td class="${p.gxpClass}" style="font-weight:bold; font-size:9.5pt; vertical-align:middle; text-align:center; padding: 8px; line-height: 1.3;">
+                ${p.gxpText}
+            </td>
+        </tr>
+        <tr>
+        <td style="padding:0; vertical-align:middle;">
+            <div style="padding:10px;">Smear Microscopy</div>
+        </td>
+        <td style="padding:0;">
+            <table style="width:100%; border:none; margin:0;" cellspacing="0">
+                <tr>
+                    <td rowspan="2" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:25%; vertical-align:middle;">Reading</td>
+                    <td style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:37.5%;">1</td>
+                    <td style="border:none; border-bottom:1px solid #000; width:37.5%;">2</td>
+                </tr>
+                <tr>
+                    <td class="smear-reading-box" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000;">
+                        ${p.smear1}
+                    </td>
+                    <td class="smear-reading-box" style="border:none; border-bottom:1px solid #000;">
+                        ${p.smear2}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border:none; border-right:1px solid #000; font-size:8.5pt; vertical-align:middle;">Laboratory Diagnosis</td>
+                    <td class="${p.dssmClass} diagnosis-text-large" colspan="2" style="border:none;">
+                        ${p.dssmText}
+                    </td>
+                </tr>
+            </table>
+        </td>
+        </tr>
+        </table>
+
+        <div class="content-spacer"></div>
+
+        <div class="footer-section">
+            <div class="sig-container">
+                <div class="sig-block" style="text-align:left;">
+                    <div class="sig-label">Performed By:</div>
+                    <div class="sig-visual-area">
+                        ${performerStaff.sigUrl ? `<img src="${performerStaff.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ''}
+                        <div class="sig-name" style="text-align:left;">${p.performer || p.encoder}</div>
+                    </div>
+                    <div class="sig-info" style="text-align:left;">
+                        <div>${performerStaff.role || "Medical Technologist"}</div>
+                        <div>Lic No. ${performerStaff.license || "__________"}</div>
+                    </div>
+                </div>
+
+                <div class="sig-block" style="text-align:right;">
+                    <div class="sig-label" style="text-align:right;">Noted By:</div>
+                    <div class="sig-visual-area" style="justify-content: flex-end;">
+                        <div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div>
+                    </div>
+                    <div class="sig-info" style="font-weight:bold; text-transform:uppercase; text-align:right;">
+                        Municipal Health Officer
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:8px; font-size:8px;">
+                Date and Time Released: <span class="line" style="width:200px;">${new Date().toLocaleString()}</span>
+            </div>
+            <div style="padding-top:2px; border-top:1px solid #ddd; text-align:center; margin-top:5px;">
+                <div style="font-size:4px; color:#555; font-style:italic;">
+                    This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.<br>
+                Any alteration to this document renders it invalid.
+                </div>
+            </div>
+            <div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div>
+            </div>
+        </div>`;
+        
+        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : '';
+        combinedHtml += pageHtml + breakTag;
+    });
+
+    return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title>
+    <style>
+        @page { size: A4 portrait; margin: 0; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
+        body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; }
+        .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; }
+        .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
+
+        .page-container { width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
+        .logo-lab { width: 35px; height: 35px; background: #fff; border-radius: 50%; border: 1px solid #ddd; margin-bottom: 2px; }
+        .header-center { flex-grow: 1; text-align: center; }
+        .header h1 { font-size: 15pt; margin: 0; }
+        .header h2 { font-size: 11pt; margin: 0; }
+        .header h3 { font-size: 9pt; margin: 0; }
+        .header p { font-size: 8px; margin: 2px 0 0 0; font-weight: bold; color: #000; }
+
+        .form-title { text-align: center; font-weight: bold; font-size: 11px; margin: 8px 0 4px 0; }
+        .main-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 2px; }
+        .main-table td { padding: 3px 5px; border: 1px solid #000; }
+        .line { border-bottom: 1px solid #000; display: inline-block; padding-left: 5px; font-weight: bold; min-height: 13px; }
+        .chk-item { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 9px; }
+        input[type="checkbox"] { margin: 0; width: 11px; height: 11px; }
+        .res-table-inner { width: 100%; border-collapse: collapse; }
+        .res-table-inner th, .res-table-inner td { border: 1px solid #000; text-align: center; padding: 4px; font-size: 9px; }
+        .section-bar { background: #d9d9d9; font-size: 9px; text-align: center; border: 1px solid #000; padding: 3px; font-weight: bold; }
+
+        .res-n { background-color: #C8E6C9 !important; color: #1B5E20 !important; } 
+        .res-t { background-color: #FFCDD2 !important; color: #B71C1C !important; } 
+        .res-rr { background-color: #B71C1C !important; color: white !important; }   
+        .res-ti { background-color: #FFE0B2 !important; color: #E65100 !important; } 
+        .res-tt { background-color: #FFF9C4 !important; color: #827717 !important; } 
+        .res-i { background-color: #000000 !important; color: white !important; }    
+        .res-init { background-color: #EEEEEE !important; color: #757575 !important; } 
+
+        .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; }
+        .content-spacer { flex-grow: 1; }
+        .sig-container { display: flex; justify-content: space-between; margin-top: 5px; }
+        .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 90px; }
+        .sig-label { font-size: 9px; margin-bottom: 2px; text-align: left; }
+        .sig-visual-area { position: relative; width: 100%; height: 40px; display: flex; align-items: flex-end; }
+        .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; }
+        .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; }
+        .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; }
+        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; }
+
+        .no-print { position: fixed; top: 0; left: 0; width: 100%; background: #1e293b; padding: 12px; text-align: center; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); } 
+        .no-print button { padding: 10px 20px; margin: 0 5px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif; font-size: 14px; } 
+        .btn-print { background: #10b981; color: white; } 
+        .btn-close { background: #ef4444; color: white; } 
+        .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
+
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
+            .page-container { width: 210mm; height: auto !important; min-height: 275mm; margin: 0; border: none; box-shadow: none; page-break-after: always;} 
+            .page-break { break-after: page; page-break-after: always; height: 0; display: block; } 
+        }
+    </style>
+    </head><body>
+    <div class="no-print">
+        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing</span>
+        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
+        <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
+    </div>
+    ${combinedHtml}</body></html>`;
 }
 
 async function downloadDirect(e, id, testName) {
