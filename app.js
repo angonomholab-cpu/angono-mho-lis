@@ -287,10 +287,71 @@ function applyPermissions() {
     }
 }
 
-function openTestDetails(id) { const config = availableTests[id]; if (!config) return; document.getElementById('test-buttons-container').style.display = 'none'; const area = document.getElementById('test-details-area'); area.style.display = 'block'; area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> ${config.title}</div><div class="form-grid grid-1">${config.html}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelDetail()">Cancel</button><button class="btn btn-primary" style="flex:1;" onclick="confirmDetail('${id}')">Confirm</button></div>`; }
-function toggleSub(btn) { btn.classList.toggle('active'); }
-function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'grid'; }
-function confirmDetail(id) { let details = {}; let subSelected = []; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { details[el.getAttribute('data-key')] = el.value; }); if(id === 'dengue') { if(document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) subSelected.push('Dengue Duo'); } else if(['sero','hema','chem'].includes(id)) { const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); if(activeBtns.length === 0) { showAppAlert("Required", "Select at least one test.", "error"); return; } subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); } labOrders[id] = { details: details, subTests: subSelected }; document.getElementById('btn-'+id).classList.add('active'); updateSummary(); cancelDetail(); }
+// ==========================================
+// 🔴 REPLACE THESE 4 FUNCTIONS IN APP.JS 🔴
+// ==========================================
+
+function openTestDetails(id) { 
+    const config = availableTests[id]; 
+    if (!config) return; 
+    
+    document.getElementById('test-buttons-container').style.display = 'none'; 
+    const area = document.getElementById('test-details-area'); 
+    area.style.display = 'block'; 
+    
+    // 🟢 FIXED: Added type="button", event.preventDefault(), and z-index: 99999 so it never gets blocked by the footer
+    area.innerHTML = `
+        <div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;">
+            <i class="ph ph-info"></i> ${config.title}
+        </div>
+        <div class="form-grid grid-1">${config.html}</div>
+        <div style="margin-top:20px; display:flex; gap:10px; position:relative; z-index:99999; padding-bottom:15px;">
+            <button type="button" class="btn btn-secondary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); cancelDetail()">Cancel</button>
+            <button type="button" class="btn btn-primary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); confirmDetail('${id}')">Confirm</button>
+        </div>
+    `; 
+}
+
+function toggleSub(btn) { 
+    btn.classList.toggle('active'); 
+}
+
+function cancelDetail() { 
+    document.getElementById('test-details-area').style.display = 'none'; 
+    document.getElementById('test-details-area').innerHTML = ''; // Clean up memory
+    document.getElementById('test-buttons-container').style.display = ''; // Reverts to CSS default layout
+}
+
+function confirmDetail(id) { 
+    let details = {}; 
+    let subSelected = []; 
+    
+    document.querySelectorAll('#test-details-area [data-key]').forEach(el => { 
+        details[el.getAttribute('data-key')] = el.value; 
+    }); 
+    
+    if (id === 'dengue') { 
+        if (document.getElementById('dn_duo_check') && document.getElementById('dn_duo_check').checked) {
+            subSelected.push('Dengue Duo'); 
+        }
+    } else if (['sero', 'hema', 'chem'].includes(id)) { 
+        const activeBtns = document.querySelectorAll('#test-details-area .chip.active'); 
+        if (activeBtns.length === 0) { 
+            showAppAlert("Required", "Select at least one test.", "error"); 
+            return; 
+        } 
+        subSelected = Array.from(activeBtns).map(b => b.getAttribute('data-val')); 
+    } 
+    
+    labOrders[id] = { details: details, subTests: subSelected }; 
+    const targetBtn = document.getElementById('btn-' + id);
+    if(targetBtn) targetBtn.classList.add('active'); 
+    
+    updateSummary(); 
+    cancelDetail(); 
+}
+
+// ==========================================
 function toggleSimple(id) { const btn = document.getElementById('btn-'+id); if(labOrders[id]) { delete labOrders[id]; btn.classList.remove('active'); } else { labOrders[id] = { details: {}, subTests: [] }; btn.classList.add('active'); } updateSummary(); }
 function updateSummary() { const container = document.getElementById('order-summary'); container.innerHTML = ''; Object.keys(labOrders).forEach(key => { let label = availableTests[key].testName; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) label += `: ${labOrders[key].subTests.join(', ')}`; container.innerHTML += `<div class="badge badge-warning" style="cursor:pointer;" onclick="removeOrder('${key}')">${label} &times;</div>`; }); }
 function removeOrder(key) { delete labOrders[key]; document.getElementById('btn-'+key).classList.remove('active'); updateSummary(); }
