@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1ReoXoB7cG7nCBotMdCSxsiTpqTvG4o9PJC_3K0yZmhjIWPJUoioNkzjzfh7feB0o0Q/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCmX8CmmzkqElWLfqum_tl69HeGPHir2Fi4s3Y-cbfT8q-c8HD55hCyGePR2zHvTeuTA/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
