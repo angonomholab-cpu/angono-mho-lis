@@ -1,8 +1,10 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGOygrV8d-vOdTC3EiqJ1gVpxra7h4kg6-Gw8aatJx0AOHETLu9wh3HqGkbXVArDZ4nA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmKtSxRJXX_-xombBc22Ys_IRlDxKCVoAdX22DcleQ3igdwUYist8Rk7BO4G_8-WAsoQ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
 let pendingData = [];
+let currentRegistryPage = 1;
+let registryLimit = 20; // Pwede mong gawing 30 o 50 kung ilan gusto mo kada page
 let completedData = [];
 let cachedPatients = []; // 🟢 BAGO: Dito iipunin ang lahat ng patients para instant
 let isExistingPatient = false; 
@@ -1095,8 +1097,10 @@ function getResultTemplate(code, safeId, item) {
  }
 }
 
-async function openRegistryTab(type) {
+async function openRegistryTab(type, page = 1) {
     window.CURRENT_TEST_TYPE = type; 
+    currentRegistryPage = page; // Gumagamit na ngayon ng pagination page variable
+    
     const titleEl = document.getElementById('regTitle');
     if(titleEl) titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
     
@@ -1107,22 +1111,31 @@ async function openRegistryTab(type) {
 
     const cont = document.getElementById('registry-table-content');
     if(!cont) return;
-    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading data...</div>';
+    cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading registry data...</div>';
     
     try {
-        const res = await apiGet("getRegistryData", { type: type, facility: currentUser.facility, role: currentUser.role });
+        // 🟢 Naka-optimize na endpoint ang tinatawag natin (May kasamang page at limit)
+        const res = await apiGet("getRegistryDataOptimized", { 
+            type: type, 
+            facility: currentUser.facility, 
+            role: currentUser.role,
+            page: currentRegistryPage,
+            limit: registryLimit 
+        });
         
         if (res && res.status === "success" && res.data) {
+            const registryData = res.data;
+            
             // Safety check kung restricted o walang laman
-            if (res.data.error || (res.data.rows && res.data.rows.length > 0 && res.data.rows[0][0] && String(res.data.rows[0][0]).includes("RESTRICTED"))) {
-                cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger); font-weight:bold;"><i class="ph ph-lock-key" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${res.data.rows ? res.data.rows[0][0] : "Access Restricted."}</div>`;
+            if (registryData.error || (registryData.rows && registryData.rows.length > 0 && registryData.rows[0][0] && String(registryData.rows[0][0]).includes("RESTRICTED"))) {
+                cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger); font-weight:bold;"><i class="ph ph-lock-key" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${registryData.rows ? registryData.rows[0][0] : "Access Restricted."}</div>`;
                 return;
             }
 
-            window.CURRENT_REGISTRY_HEADERS = res.data.headers || []; 
-            window.CURRENT_REGISTRY_TITLE = res.data.title || type;
+            window.CURRENT_REGISTRY_HEADERS = registryData.headers || []; 
+            window.CURRENT_REGISTRY_TITLE = registryData.title || type;
             
-            const hMap = res.data.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
+            const hMap = registryData.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
             
             const colFilter = document.getElementById('colFilter'); 
             if(colFilter) {
@@ -1130,13 +1143,13 @@ async function openRegistryTab(type) {
                 hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
             }
 
-            const rows = res.data.rows || [];
-            const sorted = rows.sort((a, b) => { let d1 = new Date(a[0]); let d2 = new Date(b[0]); if(isNaN(d1)) d1 = new Date(0); if(isNaN(d2)) d2 = new Date(0); return d1 - d2; });
+            const rows = registryData.rows || [];
             
             let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
-            hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
+            hMap.forEach(c => html += `<th>${c.text}</th>`); 
+            html += `</tr></thead><tbody id="regTableBody">`;
             
-            sorted.forEach((row) => {
+            rows.forEach((row) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 
                 let isInitialRow = false;
@@ -1176,7 +1189,31 @@ async function openRegistryTab(type) {
                 }); 
                 html += `</tr>`;
             });
-            cont.innerHTML = html + `</tbody></table>`;
+            
+            html += `</tbody></table>`;
+            
+            // 🟢 PAGINATION CONTROLS BAR SA IBABA NG TABLE
+            const totalPages = registryData.totalPages || 1;
+            const currentPage = registryData.currentPage || 1;
+            
+            let paginationHtml = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:var(--bg-subtle); border-top:1px solid var(--border-color); margin-top:10px; border-radius:0 0 var(--radius-sm) var(--radius-sm);">
+                    <div style="font-size:0.8rem; color:var(--text-muted);">
+                        Showing page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> (Total Records: ${registryData.totalRows})
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})">
+                            <i class="ph ph-caret-left"></i> Previous
+                        </button>
+                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})">
+                            Next <i class="ph ph-caret-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            cont.innerHTML = html + paginationHtml;
+            
         } else { 
             cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; 
         }
@@ -1184,7 +1221,6 @@ async function openRegistryTab(type) {
         cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; 
     }
 }
-
 
 function filterRegistryTable() {
     const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
