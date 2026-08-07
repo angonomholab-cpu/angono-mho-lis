@@ -230,8 +230,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 /* ========================================= */
 /* 6. TABLES, REGISTRY & PENDING LISTS       */
 /* ========================================= */
-/* 🟢 THICK SCROLLBAR & FROZEN HEADERS 🟢 */
-#registry-table-content { max-height: 65vh; overflow: auto; }
+/* 🟢 UPDATED: Inalis ang max-height para sumagad pababa 🟢 */
+#registry-table-content { overflow: auto; height: calc(100vh - 160px); }
 .data-table th { position: sticky; top: 0; z-index: 5; background-color: #e2e8f0 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
 .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
