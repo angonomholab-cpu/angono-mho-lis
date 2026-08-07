@@ -1115,15 +1115,15 @@ async function openRegistryTab(type, page = 1) {
     
     try {
         // Kunin ang laman ng search at filters
-    const searchInput = document.getElementById('regSearch');
-    const monthInput = document.getElementById('monthFilter');
-    const colInput = document.getElementById('colFilter');
-    
-    const sQuery = searchInput ? searchInput.value.trim() : "";
-    const mQuery = monthInput ? monthInput.value.trim() : "";
-    const cQuery = (colInput && colInput.value !== "ALL") ? colInput.options[colInput.selectedIndex].text : "ALL"; // Header Name ang ipapasa
+        const searchInput = document.getElementById('regSearch');
+        const monthInput = document.getElementById('monthFilter');
+        const colInput = document.getElementById('colFilter');
+        
+        const sQuery = searchInput ? searchInput.value.trim() : "";
+        const mQuery = monthInput ? monthInput.value.trim() : "";
+        const cQuery = (colInput && colInput.value !== "ALL") ? colInput.options[colInput.selectedIndex].text : "ALL"; 
 
-    try {
+        // 🟢 FIX: ONE apiGet call only, passing all search and filter parameters
         const res = await apiGet("getRegistryDataOptimized", { 
             type: type, 
             facility: currentUser.facility, 
@@ -1136,6 +1136,7 @@ async function openRegistryTab(type, page = 1) {
         });
         
         if (res && res.status === "success" && res.data) {
+            const registryData = res.data;
             
             // Safety check kung restricted o walang laman
             if (registryData.error || (registryData.rows && registryData.rows.length > 0 && registryData.rows[0][0] && String(registryData.rows[0][0]).includes("RESTRICTED"))) {
@@ -1148,7 +1149,6 @@ async function openRegistryTab(type, page = 1) {
             
             const hMap = registryData.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
             
-            // 🟢 FIX 1: Gamitin ang display index (0, 1, 2...) imbes na original data index para mag-match sa HTML <td>
             const colFilter = document.getElementById('colFilter'); 
             if(colFilter) {
                 colFilter.innerHTML = '<option value="ALL">All Columns</option>'; 
@@ -1207,7 +1207,6 @@ async function openRegistryTab(type, page = 1) {
             const totalPages = registryData.totalPages || 1;
             const currentPage = registryData.currentPage || 1;
             
-            // 🟢 FIX 2: Idinagdag ang JUMP TO PAGE input sa pagination bar
             let paginationHtml = `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:var(--bg-subtle); border-top:1px solid var(--border-color); margin-top:10px; border-radius:0 0 var(--radius-sm) var(--radius-sm); flex-wrap:wrap; gap:10px;">
                     <div style="font-size:0.8rem; color:var(--text-muted);">
@@ -1244,11 +1243,8 @@ async function openRegistryTab(type, page = 1) {
 let registrySearchTimeout = null;
 
 function filterRegistryTable() {
-    // Para hindi mag-request sa server kada pindot mo sa keyboard (iwas lag at API crash). 
-    // Maghihintay ito ng 800 milliseconds bago siya maghanap sa buong database.
     clearTimeout(registrySearchTimeout);
     
-    // Ipakita ang loading state
     const cont = document.getElementById('registry-table-content');
     if (cont && document.getElementById('regSearch') === document.activeElement) {
        cont.style.opacity = '0.5';
@@ -1256,7 +1252,6 @@ function filterRegistryTable() {
 
     registrySearchTimeout = setTimeout(() => {
         if(cont) cont.style.opacity = '1';
-        // Force back to Page 1 kapag nag-search para makita agad ang resulta
         openRegistryTab(window.CURRENT_TEST_TYPE, 1);
     }, 800); 
 }
