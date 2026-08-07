@@ -1972,12 +1972,11 @@ function processNtpResultsClient(p) {
     }
 }
 
-// 🟢 Ang mismong Taga-Drawing ng NTP Form (Kasama na ang CSS Fixes)
 function localGenerateNTPHtml(patientsArray) {
     const logos = { 
-        left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", 
-        lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", 
-        right: "https://lh3.googleusercontent.com/d/1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs" 
+        left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", 
+        lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", 
+        right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" 
     };
 
     const getStaff = (name) => {
@@ -1991,7 +1990,9 @@ function localGenerateNTPHtml(patientsArray) {
 
     patientsArray.forEach((p, index) => {
         processNtpResultsClient(p);
-        let performerStaff = getStaff(p.encoder);
+        
+        // 🟢 BAGO: Ginamit ang exact variable name na tulad sa A5/Sero Form
+        let performer = getStaff(p.encoder);
 
         const pageHtml = `
         <div class="page-container">
@@ -2209,16 +2210,14 @@ function localGenerateNTPHtml(patientsArray) {
 
         <div class="footer-section">
             <div class="sig-container">
+                <!-- 🟢 BAGO: GINAYA ANG EXACT STRUCTURE NG A5/SERO FORM -->
                 <div class="sig-block" style="text-align:left;">
                     <div class="sig-label">Performed By:</div>
-                    <div class="sig-visual-area">
-                        ${performerStaff.sigUrl ? `<img src="${performerStaff.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ''}
-                        <div class="sig-name" style="text-align:left;">${p.performer || p.encoder}</div>
+                    <div class="sig-visual-area" style="justify-content: flex-start;">
+                        ${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}
+                        <div class="sig-name" style="text-align:left;">${p.encoder}</div>
                     </div>
-                    <div class="sig-info" style="text-align:left;">
-                        <div>${performerStaff.role || "Medical Technologist"}</div>
-                        <div>Lic No. ${performerStaff.license || "__________"}</div>
-                    </div>
+                    <div class="sig-info" style="text-align:left;">${performer.role}<br>Lic No. ${performer.license || "__________"}</div>
                 </div>
 
                 <div class="sig-block" style="text-align:right;">
@@ -2251,7 +2250,6 @@ function localGenerateNTPHtml(patientsArray) {
 
     return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title>
     <style>
-        /* 🟢 BAGO: DYNAMIC PAGE SIZE (KUNG ANO YUNG NASA PRINTER SETTINGS) */
         @page { size: portrait; margin: 5mm; } 
         body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
         body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; }
@@ -2304,22 +2302,22 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 BAGO: DYNAMIC PRINT SCALING 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
-            /* Pipilitin nitong mag-fit vertically ang buong container base sa paper size (98vh) */
             .page-container { 
-                width: 100% !important;
-                max-width: none !important;
-                height: 98vh !important; 
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: auto !important;
+                min-height: 290mm !important; 
                 margin: 0 !important; 
-                padding: 5mm 8mm !important;
+                padding: 10mm !important;
                 border: none !important; 
                 box-shadow: none !important; 
-                page-break-after: always;
+                overflow: visible !important; 
                 page-break-inside: avoid;
+                zoom: 0.68;
             } 
             .page-break { break-after: page; page-break-after: always; height: 0; display: block; } 
         }
