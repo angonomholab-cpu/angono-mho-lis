@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyn0ynHBL8VcRRAxIFa6PAvU7wg5jiC351yoV9NISd3W7utTYUzgodP2fdzFfIVkicz0w/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxiuYpi4jDQO0ClbWCXfB5-8VCrrXW6VQU0N3twIx_Nrlq-BwDDjU91XPIV763QQvDqoQ/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -1114,13 +1114,27 @@ async function openRegistryTab(type, page = 1) {
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading registry data...</div>';
     
     try {
+        // Kunin ang laman ng search at filters
+    const searchInput = document.getElementById('regSearch');
+    const monthInput = document.getElementById('monthFilter');
+    const colInput = document.getElementById('colFilter');
+    
+    const sQuery = searchInput ? searchInput.value.trim() : "";
+    const mQuery = monthInput ? monthInput.value.trim() : "";
+    const cQuery = (colInput && colInput.value !== "ALL") ? colInput.options[colInput.selectedIndex].text : "ALL"; // Header Name ang ipapasa
+
+    try {
         const res = await apiGet("getRegistryDataOptimized", { 
             type: type, 
             facility: currentUser.facility, 
             role: currentUser.role,
             page: currentRegistryPage,
-            limit: registryLimit 
+            limit: registryLimit,
+            searchQuery: sQuery,
+            monthFilter: mQuery,
+            colFilter: cQuery
         });
+        
         
         if (res && res.status === "success" && res.data) {
             const registryData = res.data;
@@ -1229,43 +1243,24 @@ async function openRegistryTab(type, page = 1) {
     }
 }
 
-function filterRegistryTable() {
-    const s = document.getElementById('regSearch').value.toLowerCase().trim(); 
-    const m = document.getElementById('monthFilter').value.toLowerCase(); 
-    const colIdx = document.getElementById('colFilter').value; 
+let registrySearchTimeout = null;
 
-    document.querySelectorAll('#regTableBody tr').forEach(tr => {
-        let textToSearch = "";
-        
-        // 🟢 FIX 3: Dynamic Indexing. +1 lagi dahil index 0 ay checkbox.
-        if (colIdx === "ALL") {
-            textToSearch = tr.textContent.toLowerCase(); 
-        } else { 
-            const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; 
-            textToSearch = cell ? cell.textContent.toLowerCase() : ""; 
-        }
-        
-        // 🟢 FIX 4: Safety checking para sa dates lalo na kung naiba pwesto ng Date Received
-        const dateCell = tr.querySelectorAll('td')[1]; // Assume Date ang 1st mapped column
-        const dateText = dateCell ? dateCell.textContent.trim() : "";
-        let matchMonth = true;
-        
-        if (m !== "") { 
-            const d = new Date(dateText); 
-            if (!isNaN(d.getTime())) { 
-                const monthName = d.toLocaleString('default', { month: 'long' }).toLowerCase(); 
-                const shortMonth = d.toLocaleString('default', { month: 'short' }).toLowerCase();
-                const numericMonth = (d.getMonth() + 1).toString();
-                // Match long (january), short (jan), or numeric (1, 01)
-                matchMonth = (monthName === m) || (shortMonth === m) || (numericMonth === m) || ('0' + numericMonth === m); 
-            } else { 
-                matchMonth = dateText.toLowerCase().includes(m); 
-            } 
-        }
-        
-        const matchSearch = textToSearch.includes(s); 
-        tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
-    });
+function filterRegistryTable() {
+    // Para hindi mag-request sa server kada pindot mo sa keyboard (iwas lag at API crash). 
+    // Maghihintay ito ng 800 milliseconds bago siya maghanap sa buong database.
+    clearTimeout(registrySearchTimeout);
+    
+    // Ipakita ang loading state
+    const cont = document.getElementById('registry-table-content');
+    if (cont && document.getElementById('regSearch') === document.activeElement) {
+       cont.style.opacity = '0.5';
+    }
+
+    registrySearchTimeout = setTimeout(() => {
+        if(cont) cont.style.opacity = '1';
+        // Force back to Page 1 kapag nag-search para makita agad ang resulta
+        openRegistryTab(window.CURRENT_TEST_TYPE, 1);
+    }, 800); 
 }
 
 function printRegistryLogbook() {
