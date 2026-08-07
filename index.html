@@ -215,10 +215,10 @@
         </div>
 
         <div id="page-registry" class="page-area">
-            <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 16px;">
+            <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 12px 16px;">
                 
-                <!-- ROW 1: TITLE & TABS -->
-                <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 10px; margin-bottom: 10px; overflow-x: auto; flex-shrink: 0;">
+                <!-- ROW 1: TITLE & TABS (Nakapantay na) -->
+                <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 8px; margin-bottom: 8px; overflow-x: auto; flex-shrink: 0;">
                     <h2 id="regTitle" style="font-size: 1.1rem; margin: 0; white-space: nowrap;"><i class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
                     <div id="registry-tabs" class="chip-group" style="flex-wrap: nowrap; gap: 4px;">
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('GXP')" data-tab="GXP">GXP MTB</button>
@@ -234,40 +234,40 @@
                     </div>
                 </div>
 
-                <!-- ROW 2: FILTERS, PAGINATION, & ICONS -->
-                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 10px; flex-wrap: wrap; gap: 10px; flex-shrink: 0;">
+                <!-- ROW 2: COMPACT CONTROL BAR -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px; flex-shrink: 0; gap: 10px;">
                     
-                    <!-- Left: Filters -->
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <select id="colFilter" class="form-select" style="width: auto; padding: 4px 8px; height: 30px; font-size: 0.75rem;"><option value="ALL">All Columns</option></select>
-                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 140px; padding: 4px 8px; height: 30px; font-size: 0.75rem;" onkeyup="filterRegistryTable()">
-                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 4px 8px; height: 30px; font-size: 0.75rem;">
+                    <!-- LEFT: Filters -->
+                    <div style="display: flex; gap: 6px; align-items: center; flex: 1;">
+                        <select id="colFilter" class="form-select" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;"><option value="ALL">All Columns</option></select>
+                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 140px; padding: 2px 8px; height: 28px; font-size: 0.75rem;" onkeyup="filterRegistryTable()">
+                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;">
                             <option value="">All Months</option>
-                            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
-                            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
-                            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
-                            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+                            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+                            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+                            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
                         </select>
                     </div>
 
-                    <!-- Middle: Pagination (JS Injected) -->
-                    <div id="top-pagination-controls" style="display: flex; gap: 12px; align-items: center; font-size: 0.8rem;">
-                        <!-- Dito papasok ang page info, go to page, at arrows -->
+                    <!-- CENTER: Pagination (Js Injected) -->
+                    <div id="top-pagination-controls" style="display: flex; gap: 8px; align-items: center; justify-content: center; flex: 1; font-size: 0.75rem; color: var(--text-main);">
+                        <!-- Dito ipapasok ng app.js ang < [ 1 ] of 10 > -->
                     </div>
 
-                    <!-- Right: Selected & Action Icons -->
-                    <div style="display: flex; gap: 15px; align-items: center;">
-                        <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
+                    <!-- RIGHT: Actions -->
+                    <div style="display: flex; gap: 15px; align-items: center; justify-content: flex-end; flex: 1;">
+                        <div style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
                         <div style="display: flex; gap: 6px;">
-                            <button onclick="printRegistryLogbook()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color);" title="Print Logbook"><i class="ph ph-notebook" style="color:var(--sec);"></i></button>
-                            <button id="btn-batch-print" onclick="batchPrint()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color);" title="Print Records"><i class="ph ph-printer" style="color:var(--pri);"></i></button>
-                            <button id="btn-batch-download" onclick="batchDownload()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color);" title="Download PDF"><i class="ph ph-download-simple" style="color:var(--success);"></i></button>
+                            <button onclick="printRegistryLogbook()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;" title="Print Logbook"><i class="ph ph-notebook" style="color:var(--sec);"></i></button>
+                            <button id="btn-batch-print" onclick="batchPrint()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;" title="Print Results"><i class="ph ph-printer" style="color:var(--pri);"></i></button>
+                            <button id="btn-batch-download" onclick="batchDownload()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;" title="Download PDF"><i class="ph ph-download-simple" style="color:var(--success);"></i></button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- TABLE CONTENT -->
-                <div class="table-responsive" style="flex-grow: 1; overflow: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm);" id="registry-table-content">
+                <!-- TABLE CONTENT (Sagad pababa) -->
+                <div class="table-responsive" style="flex-grow: 1; overflow-y: auto; overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface);" id="registry-table-content">
                     <div style="padding:40px; text-align:center; color:var(--text-muted); font-style:italic;">Please select a registry category above.</div>
                 </div>
 
