@@ -2251,13 +2251,14 @@ function localGenerateNTPHtml(patientsArray) {
 
     return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title>
     <style>
-        @page { size: A4 portrait; margin: 0; }
+        /* 🟢 BAGO: DYNAMIC PAGE SIZE (KUNG ANO YUNG NASA PRINTER SETTINGS) */
+        @page { size: portrait; margin: 5mm; } 
         body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
         body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; }
         .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; }
         .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
 
-        .page-container { width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
         .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
@@ -2286,7 +2287,7 @@ function localGenerateNTPHtml(patientsArray) {
         .res-i { background-color: #000000 !important; color: white !important; }    
         .res-init { background-color: #EEEEEE !important; color: #757575 !important; } 
 
-        .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; }
+        .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
         .content-spacer { flex-grow: 1; }
         .sig-container { display: flex; justify-content: space-between; margin-top: 5px; }
         .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 90px; }
@@ -2303,10 +2304,23 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
+        /* 🟢 BAGO: DYNAMIC PRINT SCALING 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
-            .page-container { width: 210mm; height: auto !important; min-height: 275mm; margin: 0; border: none; box-shadow: none; page-break-after: always;} 
+            
+            /* Pipilitin nitong mag-fit vertically ang buong container base sa paper size (98vh) */
+            .page-container { 
+                width: 100% !important;
+                max-width: none !important;
+                height: 98vh !important; 
+                margin: 0 !important; 
+                padding: 5mm 8mm !important;
+                border: none !important; 
+                box-shadow: none !important; 
+                page-break-after: always;
+                page-break-inside: avoid;
+            } 
             .page-break { break-after: page; page-break-after: always; height: 0; display: block; } 
         }
     </style>
