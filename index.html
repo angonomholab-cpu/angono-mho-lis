@@ -215,13 +215,12 @@
         </div>
 
         <div id="page-registry" class="page-area">
-            <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 24px;">
+            <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 16px;">
                 
-                <div class="section-header" style="border-bottom: 2px solid var(--pri); padding-bottom:15px; margin-bottom: 15px;">
-                    <h2 id="regTitle" style="font-size: 1.2rem; margin-bottom: 12px;"><i class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
-                    
-                    <!-- 🟢 BAGONG INLINE REGISTRY TABS 🟢 -->
-                    <div id="registry-tabs" class="chip-group" style="margin-bottom: 15px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 5px;">
+                <!-- ROW 1: TITLE & TABS -->
+                <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 10px; margin-bottom: 10px; overflow-x: auto; flex-shrink: 0;">
+                    <h2 id="regTitle" style="font-size: 1.1rem; margin: 0; white-space: nowrap;"><i class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
+                    <div id="registry-tabs" class="chip-group" style="flex-wrap: nowrap; gap: 4px;">
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('GXP')" data-tab="GXP">GXP MTB</button>
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('DSSM')" data-tab="DSSM">DSSM</button>
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('GXVL')" data-tab="GXVL">Viral Load</button>
@@ -233,41 +232,45 @@
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('DENGUE')" data-tab="DENGUE">Dengue NS1</button>
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('GRAM')" data-tab="GRAM">Gram Stain</button>
                     </div>
+                </div>
 
-                    <!-- Filters -->
-                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items: center;">
-                        <select id="colFilter" class="form-select" style="width: auto; margin-bottom: 0;"><option value="ALL">All Columns</option></select>
-                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 200px; margin-bottom: 0;" onkeyup="filterRegistryTable()">
-                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()">
-  <option value="">All Months</option>
-  <option value="1">January</option>
-  <option value="2">February</option>
-  <option value="3">March</option>
-  <option value="4">April</option>
-  <option value="5">May</option>
-  <option value="6">June</option>
-  <option value="7">July</option>
-  <option value="8">August</option>
-  <option value="9">September</option>
-  <option value="10">October</option>
-  <option value="11">November</option>
-  <option value="12">December</option>
-</select>
+                <!-- ROW 2: FILTERS, PAGINATION, & ICONS -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 10px; flex-wrap: wrap; gap: 10px; flex-shrink: 0;">
+                    
+                    <!-- Left: Filters -->
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <select id="colFilter" class="form-select" style="width: auto; padding: 4px 8px; height: 30px; font-size: 0.75rem;"><option value="ALL">All Columns</option></select>
+                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 140px; padding: 4px 8px; height: 30px; font-size: 0.75rem;" onkeyup="filterRegistryTable()">
+                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 4px 8px; height: 30px; font-size: 0.75rem;">
+                            <option value="">All Months</option>
+                            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                        </select>
+                    </div>
+
+                    <!-- Middle: Pagination (JS Injected) -->
+                    <div id="top-pagination-controls" style="display: flex; gap: 12px; align-items: center; font-size: 0.8rem;">
+                        <!-- Dito papasok ang page info, go to page, at arrows -->
+                    </div>
+
+                    <!-- Right: Selected & Action Icons -->
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="printRegistryLogbook()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color);" title="Print Logbook"><i class="ph ph-notebook" style="color:var(--sec);"></i></button>
+                            <button id="btn-batch-print" onclick="batchPrint()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color);" title="Print Records"><i class="ph ph-printer" style="color:var(--pri);"></i></button>
+                            <button id="btn-batch-download" onclick="batchDownload()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color);" title="Download PDF"><i class="ph ph-download-simple" style="color:var(--success);"></i></button>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="table-responsive" style="flex-grow: 1; overflow: auto; width: 100%;" id="registry-table-content">
+                <!-- TABLE CONTENT -->
+                <div class="table-responsive" style="flex-grow: 1; overflow: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm);" id="registry-table-content">
                     <div style="padding:40px; text-align:center; color:var(--text-muted); font-style:italic;">Please select a registry category above.</div>
                 </div>
-                
-                <div style="padding-top: 16px; margin-top: 16px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
-                    <div class="text-sm font-bold" style="color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="printRegistryLogbook()" class="btn btn-secondary"><i class="ph ph-notebook"></i> Logbook</button>
-                        <button id="btn-batch-print" onclick="batchPrint()" class="btn btn-primary"><i class="ph ph-printer"></i> Print</button>
-                        <button id="btn-batch-download" onclick="batchDownload()" class="btn btn-secondary" style="color:var(--pri);"><i class="ph ph-download-simple"></i> Download</button>
-                    </div>
-                </div>
+
             </div>
         </div>
 
