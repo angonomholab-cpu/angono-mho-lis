@@ -2432,7 +2432,6 @@ function localGenerateA5Html(patientsArray) {
 
    return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title>
     <style>
-        /* 🟢 DYNAMIC PAGE SIZE */
         @page { size: portrait; margin: 5mm; } 
         body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
         body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; }
@@ -2485,23 +2484,29 @@ function localGenerateA5Html(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 BAGO: FIXED DYNAMIC PRINT SCALING 🟢 */
+        /* 🟢 BAGO: PROPORTIONAL SCALING FOR A5 🟢 */
         @media print { 
             .no-print { display: none !important; } 
-            body { background: white; padding-top: 0 !important; display: block; margin: 0; height: 100%; } 
+            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
             .page-container { 
-                width: 100% !important;
-                max-width: none !important;
-                height: 96vh !important; /* In-adjust sa 96vh para may allowance sa printer margins */
+                /* Ibinabalik natin sa A4 width para hindi ma-squish ang mga tables */
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: auto !important;
+                min-height: 290mm !important; 
                 margin: 0 !important; 
-                padding: 5mm !important;
+                padding: 10mm !important;
                 border: none !important; 
                 box-shadow: none !important; 
-                /* ❌ TINANGGAL ANG page-break-after DITO KASI NAGDODOBLE ❌ */
+                
+                /* 🟢 FIX: Ina-allow natin ang overflow para lumabas ulit ang footer */
+                overflow: visible !important; 
                 page-break-inside: avoid;
+                
+                /* 🟢 MAGIC: Papaliitin proportionally ng ~68% para saktong umupo sa A5 Paper! */
+                zoom: 0.68;
             } 
-            /* Ito lang dapat ang maghahati ng page */
             .page-break { break-after: page; page-break-after: always; height: 0; display: block; } 
         }
     </style>
