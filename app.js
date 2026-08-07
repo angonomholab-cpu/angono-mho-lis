@@ -1135,9 +1135,7 @@ async function openRegistryTab(type, page = 1) {
             colFilter: cQuery
         });
         
-        
         if (res && res.status === "success" && res.data) {
-            const registryData = res.data;
             
             // Safety check kung restricted o walang laman
             if (registryData.error || (registryData.rows && registryData.rows.length > 0 && registryData.rows[0][0] && String(registryData.rows[0][0]).includes("RESTRICTED"))) {
