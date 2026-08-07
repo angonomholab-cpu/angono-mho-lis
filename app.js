@@ -1201,41 +1201,41 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 html += `</tr>`;
             });
             
+            // Palitan ang pagbuo ng paginationHtml sa loob ng openRegistryTab:
             html += `</tbody></table>`;
             
             const totalPages = registryData.totalPages || 1;
             const currentPage = registryData.currentPage || 1;
             
+            // 🟢 UPDATED: Center Layout ( < Page [1] of X (Total) > )
             let paginationHtml = `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:var(--bg-subtle); border-top:1px solid var(--border-color); margin-top:10px; border-radius:0 0 var(--radius-sm) var(--radius-sm); flex-wrap:wrap; gap:10px;">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">
-                        Showing page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> (Total: ${registryData.totalRows})
-                    </div>
-                    <div style="display:flex; gap:12px; align-items:center;">
-                        <div style="display:flex; align-items:center; gap:5px; font-size:0.8rem; color:var(--text-main);">
-                            <label for="jumpPageInput">Go to page:</label>
-                            <input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${currentPage}" style="width:50px; padding:4px; text-align:center; border:1px solid var(--border-color); border-radius:4px;" onkeydown="if(event.key==='Enter'){ document.getElementById('btnJumpPage').click(); }">
-                            <button id="btnJumpPage" type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="let p=parseInt(document.getElementById('jumpPageInput').value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p);">Go</button>
-                        </div>
-                        <div style="display:flex; gap:6px;">
-                            <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})">
-                                <i class="ph ph-caret-left"></i> Previous
-                            </button>
-                            <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})">
-                                Next <i class="ph ph-caret-right"></i>
-                            </button>
-                        </div>
-                    </div>
+                <button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})" title="Previous Page">
+                    <i class="ph ph-caret-left"></i>
+                </button>
+                
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Page</span>
+                    <input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${currentPage}" style="width:45px; padding:2px; text-align:center; border:1px solid var(--pri); outline:none; border-radius:4px; height:26px; font-size:0.8rem; font-weight:bold; color:var(--pri);" onkeydown="if(event.key==='Enter'){ let p=parseInt(this.value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p); }">
+                    <span>of <strong>${totalPages}</strong> <span style="color:var(--text-muted); font-size:0.7rem;">(Total: ${registryData.totalRows})</span></span>
                 </div>
+
+                <button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})" title="Next Page">
+                    <i class="ph ph-caret-right"></i>
+                </button>
             `;
             
-            cont.innerHTML = html + paginationHtml;
+            // I-hiwalay ang pag-inject ng HTML
+            cont.innerHTML = html;
+            const topPagControls = document.getElementById('top-pagination-controls');
+            if (topPagControls) topPagControls.innerHTML = paginationHtml;
             
         } else { 
             cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; 
+            if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = '';
         }
     } catch (e) { 
         cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; 
+        if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = '';
     }
 }
 
