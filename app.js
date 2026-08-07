@@ -111,7 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
             applyPermissions(); 
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
             if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
-                loadPatientCache(); 
+                loadPatientCache();
+                loadSettingsData();
             }
             if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
@@ -1982,7 +1983,8 @@ function localGenerateNTPHtml(patientsArray) {
     const getStaff = (name) => {
         if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
         const search = String(name).trim().toLowerCase();
-        const found = (window.globalStaffList || []).find(s => s.name.toLowerCase() === search);
+        // 🟢 FIX: Smart searching. Kahit "Rose" o "Blanco" lang ang naka-encode, hahanapin niya yung buong detalye mo sa Sheet!
+        const found = (window.globalStaffList || []).find(s => s.name.toLowerCase().includes(search) || search.includes(s.name.toLowerCase()));
         return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" };
     };
 
@@ -1991,7 +1993,6 @@ function localGenerateNTPHtml(patientsArray) {
     patientsArray.forEach((p, index) => {
         processNtpResultsClient(p);
         
-        // 🟢 FIX: Ginawang 'performer' ang variable name para mag-match sa HTML at lumabas ang sig/license
         let performer = getStaff(p.encoder);
 
         const pageHtml = `
@@ -2210,7 +2211,6 @@ function localGenerateNTPHtml(patientsArray) {
 
         <div class="footer-section">
             <div class="sig-container">
-                <!-- 🟢 BAGO: GINAYA ANG EXACT STRUCTURE NG A5/SERO FORM -->
                 <div class="sig-block" style="text-align:left;">
                     <div class="sig-label">Performed By:</div>
                     <div class="sig-visual-area" style="justify-content: flex-start;">
@@ -2256,7 +2256,19 @@ function localGenerateNTPHtml(patientsArray) {
         .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; }
         .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
 
-        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .page-container { 
+            width: 100%; 
+            height: auto; 
+            min-height: 275mm; 
+            padding: 10mm 10mm 15mm 10mm; 
+            box-sizing: border-box; 
+            background: white; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        }
 
         .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
@@ -2302,24 +2314,25 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
+        /* 🟢 BAGO: AUTO RESIZE AND PROPORTION FIT PARA SA A4 AT A5 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
             .page-container { 
-                width: 210mm !important;
-                max-width: 210mm !important;
-                height: auto !important;
-                min-height: 290mm !important; 
+                /* 🟢 Hayaan ang browser ang mag-fit 100% horizontally and vertically 🟢 */
+                width: 100% !important; 
+                max-width: 100% !important;
+                height: 96vh !important; /* 96% ng mismong papel na pinili mo sa printer settings */
                 margin: 0 !important; 
-                padding: 10mm !important;
+                padding: 6mm 10mm !important; /* Binawasan ang margin para mas malapad tingnan */
                 border: none !important; 
                 box-shadow: none !important; 
-                overflow: visible !important; 
+                overflow: hidden !important; 
+                page-break-after: always;
                 page-break-inside: avoid;
-                zoom: 0.68;
             } 
-            .page-break { break-after: page; page-break-after: always; height: 0; display: block; } 
+            .page-break { display: none !important; } 
         }
     </style>
     </head><body>
