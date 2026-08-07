@@ -1097,7 +1097,7 @@ function getResultTemplate(code, safeId, item) {
  }
 }
 
-async function openRegistryTab(type, page = 1) {
+async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = null, forceCol = null) {
     window.CURRENT_TEST_TYPE = type; 
     currentRegistryPage = page; 
     
@@ -1114,17 +1114,16 @@ async function openRegistryTab(type, page = 1) {
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading registry data...</div>';
     
     try {
-        // Kunin ang laman ng search at filters
         const searchInput = document.getElementById('regSearch');
         const monthInput = document.getElementById('monthFilter');
         const colInput = document.getElementById('colFilter');
         
-        const sQuery = searchInput ? searchInput.value.trim() : "";
-        const mQuery = monthInput ? monthInput.value.trim() : "";
-        const cQuery = (colInput && colInput.value !== "ALL") ? colInput.options[colInput.selectedIndex].text : "ALL"; 
+        // Use the forced values from filterRegistryTable if provided, otherwise check the DOM elements
+        const sQuery = forceSearch !== null ? forceSearch : (searchInput ? searchInput.value.trim() : "");
+        const mQuery = forceMonth !== null ? forceMonth : (monthInput ? monthInput.value.trim() : "");
+        const cQuery = forceCol !== null ? forceCol : ((colInput && colInput.value !== "ALL") ? colInput.options[colInput.selectedIndex].text : "ALL"); 
 
-        // 🟢 FIX: ONE apiGet call only, passing all search and filter parameters
-        const res = await apiGet("getRegistryDataOptimized", { 
+        const res = await apiGet("getRegistryDataOptimized", {
             type: type, 
             facility: currentUser.facility, 
             role: currentUser.role,
@@ -1252,7 +1251,19 @@ function filterRegistryTable() {
 
     registrySearchTimeout = setTimeout(() => {
         if(cont) cont.style.opacity = '1';
-        openRegistryTab(window.CURRENT_TEST_TYPE, 1);
+        
+        // Grab the search queries directly here before passing them
+        const searchInput = document.getElementById('regSearch');
+        const monthInput = document.getElementById('monthFilter');
+        const colInput = document.getElementById('colFilter');
+        
+        const sQuery = searchInput ? searchInput.value.trim() : "";
+        const mQuery = monthInput ? monthInput.value.trim() : "";
+        const cQuery = (colInput && colInput.value !== "ALL") ? colInput.options[colInput.selectedIndex].text : "ALL"; 
+
+        // We bypass the global variables and pass the values directly 
+        // to ensure the server request catches the current input state
+        openRegistryTab(window.CURRENT_TEST_TYPE, 1, sQuery, mQuery, cQuery);
     }, 800); 
 }
 
