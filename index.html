@@ -215,9 +215,10 @@
         </div>
 
         <div id="page-registry" class="page-area">
-            <div class="report-card" style="height: 100%; display: flex; flex-direction: column; padding: 12px 16px;">
+            <!-- 🟢 UPDATED: Inalis ang report-card padding para masagad ang width/height 🟢 -->
+            <div style="height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 12px 16px;">
                 
-                <!-- ROW 1: TITLE & TABS (Nakapantay na) -->
+                <!-- ROW 1: TITLE & TABS -->
                 <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 8px; margin-bottom: 8px; overflow-x: auto; flex-shrink: 0;">
                     <h2 id="regTitle" style="font-size: 1.1rem; margin: 0; white-space: nowrap;"><i class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
                     <div id="registry-tabs" class="chip-group" style="flex-wrap: nowrap; gap: 4px;">
@@ -266,8 +267,8 @@
                     </div>
                 </div>
                 
-                <!-- TABLE CONTENT (Sagad pababa) -->
-                <div class="table-responsive" style="flex-grow: 1; overflow-y: auto; overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface);" id="registry-table-content">
+                <!-- 🟢 UPDATED: TABLE CONTENT (Sagad pababa) 🟢 -->
+                <div class="table-responsive" style="flex: 1; overflow-y: auto; overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface);" id="registry-table-content">
                     <div style="padding:40px; text-align:center; color:var(--text-muted); font-style:italic;">Please select a registry category above.</div>
                 </div>
 
