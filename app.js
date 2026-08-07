@@ -1099,7 +1099,7 @@ function getResultTemplate(code, safeId, item) {
 
 async function openRegistryTab(type, page = 1) {
     window.CURRENT_TEST_TYPE = type; 
-    currentRegistryPage = page; // Gumagamit na ngayon ng pagination page variable
+    currentRegistryPage = page; 
     
     const titleEl = document.getElementById('regTitle');
     if(titleEl) titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
@@ -1114,7 +1114,6 @@ async function openRegistryTab(type, page = 1) {
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading registry data...</div>';
     
     try {
-        // 🟢 Naka-optimize na endpoint ang tinatawag natin (May kasamang page at limit)
         const res = await apiGet("getRegistryDataOptimized", { 
             type: type, 
             facility: currentUser.facility, 
@@ -1137,10 +1136,11 @@ async function openRegistryTab(type, page = 1) {
             
             const hMap = registryData.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
             
+            // 🟢 FIX 1: Gamitin ang display index (0, 1, 2...) imbes na original data index para mag-match sa HTML <td>
             const colFilter = document.getElementById('colFilter'); 
             if(colFilter) {
                 colFilter.innerHTML = '<option value="ALL">All Columns</option>'; 
-                hMap.forEach(c => colFilter.innerHTML += `<option value="${c.index}">${c.text}</option>`);
+                hMap.forEach((c, displayIndex) => colFilter.innerHTML += `<option value="${displayIndex}">${c.text}</option>`);
             }
 
             const rows = registryData.rows || [];
@@ -1192,22 +1192,29 @@ async function openRegistryTab(type, page = 1) {
             
             html += `</tbody></table>`;
             
-            // 🟢 PAGINATION CONTROLS BAR SA IBABA NG TABLE
             const totalPages = registryData.totalPages || 1;
             const currentPage = registryData.currentPage || 1;
             
+            // 🟢 FIX 2: Idinagdag ang JUMP TO PAGE input sa pagination bar
             let paginationHtml = `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:var(--bg-subtle); border-top:1px solid var(--border-color); margin-top:10px; border-radius:0 0 var(--radius-sm) var(--radius-sm);">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:var(--bg-subtle); border-top:1px solid var(--border-color); margin-top:10px; border-radius:0 0 var(--radius-sm) var(--radius-sm); flex-wrap:wrap; gap:10px;">
                     <div style="font-size:0.8rem; color:var(--text-muted);">
-                        Showing page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> (Total Records: ${registryData.totalRows})
+                        Showing page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> (Total: ${registryData.totalRows})
                     </div>
-                    <div style="display:flex; gap:6px;">
-                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})">
-                            <i class="ph ph-caret-left"></i> Previous
-                        </button>
-                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})">
-                            Next <i class="ph ph-caret-right"></i>
-                        </button>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:5px; font-size:0.8rem; color:var(--text-main);">
+                            <label for="jumpPageInput">Go to page:</label>
+                            <input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${currentPage}" style="width:50px; padding:4px; text-align:center; border:1px solid var(--border-color); border-radius:4px;" onkeydown="if(event.key==='Enter'){ document.getElementById('btnJumpPage').click(); }">
+                            <button id="btnJumpPage" type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="let p=parseInt(document.getElementById('jumpPageInput').value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p);">Go</button>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})">
+                                <i class="ph ph-caret-left"></i> Previous
+                            </button>
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})">
+                                Next <i class="ph ph-caret-right"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1223,14 +1230,41 @@ async function openRegistryTab(type, page = 1) {
 }
 
 function filterRegistryTable() {
-    const s = document.getElementById('regSearch').value.toLowerCase(); const m = document.getElementById('monthFilter').value.toLowerCase(); const colIdx = document.getElementById('colFilter').value; 
-    document.querySelectorAll('#regTableBody tr').forEach(tr => { 
+    const s = document.getElementById('regSearch').value.toLowerCase().trim(); 
+    const m = document.getElementById('monthFilter').value.toLowerCase(); 
+    const colIdx = document.getElementById('colFilter').value; 
+
+    document.querySelectorAll('#regTableBody tr').forEach(tr => {
         let textToSearch = "";
-        if (colIdx === "ALL") textToSearch = tr.textContent.toLowerCase(); else { const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; textToSearch = cell ? cell.textContent.toLowerCase() : ""; }
-        const dateCell = tr.querySelectorAll('td')[1]; const dateText = dateCell ? dateCell.textContent.trim() : "";
+        
+        // 🟢 FIX 3: Dynamic Indexing. +1 lagi dahil index 0 ay checkbox.
+        if (colIdx === "ALL") {
+            textToSearch = tr.textContent.toLowerCase(); 
+        } else { 
+            const cell = tr.querySelectorAll('td')[parseInt(colIdx) + 1]; 
+            textToSearch = cell ? cell.textContent.toLowerCase() : ""; 
+        }
+        
+        // 🟢 FIX 4: Safety checking para sa dates lalo na kung naiba pwesto ng Date Received
+        const dateCell = tr.querySelectorAll('td')[1]; // Assume Date ang 1st mapped column
+        const dateText = dateCell ? dateCell.textContent.trim() : "";
         let matchMonth = true;
-        if (m !== "") { const d = new Date(dateText); if (!isNaN(d)) { const monthName = d.toLocaleString('default', { month: 'long' }); matchMonth = monthName.toLowerCase() === m; } else { matchMonth = dateText.toLowerCase().includes(m); } }
-        const matchSearch = textToSearch.includes(s); tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
+        
+        if (m !== "") { 
+            const d = new Date(dateText); 
+            if (!isNaN(d.getTime())) { 
+                const monthName = d.toLocaleString('default', { month: 'long' }).toLowerCase(); 
+                const shortMonth = d.toLocaleString('default', { month: 'short' }).toLowerCase();
+                const numericMonth = (d.getMonth() + 1).toString();
+                // Match long (january), short (jan), or numeric (1, 01)
+                matchMonth = (monthName === m) || (shortMonth === m) || (numericMonth === m) || ('0' + numericMonth === m); 
+            } else { 
+                matchMonth = dateText.toLowerCase().includes(m); 
+            } 
+        }
+        
+        const matchSearch = textToSearch.includes(s); 
+        tr.style.display = (matchSearch && matchMonth) ? "" : "none"; 
     });
 }
 
