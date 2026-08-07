@@ -1991,7 +1991,7 @@ function localGenerateNTPHtml(patientsArray) {
     patientsArray.forEach((p, index) => {
         processNtpResultsClient(p);
         
-        // 🟢 BAGO: Ginamit ang exact variable name na tulad sa A5/Sero Form
+        // 🟢 FIX: Ginawang 'performer' ang variable name para mag-match sa HTML at lumabas ang sig/license
         let performer = getStaff(p.encoder);
 
         const pageHtml = `
@@ -2428,89 +2428,47 @@ function localGenerateA5Html(patientsArray) {
         combinedHtml += pageHtml + breakTag;
     });
 
-   return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title>
+   return `<!DOCTYPE html><html><head><title>Batch Print</title>
     <style>
-        @page { size: portrait; margin: 5mm; } 
-        body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
-        body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; }
-        .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; }
-        .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
-
-        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-
-        .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
-        .logo-lab { width: 35px; height: 35px; background: #fff; border-radius: 50%; border: 1px solid #ddd; margin-bottom: 2px; }
-        .header-center { flex-grow: 1; text-align: center; }
-        .header h1 { font-size: 15pt; margin: 0; }
-        .header h2 { font-size: 11pt; margin: 0; }
-        .header h3 { font-size: 9pt; margin: 0; }
-        .header p { font-size: 8px; margin: 2px 0 0 0; font-weight: bold; color: #000; }
-
-        .form-title { text-align: center; font-weight: bold; font-size: 11px; margin: 8px 0 4px 0; }
-        .main-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 2px; }
-        .main-table td { padding: 3px 5px; border: 1px solid #000; }
-        .line { border-bottom: 1px solid #000; display: inline-block; padding-left: 5px; font-weight: bold; min-height: 13px; }
-        .chk-item { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 9px; }
-        input[type="checkbox"] { margin: 0; width: 11px; height: 11px; }
-        .res-table-inner { width: 100%; border-collapse: collapse; }
-        .res-table-inner th, .res-table-inner td { border: 1px solid #000; text-align: center; padding: 4px; font-size: 9px; }
-        .section-bar { background: #d9d9d9; font-size: 9px; text-align: center; border: 1px solid #000; padding: 3px; font-weight: bold; }
-
-        .res-n { background-color: #C8E6C9 !important; color: #1B5E20 !important; } 
-        .res-t { background-color: #FFCDD2 !important; color: #B71C1C !important; } 
-        .res-rr { background-color: #B71C1C !important; color: white !important; }   
-        .res-ti { background-color: #FFE0B2 !important; color: #E65100 !important; } 
-        .res-tt { background-color: #FFF9C4 !important; color: #827717 !important; } 
-        .res-i { background-color: #000000 !important; color: white !important; }    
-        .res-init { background-color: #EEEEEE !important; color: #757575 !important; } 
-
-        .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
-        .content-spacer { flex-grow: 1; }
-        .sig-container { display: flex; justify-content: space-between; margin-top: 5px; }
-        .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 90px; }
-        .sig-label { font-size: 9px; margin-bottom: 2px; text-align: left; }
-        .sig-visual-area { position: relative; width: 100%; height: 40px; display: flex; align-items: flex-end; }
-        .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; }
-        .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; }
-        .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; }
-        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; }
-
+        @page { size: A5 landscape; margin: 0; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
+        .page-container { width: 210mm; height: 148mm; background: white; padding: 5mm 10mm; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; break-after: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;}
+        .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 5px; height: 90px; display: flex; align-items: center; justify-content: space-between; -webkit-print-color-adjust: exact; flex-shrink: 0; }
+        .header-center { text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .header h3 { font-size: 9px; margin: 0; font-weight: normal; line-height: 1.0; }
+        .header h1 { font-size: 11px; margin: 2px 0; font-weight: bold; line-height: 1.0; }
+        .header p { font-size: 9px; margin: 2px 0 0 0; font-weight: bold; line-height: 1.0; }
+        .logo-side { width: 65px; height: 65px; background: #fff; border-radius: 50%; object-fit: contain; }
+        .logo-lab { width: 40px; height: 40px; background: #fff; border-radius: 50%; margin-bottom: 2px; align-self: center; margin-top: 10px; }
+        .form-title { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0; text-transform: uppercase; border: 1px solid black; background: #eee; -webkit-print-color-adjust: exact; flex-shrink: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .info-table td { border: 1px solid black; padding: 2px 5px; }
+        .label { background: #f0f0f0; font-weight: bold; -webkit-print-color-adjust: exact; width: 15%; }
+        .res-table { border: 2px solid black; }
+        .res-table th { background: #ddd; border: 1px solid black; padding: 4px; font-size: 10px; -webkit-print-color-adjust: exact; }
+        .res-table td { border: 1px solid black; padding: 2px; font-size: 10px; }
+        .remarks-box { border: 1px solid black; padding: 2px 5px; margin-top: 5px; font-size: 10px; min-height: 20px; flex-shrink: 0; }
+        .footer-section { margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
+        .sig-container { display: flex; justify-content: space-between; }
+        .sig-block { width: 32%; text-align: center; }
+        .sig-visual-area { height: 40px; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+        .esig-img { position: absolute; bottom: 5px; height: 45px; mix-blend-mode: multiply; }
+        .sig-name { font-weight: bold; font-size: 10px; border-top: 1px solid black; width: 100%; padding-top: 2px; }
+        .sig-info { font-size: 9px; }
+        .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
+        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
+        
         .no-print { position: fixed; top: 0; left: 0; width: 100%; background: #1e293b; padding: 12px; text-align: center; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); } 
         .no-print button { padding: 10px 20px; margin: 0 5px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif; font-size: 14px; } 
         .btn-print { background: #10b981; color: white; } 
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
-
-        /* 🟢 BAGO: PROPORTIONAL SCALING FOR A5 🟢 */
-        @media print { 
-            .no-print { display: none !important; } 
-            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
-            
-            .page-container { 
-                /* Ibinabalik natin sa A4 width para hindi ma-squish ang mga tables */
-                width: 210mm !important;
-                max-width: 210mm !important;
-                height: auto !important;
-                min-height: 290mm !important; 
-                margin: 0 !important; 
-                padding: 10mm !important;
-                border: none !important; 
-                box-shadow: none !important; 
-                
-                /* 🟢 FIX: Ina-allow natin ang overflow para lumabas ulit ang footer */
-                overflow: visible !important; 
-                page-break-inside: avoid;
-                
-                /* 🟢 MAGIC: Papaliitin proportionally ng ~68% para saktong umupo sa A5 Paper! */
-                zoom: 0.68;
-            } 
-            .page-break { break-after: page; page-break-after: always; height: 0; display: block; } 
-        }
+        
+        @media print { .no-print { display: none !important; } body { background: white; padding-top: 0 !important; display: block; margin: 0; } .page-container { width: 210mm; height: 148mm; break-after: auto; margin: 0; border: none; box-shadow: none;} .page-break { break-after: page; page-break-after: always; height: 0; display: block; } }
     </style>
     </head><body>
     <div class="no-print">
-        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing</span>
+        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
         <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
         <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
     </div>
