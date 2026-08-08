@@ -2347,9 +2347,9 @@ function localGenerateNTPHtml(patientsArray) {
                 width: 100% !important; 
                 max-width: 100% !important;
                 height: auto !important; /* 🟢 Binago from 96vh to auto para humaba kung kailangan */
-                min-height: 50% !important; 
+                max-height: 100% !important; 
                 margin: 0 !important; 
-                padding: 2mm 5mm !important; 
+                padding: 5mm 10mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
                 overflow: visible !important; /* 🟢 Dito lilitaw ang mga footnotes na naputol! */
