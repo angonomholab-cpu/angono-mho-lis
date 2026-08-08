@@ -2352,6 +2352,7 @@ function localGenerateNTPHtml(patientsArray) {
                 padding: 3mm 6mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
+                zoom: 0.64;
                 overflow: visible !important; /* 🟢 Dito lilitaw ang mga footnotes na naputol! */
                 page-break-after: always;
                 page-break-inside: avoid;
