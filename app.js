@@ -1815,6 +1815,9 @@ async function printDirect(e, id, testName) {
     
     try { 
         const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+        if (!window.globalStaffList || window.globalStaffList.length === 0) {
+            await loadSettingsData(); 
+        }
         if (res.status === "success" && res.data) { 
             const printData = res.data;
             let finalHtml = "";
@@ -1850,6 +1853,9 @@ async function batchPrint() {
 
     try {
         const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
+        if (!window.globalStaffList || window.globalStaffList.length === 0) {
+            await loadSettingsData(); 
+        }
         if (res.status === "success" && res.data) {
             const printData = res.data;
             let finalHtml = "";
@@ -1980,12 +1986,18 @@ function localGenerateNTPHtml(patientsArray) {
         right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" 
     };
 
+    // 🟢 SMART MATCHING: Hahanapin niya kahit may mid-initial ka o wala
     const getStaff = (name) => {
-        if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
-        const search = String(name).trim().toLowerCase();
-        // 🟢 FIX: Smart searching. Kahit "Rose" o "Blanco" lang ang naka-encode, hahanapin niya yung buong detalye mo sa Sheet!
-        const found = (window.globalStaffList || []).find(s => s.name.toLowerCase().includes(search) || search.includes(s.name.toLowerCase()));
-        return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" };
+        if(!name) return { name: "", role: "", license: "", sigUrl: "" };
+        const nLower = String(name).trim().toLowerCase();
+        const words = nLower.replace(/\./g, '').split(/\s+/);
+        const found = (window.globalStaffList || []).find(s => {
+            const sLower = s.name.toLowerCase();
+            if (sLower === nLower) return true;
+            if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true;
+            return sLower.includes(nLower) || nLower.includes(sLower);
+        });
+        return found || { name: name, role: "", license: "", sigUrl: "" };
     };
 
     let combinedHtml = "";
@@ -2352,11 +2364,18 @@ function localGenerateA5Html(patientsArray) {
     const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
     const getNormal = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "M:140-170 F:120-150"; if (n.includes("HEMATOCRIT")) return "M:0.40-0.54 F:0.37-0.47"; if (n.includes("WBC")) return "4.5 - 11.0"; if (n.includes("RBC")) return "4.0 - 6.0"; if (n.includes("PLATELET")) return "150 - 450"; if (n.includes("NEUTROPHIL")) return "0.50 - 0.70"; if (n.includes("LYMPHOCYTE")) return "0.20 - 0.40"; if (n.includes("MONOCYTE")) return "0.02 - 0.08"; if (n.includes("EOSINOPHIL")) return "0.01 - 0.04"; if (n.includes("BASOPHIL")) return "0.00 - 0.01"; if (n.includes("HBA1C")) return "4.0 - 6.0"; if (n.includes("RBS")) return "< 7.8"; if (n.includes("OG0") || n.includes("FASTING")) return "< 5.1"; if (n.includes("OG1") || n.includes("1 HR")) return "< 10.0"; if (n.includes("OG2") || n.includes("2 HR")) return "< 8.5"; if (n.includes("GLUCOSE") || n.includes("FBS")) return "3.89 - 6.11"; if (n.includes("CHOLESTEROL")) return "< 5.17"; if (n.includes("TRIGLYCERIDE")) return "< 2.2"; if (n.includes("HDL")) return "> 0.9"; if (n.includes("LDL")) return "< 3.3"; if (n.includes("CREATININE")) return "M:62-106 F:44-80"; if (n.includes("URIC") || n.includes("BUA")) return "M:0.21-0.42 F:0.16-0.36"; if (n.includes("BUN")) return "2.5 - 7.1"; if (n.includes("SGPT") || n.includes("ALT")) return "M:<41 F:<31"; if (n.includes("SGOT") || n.includes("AST")) return "M:<40 F:<32"; return ""; };
 
+    // 🟢 SMART MATCHING: Hahanapin niya kahit may mid-initial ka o wala
     const getStaff = (name) => {
-        if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
-        const search = String(name).trim().toLowerCase();
-        const found = (window.globalStaffList || []).find(s => s.name.toLowerCase() === search);
-        return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" };
+        if(!name) return { name: "", role: "", license: "", sigUrl: "" };
+        const nLower = String(name).trim().toLowerCase();
+        const words = nLower.replace(/\./g, '').split(/\s+/);
+        const found = (window.globalStaffList || []).find(s => {
+            const sLower = s.name.toLowerCase();
+            if (sLower === nLower) return true;
+            if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true;
+            return sLower.includes(nLower) || nLower.includes(sLower);
+        });
+        return found || { name: name, role: "", license: "", sigUrl: "" };
     };
 
     patientsArray.forEach((p, index) => {
@@ -2477,7 +2496,26 @@ function localGenerateA5Html(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
         
-        @media print { .no-print { display: none !important; } body { background: white; padding-top: 0 !important; display: block; margin: 0; } .page-container { width: 210mm; height: 148mm; break-after: auto; margin: 0; border: none; box-shadow: none;} .page-break { break-after: page; page-break-after: always; height: 0; display: block; } }
+        /* 🟢 FIXED A4 DIMENSIONS PARA MALAPAD AT PROPORTIONED SA KAHIT ANONG PAPEL 🟢 */
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
+            
+            .page-container { 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                max-width: 210mm !important;
+                max-height: 297mm !important;
+                margin: 0 auto !important; 
+                padding: 10mm 15mm !important; 
+                border: none !important; 
+                box-shadow: none !important; 
+                overflow: hidden !important; 
+                page-break-after: always;
+                page-break-inside: avoid;
+            } 
+            .page-break { display: none !important; } 
+        }
     </style>
     </head><body>
     <div class="no-print">
