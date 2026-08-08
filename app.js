@@ -864,12 +864,35 @@ function renderLists() {
 
     // --- 1. FILTER DATA & RESET COMPLETED DAILY ---
     const fPending = window.pendingData.filter(i => filterFn(i)); 
+
+    // 🟢 FIX 1: I-SORT ANG PENDING (LATEST DATE SA TAAS, PERO SEQUENCE 1,2,3 PABABA)
+    fPending.sort((a, b) => {
+        let dateA = new Date(a.date); dateA.setHours(0,0,0,0); // Tanggalin ang oras para pure date lang
+        let dateB = new Date(b.date); dateB.setHours(0,0,0,0);
+        
+        // Paghiwalayin by Date (Latest na araw ang nasa itaas)
+        if (dateB.getTime() !== dateA.getTime()) {
+            return dateB.getTime() - dateA.getTime();
+        }
+        // Kung pareho ng araw, i-sort by Lab Number / Sequence pababa (001, 002, 003)
+        return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true });
+    });
+
     const fComp = window.completedData.filter(i => {
-        // Fallback to today if date is missing to avoid breaks, but check exact date encoded if available
-        let dStr = TODAY_STR; 
-        if (i.date) dStr = new Date(i.date).toLocaleDateString();
-        else if (i.timestamp) dStr = new Date(i.timestamp).toLocaleDateString();
-        return filterFn(i) && (dStr === TODAY_STR);
+        let encodedDateStr = TODAY_STR; 
+        try {
+            let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {});
+            // 🟢 FIX 2: Basahin ang 'dateEncoded' imbes na 'Date Received' para lumabas agad ngayon
+            if (d.dateEncoded) {
+                encodedDateStr = new Date(d.dateEncoded).toLocaleDateString();
+            } else if (i.date) {
+                encodedDateStr = new Date(i.date).toLocaleDateString();
+            }
+        } catch(e) {
+            if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString();
+        }
+        
+        return filterFn(i) && (encodedDateStr === TODAY_STR);
     });
 
     // --- 2. LOGIC PARA SA FOR REPEAT LIST ---
