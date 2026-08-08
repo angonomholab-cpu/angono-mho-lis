@@ -1939,6 +1939,7 @@ async function batchSaveResults(isPrint) {
     }
 }
 // 🟢 Taga-process ng data para sa NTP Form
+// 🟢 Taga-process ng data para sa NTP Form
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
     p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
@@ -1950,8 +1951,17 @@ function processNtpResultsClient(p) {
     const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)";
     const findRes = (key) => p.results?.find(r => r.param.toUpperCase() === key.toUpperCase())?.res || "";
     
+    // 🟢 FIX: Kukuha ng Address at Contact sa local cache kung blangko, at papalitan ng "" ang "undefined"
+    const cachedP = cachedPatients.find(cp => cp.id === p.id) || {};
+    p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || "");
+    p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
+
     p.history = findRes("History of Treatment");
-    p.physician = findRes("Source of Request") || p.physician || "";
+    
+    // 🟢 FIX: Para mawala ang salitang "undefined" sa Physician
+    let phys = findRes("Source of Request") || p.physician || "";
+    p.physician = (phys === "undefined") ? "" : phys;
+
     p.xray = findRes("X-Ray Result");
     p.monthTreat = findRes("Month of Treatment");
     p.reason = findRes("Reason for Examination") || "Diagnosis";
@@ -2327,21 +2337,22 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 BAGO: AUTO RESIZE AND PROPORTION FIT PARA SA A4 AT A5 🟢 */
+        /* 🟢 FIX: AUTO RESIZE NA HINDI PINUPUTOL ANG FOOTNOTES 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
             .page-container { 
-                /* 🟢 Hayaan ang browser ang mag-fit 100% horizontally and vertically 🟢 */
+                /* Hayaan ang browser ang mag-fit 100% horizontally and vertically */
                 width: 100% !important; 
                 max-width: 100% !important;
-                height: 96vh !important; /* 96% ng mismong papel na pinili mo sa printer settings */
+                height: auto !important; /* 🟢 Binago from 96vh to auto para humaba kung kailangan */
+                min-height: 100% !important; 
                 margin: 0 !important; 
-                padding: 6mm 10mm !important; /* Binawasan ang margin para mas malapad tingnan */
+                padding: 6mm 10mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
-                overflow: hidden !important; 
+                overflow: visible !important; /* 🟢 Dito lilitaw ang mga footnotes na naputol! */
                 page-break-after: always;
                 page-break-inside: avoid;
             } 
