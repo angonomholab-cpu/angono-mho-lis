@@ -23,7 +23,7 @@ const TODAY_STR = new Date().toLocaleDateString();
 // ==========================================
 const availableTests = {
     'mtb': { 
-        testName: 'GeneXpert', testCode: 'GXP', title: 'GeneXpert MTB/RIF', 
+        testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', 
         html: '<div class="field-group"><label class="field-label">History of Treatment</label><select data-key="History of Treatment" class="form-select"><option value="New">New</option><option value="Retreatment">Retreatment</option></select></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' 
     },
     'viral': { 
