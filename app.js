@@ -2355,23 +2355,30 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 AUTO RESIZE NA HINDI PINUPUTOL ANG FOOTNOTES 🟢 */
+        /* 🟢 FORCED A5 PORTRAIT WITH PROPORTIONAL FIT 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
+            /* 🟢 1. I-lock ang printer sa A5 Portrait size (Lapad x Taas) */
+            @page { size: 148mm 210mm; margin: 5mm; } 
+            
             .page-container { 
-                width: 100% !important; 
-                max-width: 100% !important;
+                /* 🟢 2. Panatilihin ang A4 na sukat sa loob para hindi masira ang mga tables */
+                width: 190mm !important; 
+                max-width: 190mm !important;
                 height: auto !important; 
-                min-height: 100% !important; 
-                margin: 0 !important; 
-                padding: 5mm 10mm !important; 
+                min-height: 275mm !important; 
+                margin: 0 auto !important; 
+                padding: 6mm 10mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
-                overflow: visible !important;
+                overflow: visible !important; 
                 page-break-after: always;
                 page-break-inside: avoid;
+                
+                /* 🟢 3. MAGIC: Paliitin nang 70% ang buong A4 design para sumakto sa A5! */
+                zoom: 0.70; 
             } 
             .page-break { display: none !important; } 
         }
@@ -2530,21 +2537,29 @@ function localGenerateA5Html(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
         
-        /* 🟢 FIXED A5 DIMENSIONS PARA HINDI MAGING A4 ANG ITSURA SA PRINTER 🟢 */
+        /* 🟢 FORCED A5 LANDSCAPE WITH MANUAL ADJUSTMENT READY 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
+            /* 🟢 1. I-lock ang printer sa A5 Landscape (Lapad 210mm x Taas 148mm) */
+            @page { size: 210mm 148mm; margin: 0; } 
+            
             .page-container { 
+                /* 🟢 2. Saktong sukat ng A5 */
                 width: 210mm !important; 
-                height: 148mm !important; 
                 max-width: 210mm !important;
+                height: 148mm !important; 
                 max-height: 148mm !important;
-                margin: 0 !important; 
-                padding: 5mm 10mm !important; 
+                margin: 0 auto !important; 
+                padding: 4mm 10mm !important; /* Dito mo i-adjust ang space sa loob */
                 border: none !important; 
                 box-shadow: none !important; 
-                overflow: hidden !important; 
+                
+                /* 🟢 3. MAGIC CHEAT CODE: Babaan ito kung putol ang footer (e.g., 0.95 o 0.90) */
+                zoom: 0.95; 
+                
+                overflow: visible !important; /* Para laging lumabas ang text kahit sumagad */
                 page-break-after: always;
                 page-break-inside: avoid;
             } 
