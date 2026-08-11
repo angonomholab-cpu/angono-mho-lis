@@ -2014,11 +2014,11 @@ function processNtpResultsClient(p) {
 
 function localGenerateNTPHtml(patientsArray) {
     const logos = { 
-        left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", 
-        lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", 
-        right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" 
+        left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", 
+        lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", 
+        right: "https://lh3.googleusercontent.com/d/1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs" 
     };
-    // 🟢 FIX 2: Tinanggal din ang 'window.' dito para mag-match na ang pirma at license mo!
+
     const getStaff = (name) => {
         if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
         const nLower = String(name).trim().toLowerCase();
@@ -2039,6 +2039,13 @@ function localGenerateNTPHtml(patientsArray) {
     patientsArray.forEach((p, index) => {
         processNtpResultsClient(p);
         
+        // 🟢 FIX: Kukuha ng Address at Contact sa local cache kung blangko
+        const cachedP = cachedPatients.find(cp => cp.id === p.id) || {};
+        p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || "");
+        p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
+        let phys = p.physician || "";
+        p.physician = (phys === "undefined") ? "" : phys;
+
         let performer = getStaff(p.encoder);
 
         const pageHtml = `
@@ -2302,19 +2309,7 @@ function localGenerateNTPHtml(patientsArray) {
         .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; }
         .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
 
-        .page-container { 
-            width: 100%; 
-            height: auto; 
-            min-height: 275mm; 
-            padding: 10mm 10mm 15mm 10mm; 
-            box-sizing: border-box; 
-            background: white; 
-            display: flex; 
-            flex-direction: column; 
-            position: relative; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-        }
+        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
         .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
@@ -2360,23 +2355,21 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 FIX: AUTO RESIZE NA HINDI PINUPUTOL ANG FOOTNOTES 🟢 */
+        /* 🟢 AUTO RESIZE NA HINDI PINUPUTOL ANG FOOTNOTES 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
             .page-container { 
-                /* Hayaan ang browser ang mag-fit 100% horizontally and vertically */
                 width: 100% !important; 
                 max-width: 100% !important;
-                height: 96vh !important; /* 🟢 Binago from 96vh to auto para humaba kung kailangan */
+                height: auto !important; 
                 min-height: 100% !important; 
                 margin: 0 !important; 
-                padding: 3mm 6mm !important; 
+                padding: 5mm 10mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
-                zoom: 0.93;
-                overflow: visible !important; /* 🟢 Dito lilitaw ang mga footnotes na naputol! */
+                overflow: visible !important;
                 page-break-after: always;
                 page-break-inside: avoid;
             } 
@@ -2392,7 +2385,6 @@ function localGenerateNTPHtml(patientsArray) {
     ${combinedHtml}</body></html>`;
 }
 
-// 🟢 Taga-Drawing ng HTML para sa Normal A5 Forms
 function localGenerateA5Html(patientsArray) {
     const logos = { left: "https://lh3.googleusercontent.com/d/1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG", lab: "https://lh3.googleusercontent.com/d/1xYN202dyNGl7cO1E8qokOkX8m6mepXyK", right: "https://lh3.googleusercontent.com/d/1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs" };
     let combinedHtml = "";
@@ -2400,7 +2392,6 @@ function localGenerateA5Html(patientsArray) {
     const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
     const getNormal = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "M:140-170 F:120-150"; if (n.includes("HEMATOCRIT")) return "M:0.40-0.54 F:0.37-0.47"; if (n.includes("WBC")) return "4.5 - 11.0"; if (n.includes("RBC")) return "4.0 - 6.0"; if (n.includes("PLATELET")) return "150 - 450"; if (n.includes("NEUTROPHIL")) return "0.50 - 0.70"; if (n.includes("LYMPHOCYTE")) return "0.20 - 0.40"; if (n.includes("MONOCYTE")) return "0.02 - 0.08"; if (n.includes("EOSINOPHIL")) return "0.01 - 0.04"; if (n.includes("BASOPHIL")) return "0.00 - 0.01"; if (n.includes("HBA1C")) return "4.0 - 6.0"; if (n.includes("RBS")) return "< 7.8"; if (n.includes("OG0") || n.includes("FASTING")) return "< 5.1"; if (n.includes("OG1") || n.includes("1 HR")) return "< 10.0"; if (n.includes("OG2") || n.includes("2 HR")) return "< 8.5"; if (n.includes("GLUCOSE") || n.includes("FBS")) return "3.89 - 6.11"; if (n.includes("CHOLESTEROL")) return "< 5.17"; if (n.includes("TRIGLYCERIDE")) return "< 2.2"; if (n.includes("HDL")) return "> 0.9"; if (n.includes("LDL")) return "< 3.3"; if (n.includes("CREATININE")) return "M:62-106 F:44-80"; if (n.includes("URIC") || n.includes("BUA")) return "M:0.21-0.42 F:0.16-0.36"; if (n.includes("BUN")) return "2.5 - 7.1"; if (n.includes("SGPT") || n.includes("ALT")) return "M:<41 F:<31"; if (n.includes("SGOT") || n.includes("AST")) return "M:<40 F:<32"; return ""; };
 
-    // 🟢 FIX 2: Tinanggal din ang 'window.' dito para mag-match na ang pirma at license mo!
     const getStaff = (name) => {
         if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
         const nLower = String(name).trim().toLowerCase();
@@ -2428,6 +2419,11 @@ function localGenerateA5Html(patientsArray) {
         const isChem = tName.includes("CHEM"); 
         const isHema = tName.includes("HEMA") || tName.includes("CBC");
         
+        // 🟢 FIX: Kukuha ng Address at Contact sa local cache kung blangko
+        const cachedP = cachedPatients.find(cp => cp.id === p.id) || {};
+        p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || "");
+        p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
+
         if (!p.remarks && p.results) { let remarkObj = p.results.find(r => r.param === "Remarks" || r.param === "REMARKS"); if (remarkObj) { p.remarks = remarkObj.res; } }
         if (p.results) { p.results = p.results.filter(r => { const P = String(r.param).toUpperCase(); if (P === "REMARKS" || P.includes("REMARK")) return false; if (P.includes("REQUEST")) return false; if (isSero && (P.includes("KAP") || P.includes("CLASSIFICATION"))) return false; if (isUrine && (P.includes("KETONES") || P.includes("BLOOD") || P.includes("BILIRUBIN") || P.includes("NITRITE"))) return false; return true; }); }
 
@@ -2498,7 +2494,7 @@ function localGenerateA5Html(patientsArray) {
         combinedHtml += pageHtml + breakTag;
     });
 
-   return `<!DOCTYPE html><html><head><title>Batch Print</title>
+    return `<!DOCTYPE html><html><head><title>Batch Print</title>
     <style>
         @page { size: A5 landscape; margin: 0; }
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
@@ -2534,18 +2530,18 @@ function localGenerateA5Html(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
         
-        /* 🟢 FIXED A4 DIMENSIONS PARA MALAPAD AT PROPORTIONED SA KAHIT ANONG PAPEL 🟢 */
+        /* 🟢 FIXED A5 DIMENSIONS PARA HINDI MAGING A4 ANG ITSURA SA PRINTER 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
             .page-container { 
                 width: 210mm !important; 
-                height: 297mm !important; 
+                height: 148mm !important; 
                 max-width: 210mm !important;
-                max-height: 297mm !important;
-                margin: 0 auto !important; 
-                padding: 10mm 15mm !important; 
+                max-height: 148mm !important;
+                margin: 0 !important; 
+                padding: 5mm 10mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
                 overflow: hidden !important; 
@@ -2563,14 +2559,6 @@ function localGenerateA5Html(patientsArray) {
     </div>
     ${combinedHtml}</body></html>`;
 }
-
-// ==========================================
-// 🟢 BAGO: POP-UP PRINT MODAL FUNCTIONS 🟢
-// ==========================================
-window.closePrintModal = function() {
-    const modal = document.getElementById('print-modal-overlay');
-    if (modal) modal.style.display = 'none';
-};
 
 function showPrintModal(htmlContent) {
     let modal = document.getElementById('print-modal-overlay');
