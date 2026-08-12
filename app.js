@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxiuYpi4jDQO0ClbWCXfB5-8VCrrXW6VQU0N3twIx_Nrlq-BwDDjU91XPIV763QQvDqoQ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyah45SnhbisAW2oXe8tlGPUXEkcRuXiwgZvgnB8Ly2H1fCtbzl2wGCqVooYzTHnltwQg/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -2480,7 +2480,50 @@ function showPrintModal(htmlContent) {
     iframe.contentWindow.document.write(safeHtml);
     iframe.contentWindow.document.close();
 }
-// ⚡ SPEED FIX: Walang delay, lalabas agad ang result form habang nagse-save sa background!
+
+// ==========================================
+// ⚡ SUPER SPEED FIX: Instant Local Printing
+// ==========================================
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName);
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    
+    // 🟢 FIX: Kunin na lang sa local data para instant, wag nang maghintay sa server!
+    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
+
+    if (item) {
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+        let resultsArr = [];
+        for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
+
+        let patientData = {
+            id: item.patientId, name: item.name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
+            facility: detailsObj.facility || detailsObj.Facility || item.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
+            dateRequest: item.date ? new Date(item.date).toLocaleDateString() : TODAY_STR, 
+            dateExamined: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+            dateResult: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+            testCode: item.id, testName: item.test,
+            encoder: item.encoder || "System", verifier: "", results: resultsArr
+        };
+
+        const isNTP = correctCode === "GXP" || correctCode === "DSSM";
+        let finalHtml = isNTP ? localGenerateNTPHtml([patientData]) : localGenerateA5Html([patientData]);
+        showPrintModal(finalHtml);
+    } else {
+        // Fallback: Kapag wala sa local cache (e.g. galing Registry), tsaka lang tatawag sa server
+        try { 
+            const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+            if (res.status === "success" && res.data) { 
+                let printData = res.data;
+                let finalHtml = printData.type === "HTML" ? printData.content : ((correctCode === "GXP" || correctCode === "DSSM") ? localGenerateNTPHtml(printData.content) : localGenerateA5Html(printData.content));
+                showPrintModal(finalHtml); 
+            } else { showPrintModal('<h2 style="text-align:center;">Document not found.</h2>'); } 
+        } catch (err) { showPrintModal('<h2 style="text-align:center;">Print Error.</h2>'); } 
+    }
+}
+
+// ⚡ SUPER SPEED FIX: Magpa-pop up ang form habang tahimik na nagse-save ang server
 async function saveAndPrintResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); 
     const item = window.pendingData.find(d => String(d.id) === String(id).trim());
@@ -2493,10 +2536,9 @@ async function saveAndPrintResult(id, safeId, btn) {
     }
     
     let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-    const oldText = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
-    // ⚡ SUPER SPEED FIX: Instant Print Generator (Lalabas agad ang form, 0 seconds delay!)
+    // 🟢 FIX: Ilalabas natin AGAD ang form para walang delay sa mata mo!
     let resultsArr = [];
     let finalDetails = { ...detailsObj, ...newResults };
     for (let key in finalDetails) { resultsArr.push({ param: key, res: finalDetails[key] }); }
@@ -2510,9 +2552,9 @@ async function saveAndPrintResult(id, safeId, btn) {
     
     const isNTP = tCodePrint === "GXP" || tCodePrint === "DSSM";
     let finalHtml = isNTP ? localGenerateNTPHtml([patientData]) : localGenerateA5Html([patientData]);
-    showPrintModal(finalHtml); // Mag-pop up agad ang printer!
+    showPrintModal(finalHtml); 
 
-    // Hahayaan nating mag-save si Google Sheets sa background nang tahimik.
+    // Hayaan lang nating tapusin ng server ang pag-save sa background
     apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test })
     .then(res => {
         if (res.status === "success") {
@@ -2521,7 +2563,7 @@ async function saveAndPrintResult(id, safeId, btn) {
         }
     }).catch(err => {
         btn.disabled = false; btn.innerHTML = "Save Error"; 
-        showAppAlert("Error", "Failed to save to server.", "error");
+        showAppAlert("Error", "Failed to save to server. Please try again.", "error");
     });
 }
 
@@ -2576,34 +2618,6 @@ async function batchSaveResults(isPrint) {
             } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
         } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
     }
-}
-
-// ⚡ SPEED FIX: Inalis ang redundant settings download sa Printing
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName);
-    
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
-    
-    try { 
-        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
-        
-        if (res.status === "success" && res.data) { 
-            const printData = res.data;
-            let finalHtml = "";
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM";
-            
-            if (printData.type === "HTML") { finalHtml = printData.content; } 
-            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-            else { finalHtml = localGenerateA5Html(printData.content); }
-            
-            showPrintModal(finalHtml); 
-        } else { 
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
-        } 
-    } catch (err) { 
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
-    } 
 }
 
 // ⚡ SPEED FIX: Inalis ang redundant settings download sa Batch Print
