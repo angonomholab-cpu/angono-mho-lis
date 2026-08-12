@@ -2677,14 +2677,15 @@ async function batchPrint() {
     } catch (err) { 
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
     }
-    // ==========================================
+} // <--- TAMA: Dito dapat sarado na ang batchPrint()
+
+// ==========================================
 // ⚡ FORCE INSTANT SEARCH OVERRIDE
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     // I-delay nang kaunti ang pagkabit para sigurado na tapos na mag-render ang HTML
     setTimeout(() => {
         // I-target ang mga search input box
-        // TANDAAN: I-check kung 'p_name' nga ang ID ng search box mo sa New Entry
         const newEntrySearch = document.getElementById('p_name'); 
         const quickSearchInput = document.getElementById('quick-search-input');
 
@@ -2706,4 +2707,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 2000); 
 });
-}
