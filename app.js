@@ -110,13 +110,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             applyPermissions(); 
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
-            if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
-                loadPatientCache();
-                loadSettingsData();
-            }
             if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
-            else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
-            else showPage('workspace');
+            else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') { showPage('registry'); }
+            else { 
+                // ⚡ SPEED FIX: Unahin ipakita ang Workspace para mabilis makapasok ang user!
+                showPage('workspace'); 
+                
+                // ⚡ SPEED FIX: I-delay ng 1.5 seconds ang pag-download ng Cache at Settings 
+                // para hindi magsabay-sabay at hindi ma-traffic ang Google Apps Script!
+                if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
+                    setTimeout(() => {
+                        loadSettingsData().then(() => loadPatientCache());
+                    }, 1500);
+                }
+            }
         }
     } catch (e) { localStorage.removeItem('labUser'); document.getElementById('login-overlay').style.display = 'flex'; } finally { document.getElementById('app-loader').style.display = 'none'; }
 });
@@ -1025,37 +1032,7 @@ function renderLists() {
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
 
-async function saveAndPrintResult(id, safeId, btn) {
-    const inputs = document.querySelectorAll('.res-' + safeId); 
-    const item = window.pendingData.find(d => String(d.id) === String(id).trim());
-    let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-    let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-    let tCodePrint = getTestCodeFromName(item.test);
-    
-    if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
-        if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
-    }
-    
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-    const oldText = btn.innerHTML;
-    btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
-    try {
-        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-        if (res.status === "success") {
-            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
-            
-            // ⚡ SPEED FIX: Inalis ang 'await'. Magre-refresh na siya sa background nang tahimik!
-            loadPendingData(); 
-            
-            // ⚡ SPEED FIX: I-trigger na agad ang Print Preview nang walang delay!
-            printDirect(null, id, tCodePrint); 
-        }
-    } catch (err) { 
-        btn.disabled = false; btn.innerHTML = oldText; 
-        showAppAlert("Error", "Failed to save and print.", "error");
-    }
-}
 
 async function moveToPendingRepeat(idStr) {
     const item = window.completedData.find(i => String(i.id) === String(idStr)); if(!item) return;
@@ -1827,71 +1804,6 @@ async function submitStaffRegister() {
     finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName);
-    
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
-    
-    try { 
-        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
-        
-        // ⚡ SPEED FIX: Inalis din ang muling pag-download ng e-sig dito!
-        
-        if (res.status === "success" && res.data) { 
-            const printData = res.data;
-            let finalHtml = "";
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM";
-            
-            if (printData.type === "HTML") { finalHtml = printData.content; } 
-            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-            else { finalHtml = localGenerateA5Html(printData.content); }
-            
-            showPrintModal(finalHtml); 
-        } else { 
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
-        } 
-    } catch (err) { 
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
-    } 
-}
-async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked');
-    if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-
-    let requests = [];
-    checked.forEach(chk => {
-        const rowData = JSON.parse(decodeURIComponent(chk.value));
-        const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE'));
-        const tCode = rowData[codeCol];
-        requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
-    });
-
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-
-    try {
-        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
-        
-        // ⚡ SPEED FIX: Inalis din ang muling pag-download ng e-sig dito!
-
-        if (res.status === "success" && res.data) {
-            const printData = res.data;
-            let finalHtml = "";
-            const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
-            
-            if (printData.type === "HTML") { finalHtml = printData.content; } 
-            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-            else { finalHtml = localGenerateA5Html(printData.content); }
-            
-            showPrintModal(finalHtml);
-        } else { 
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); 
-        }
-    } catch (err) { 
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
-    }
-}
-
 async function downloadDirect(e, id, testName) {
     if(e) e.stopPropagation(); 
     showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
@@ -1905,60 +1817,7 @@ async function batchDownload() {
     batchPrint(); 
 }
 
-async function batchSaveResults(isPrint) {
-    const checked = document.querySelectorAll('.chk-pending:checked');
-    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
 
-    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
-    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
-    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-
-    let successCount = 0; let printRequests = [];
-
-    for (let chk of checked) {
-        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
-        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
-        const inputs = document.querySelectorAll('.res-' + safeId);
-
-        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
-        let tCodePrint = getTestCodeFromName(item.test);
-
-        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-
-        try {
-            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-            if (res.status === "success") { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); }
-        } catch(e) {}
-    }
-
-    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
-    
-    // ⚡ SPEED FIX: Inalis ang 'await' dito para mabilis sumunod ang print command.
-    loadPendingData(); 
-
-    if (isPrint && printRequests.length > 0) {
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-        try {
-            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
-            // ⚡ SPEED FIX: Inalis natin ang muling pag-download ng e-sig. Tapos na 'yun sa login pa lang!
-            
-            if (res.status === "success" && res.data) {
-                const printData = res.data; let finalHtml = "";
-                const firstTestCode = printRequests[0].testName;
-                const isNTP = firstTestCode === "GXP" || firstTestCode === "DSSM";
-                
-                if (printData.type === "HTML") { finalHtml = printData.content; } 
-                else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-                else { finalHtml = localGenerateA5Html(printData.content); }
-                
-                showPrintModal(finalHtml);
-            } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
-        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
-    }
-}
 // 🟢 Taga-process ng data para sa NTP Form
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
@@ -2621,4 +2480,154 @@ function showPrintModal(htmlContent) {
     iframe.contentWindow.document.open();
     iframe.contentWindow.document.write(safeHtml);
     iframe.contentWindow.document.close();
+}
+// ⚡ SPEED FIX: Walang delay, lalabas agad ang result form habang nagse-save sa background!
+async function saveAndPrintResult(id, safeId, btn) {
+    const inputs = document.querySelectorAll('.res-' + safeId); 
+    const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+    let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+    let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+    let tCodePrint = getTestCodeFromName(item.test);
+    
+    if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
+        if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
+    }
+    
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+    const oldText = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+
+    try {
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        if (res.status === "success") {
+            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
+            
+            // Tahimik na nagre-refresh sa background
+            loadPendingData(); 
+            
+            // Instant Print Trigger
+            printDirect(null, id, tCodePrint); 
+        }
+    } catch (err) { 
+        btn.disabled = false; btn.innerHTML = oldText; 
+        showAppAlert("Error", "Failed to save and print.", "error");
+    }
+}
+
+// ⚡ SPEED FIX: Batch Save without waiting
+async function batchSaveResults(isPrint) {
+    const checked = document.querySelectorAll('.chk-pending:checked');
+    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
+
+    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
+    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
+    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+
+    let successCount = 0; let printRequests = [];
+
+    for (let chk of checked) {
+        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+        const inputs = document.querySelectorAll('.res-' + safeId);
+
+        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+        let tCodePrint = getTestCodeFromName(item.test);
+
+        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+
+        try {
+            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+            if (res.status === "success") { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); }
+        } catch(e) {}
+    }
+
+    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
+    
+    // Background refresh
+    loadPendingData();
+
+    if (isPrint && printRequests.length > 0) {
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+        try {
+            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
+            if (res.status === "success" && res.data) {
+                const printData = res.data; let finalHtml = "";
+                const firstTestCode = printRequests[0].testName;
+                const isNTP = firstTestCode === "GXP" || firstTestCode === "DSSM";
+                
+                if (printData.type === "HTML") { finalHtml = printData.content; } 
+                else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+                else { finalHtml = localGenerateA5Html(printData.content); }
+                
+                showPrintModal(finalHtml);
+            } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
+        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
+    }
+}
+
+// ⚡ SPEED FIX: Inalis ang redundant settings download sa Printing
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName);
+    
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    
+    try { 
+        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+        
+        if (res.status === "success" && res.data) { 
+            const printData = res.data;
+            let finalHtml = "";
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM";
+            
+            if (printData.type === "HTML") { finalHtml = printData.content; } 
+            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+            else { finalHtml = localGenerateA5Html(printData.content); }
+            
+            showPrintModal(finalHtml); 
+        } else { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+        } 
+    } catch (err) { 
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    } 
+}
+
+// ⚡ SPEED FIX: Inalis ang redundant settings download sa Batch Print
+async function batchPrint() {
+    const checked = document.querySelectorAll('.chk-reg:checked');
+    if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+
+    let requests = [];
+    checked.forEach(chk => {
+        const rowData = JSON.parse(decodeURIComponent(chk.value));
+        const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE'));
+        const tCode = rowData[codeCol];
+        requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
+    });
+
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+
+    try {
+        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
+        
+        if (res.status === "success" && res.data) {
+            const printData = res.data;
+            let finalHtml = "";
+            const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+            
+            if (printData.type === "HTML") { finalHtml = printData.content; } 
+            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+            else { finalHtml = localGenerateA5Html(printData.content); }
+            
+            showPrintModal(finalHtml);
+        } else { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); 
+        }
+    } catch (err) { 
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    }
 }
