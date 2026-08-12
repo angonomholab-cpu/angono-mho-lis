@@ -398,9 +398,11 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
+// ==========================================
+// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (100% BULLETPROOF)
+// ==========================================
 async function loadPatientCache() {
     try {
-        // 🟢 FIX: Gawing apiPost para palaging fresh at hindi i-cache ng Vercel
         const res = await apiPost("getAllPatientsLight", {});
         if (res.status === "success") {
             cachedPatients = res.data;
@@ -409,13 +411,17 @@ async function loadPatientCache() {
     } catch(e) { console.error("Failed to load patient cache"); }
 }
 
-function runDirectSearch(q) {
+async function runDirectSearch(q) {
     const box = document.getElementById('direct-results-box'); 
-    const stat = document.getElementById('search-status');
-    
     if(q.length < 2) { box.style.display='none'; return; }
     
-    // ⚡ INSTANT LOCAL SEARCH (Wala nang 'await' o 'setTimeout')
+    // 🟢 FALLBACK: Kung nag-type si user pero wala pa sa memory ang masterlist, i-download agad!
+    if (cachedPatients.length === 0) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Fetching masterlist database...</div>`;
+        await loadPatientCache();
+    }
+    
     const query = q.toLowerCase();
     const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 8);
     
@@ -458,11 +464,17 @@ function runDirectSearch(q) {
     }
 }
 
-function runQuickSearch(q) {
+async function runQuickSearch(q) {
     const box = document.getElementById('quick-search-results'); 
     if(q.length < 2) { box.style.display='none'; return; }
     
-    // ⚡ INSTANT LOCAL SEARCH
+    // 🟢 FALLBACK
+    if (cachedPatients.length === 0) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Fetching masterlist database...</div>`;
+        await loadPatientCache();
+    }
+
     const query = q.toLowerCase();
     const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 15);
     
@@ -2680,30 +2692,13 @@ async function batchPrint() {
 } // <--- TAMA: Dito dapat sarado na ang batchPrint()
 
 // ==========================================
-// ⚡ FORCE INSTANT SEARCH OVERRIDE
+// ⚡ EVENT DELEGATION (OVERRIDE ALL)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // I-delay nang kaunti ang pagkabit para sigurado na tapos na mag-render ang HTML
-    setTimeout(() => {
-        // I-target ang mga search input box
-        const newEntrySearch = document.getElementById('p_name'); 
-        const quickSearchInput = document.getElementById('quick-search-input');
-
-        // Sapilitang tanggalin ang delay (setTimeout) at lumang functions mula sa HTML
-        if (newEntrySearch) {
-            newEntrySearch.removeAttribute('onkeyup');
-            newEntrySearch.removeAttribute('oninput');
-            newEntrySearch.addEventListener('input', (e) => {
-                runDirectSearch(e.target.value);
-            });
-        }
-
-        if (quickSearchInput) {
-            quickSearchInput.removeAttribute('onkeyup');
-            quickSearchInput.removeAttribute('oninput');
-            quickSearchInput.addEventListener('input', (e) => {
-                runQuickSearch(e.target.value);
-            });
-        }
-    }, 2000); 
+document.addEventListener('input', function(e) {
+    if (e.target && e.target.id === 'p_name') {
+        runDirectSearch(e.target.value);
+    }
+    if (e.target && e.target.id === 'quick-search-input') {
+        runQuickSearch(e.target.value);
+    }
 });
