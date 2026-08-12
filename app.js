@@ -113,11 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') { showPage('registry'); }
             else { 
-                // ⚡ SPEED FIX: Unahin ipakita ang Workspace para mabilis makapasok ang user!
+                // ⚡ SPEED FIX: Unahin ipakita ang Workspace para instant pasok ang user!
                 showPage('workspace'); 
                 
-                // ⚡ SPEED FIX: I-delay ng 1.5 seconds ang pag-download ng Cache at Settings 
-                // para hindi magsabay-sabay at hindi ma-traffic ang Google Apps Script!
+                // ⚡ SPEED FIX: I-delay ng 1.5s ang pag-download ng Cache at Settings para walang traffic jam sa simula
                 if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
                     setTimeout(() => {
                         loadSettingsData().then(() => loadPatientCache());
@@ -2497,24 +2496,35 @@ async function saveAndPrintResult(id, safeId, btn) {
     const oldText = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
-    try {
-        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+    // ⚡ SUPER SPEED FIX: Instant Print Generator (Lalabas agad ang form, 0 seconds delay!)
+    let resultsArr = [];
+    let finalDetails = { ...detailsObj, ...newResults };
+    for (let key in finalDetails) { resultsArr.push({ param: key, res: finalDetails[key] }); }
+    
+    let patientData = {
+        id: item.patientId, name: item.name || finalDetails.name || "", age: finalDetails.age || finalDetails.Age || "", sex: finalDetails.sex || finalDetails.Sex || "",
+        facility: finalDetails.facility || finalDetails.Facility || "", address: finalDetails.address || finalDetails.Address || "", contact: finalDetails.contact || finalDetails.Contact || "",
+        dateRequest: TODAY_STR, dateExamined: TODAY_STR, dateResult: TODAY_STR, testCode: item.id, testName: item.test,
+        encoder: currentUser.fullName || currentUser.username, verifier: "", results: resultsArr
+    };
+    
+    const isNTP = tCodePrint === "GXP" || tCodePrint === "DSSM";
+    let finalHtml = isNTP ? localGenerateNTPHtml([patientData]) : localGenerateA5Html([patientData]);
+    showPrintModal(finalHtml); // Mag-pop up agad ang printer!
+
+    // Hahayaan nating mag-save si Google Sheets sa background nang tahimik.
+    apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test })
+    .then(res => {
         if (res.status === "success") {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
-            
-            // Tahimik na nagre-refresh sa background
             loadPendingData(); 
-            
-            // Instant Print Trigger
-            printDirect(null, id, tCodePrint); 
         }
-    } catch (err) { 
-        btn.disabled = false; btn.innerHTML = oldText; 
-        showAppAlert("Error", "Failed to save and print.", "error");
-    }
+    }).catch(err => {
+        btn.disabled = false; btn.innerHTML = "Save Error"; 
+        showAppAlert("Error", "Failed to save to server.", "error");
+    });
 }
 
-// ⚡ SPEED FIX: Batch Save without waiting
 async function batchSaveResults(isPrint) {
     const checked = document.querySelectorAll('.chk-pending:checked');
     if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
@@ -2546,7 +2556,7 @@ async function batchSaveResults(isPrint) {
 
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
     
-    // Background refresh
+    // ⚡ SPEED FIX: Background refresh na lang, walang await
     loadPendingData();
 
     if (isPrint && printRequests.length > 0) {
