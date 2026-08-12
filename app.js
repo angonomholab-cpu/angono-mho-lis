@@ -92,39 +92,49 @@ document.addEventListener('DOMContentLoaded', () => {
         applyLimitedMode(isLimited);
 
         const savedUser = localStorage.getItem('labUser');
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            if (!currentUser.username) throw new Error("Invalid");
-            
-            document.getElementById('login-overlay').style.display = 'none';
-            
-            // Safety checks para hindi mag-crash
-            const dName = document.getElementById('display-full-name');
-            if(dName) dName.innerText = currentUser.fullName || currentUser.username;
-            
-            const dRole = document.getElementById('display-role-facility');
-            if(dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
-            
-            const dAvatar = document.getElementById('pill-avatar');
-            if(dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
-            
-            applyPermissions(); 
-            const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
-            if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
-            else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') { showPage('registry'); }
-            else { 
-                // ⚡ SPEED FIX: Unahin ipakita ang Workspace para instant pasok ang user!
-                showPage('workspace'); 
-                
-                // ⚡ SPEED FIX: I-delay ng 1.5s ang pag-download ng Cache at Settings para walang traffic jam sa simula
-                if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
-                    setTimeout(() => {
-                        loadSettingsData().then(() => loadPatientCache());
-                    }, 1500);
-                }
+        
+        // 🟢 FIX: KAPAG WALANG NAKA-LOG IN, DAPAT IPALABAS ANG LOGIN SCREEN 🟢
+        if (!savedUser || savedUser === "null") {
+            document.getElementById('login-overlay').style.display = 'flex';
+            document.getElementById('app-loader').style.display = 'none';
+            return; // 🛑 Hihinto na rito ang code para makapag-type yung tao
+        }
+
+        currentUser = JSON.parse(savedUser);
+        if (!currentUser.username) throw new Error("Invalid");
+        
+        // 🟢 KAPAG MAY NAKA-LOG IN NA, ITAGO ANG LOGIN SCREEN 🟢
+        document.getElementById('login-overlay').style.display = 'none';
+        
+        const dName = document.getElementById('display-full-name');
+        if(dName) dName.innerText = currentUser.fullName || currentUser.username;
+        
+        const dRole = document.getElementById('display-role-facility');
+        if(dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
+        
+        const dAvatar = document.getElementById('pill-avatar');
+        if(dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+        
+        applyPermissions(); 
+        const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
+        
+        if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
+        else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') { showPage('registry'); }
+        else { 
+            showPage('workspace'); 
+            if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
+                setTimeout(() => {
+                    loadSettingsData().then(() => loadPatientCache());
+                }, 1500);
             }
         }
-    } catch (e) { localStorage.removeItem('labUser'); document.getElementById('login-overlay').style.display = 'flex'; } finally { document.getElementById('app-loader').style.display = 'none'; }
+    } catch (e) { 
+        // 🟢 FALLBACK: KUNG NAGKA-ERROR SA PAGBASA NG LOCAL STORAGE, BALIK SA LOGIN
+        localStorage.removeItem('labUser'); 
+        document.getElementById('login-overlay').style.display = 'flex'; 
+    } finally { 
+        document.getElementById('app-loader').style.display = 'none'; 
+    }
 });
 
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
