@@ -1948,9 +1948,16 @@ async function batchSaveResults(isPrint) {
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
         try {
             const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
+            if (!globalStaffList || globalStaffList.length === 0) {
+                await loadSettingsData(); 
+            }
             if (res.status === "success" && res.data) {
                 const printData = res.data; let finalHtml = "";
-                const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+                
+                // 🟢 FIX 1: Kukunin ang test type mula sa mismong ni-check mong items, hindi sa kung anong tab ka nakatambay!
+                const firstTestCode = printRequests[0].testName;
+                const isNTP = firstTestCode === "GXP" || firstTestCode === "DSSM";
+                
                 if (printData.type === "HTML") { finalHtml = printData.content; } 
                 else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
                 else { finalHtml = localGenerateA5Html(printData.content); }
@@ -2389,7 +2396,9 @@ function localGenerateNTPHtml(patientsArray) {
         <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
         <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
     </div>
-    ${combinedHtml}</body></html>`;
+    ${combinedHtml}
+    ${(String(currentUser.role).toUpperCase() === 'ADMIN' || String(currentUser.role).toUpperCase() === 'STAFF') ? '<script>setTimeout(function(){ window.print(); }, 800);</script>' : ''}
+    </body></html>`;
 }
 
 function localGenerateA5Html(patientsArray) {
@@ -2572,7 +2581,9 @@ function localGenerateA5Html(patientsArray) {
         <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
         <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
     </div>
-    ${combinedHtml}</body></html>`;
+    ${combinedHtml}
+    ${(String(currentUser.role).toUpperCase() === 'ADMIN' || String(currentUser.role).toUpperCase() === 'STAFF') ? '<script>setTimeout(function(){ window.print(); }, 800);</script>' : ''}
+    </body></html>`;
 }
 
 function showPrintModal(htmlContent) {
@@ -2585,24 +2596,26 @@ function showPrintModal(htmlContent) {
         modal.style.left = '0';
         modal.style.width = '100vw';
         modal.style.height = '100vh';
-        // 🟢 BAGO: Medyo pinalinaw natin yung itim para makita mo yung app sa likod
         modal.style.backgroundColor = 'rgba(0,0,0,0.6)'; 
         modal.style.zIndex = '999999';
         modal.style.display = 'flex';
-        // 🟢 BAGO: Ise-center natin ang box sa gitna ng screen
         modal.style.alignItems = 'center';      
         modal.style.justifyContent = 'center';  
         
+        // 🟢 BAGO: Kapag kinlick ang maitim na background sa labas, magsasara din agad!
+        modal.onclick = function(e) {
+            if (e.target === modal) window.closePrintModal();
+        };
+
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
-        // 🟢 BAGO: Dito natin ginawang parang Windows Print Dialog (Hindi sagad sa dulo)
         iframe.style.width = '90%';
-        iframe.style.maxWidth = '1100px'; // Para hindi rin sobrang lapad sa malalaking monitor
+        iframe.style.maxWidth = '1100px'; 
         iframe.style.height = '90%';
-        iframe.style.maxHeight = '850px'; // Para hindi sagad sa ilalim
+        iframe.style.maxHeight = '850px'; 
         iframe.style.border = 'none';
-        iframe.style.borderRadius = '12px'; // Curved corners para mas modern
-        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; // Shadow para lutang na lutang
+        iframe.style.borderRadius = '12px'; 
+        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; 
         iframe.style.backgroundColor = '#e2e8f0';
         
         modal.appendChild(iframe);
@@ -2611,6 +2624,7 @@ function showPrintModal(htmlContent) {
     
     modal.style.display = 'flex';
     
+    // 🟢 FIX: Nilagyan ng backslash (\) para hindi magdoble ang parenthesis at gumana ang Close Button!
     const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
     const iframe = document.getElementById('print-iframe');
