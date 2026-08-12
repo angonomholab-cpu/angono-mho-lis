@@ -814,24 +814,42 @@ async function submitPendingUpdate() {
     }
 }
 // ==========================================
-// 100% FIXED DATA LOADER (TUGMA NA SA BACKEND)
+// 100% FIXED DATA LOADER (MAY INSTANT CACHE TRICK)
 // ==========================================
 async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon');
     if (refIcon) refIcon.classList.add('ph-spin');
     
+    // ⚡ SPEED FIX: I-load agad ang huling nakita (Cache) para hindi blangko ang screen!
+    const cachedWorkspace = sessionStorage.getItem('workspaceCache_' + currentUser.username);
+    if (cachedWorkspace && window.pendingData.length === 0) {
+        try {
+            const parsed = JSON.parse(cachedWorkspace);
+            window.pendingData = parsed.pending || [];
+            window.completedData = parsed.encoded || [];
+            renderLists(); // Papalabas agad natin sa screen in 0.01 seconds!
+        } catch(e) {}
+    }
+    
     try {
-        // 🟢 FIX 1: Ginamit natin ang TAMANG action name na nasa Code.gs ("getPendingWorkload")
+        // Tahimik na kumukuha sa server sa background
         let res = await apiGet("getPendingWorkload", { 
             facility: currentUser.facility, 
             role: currentUser.role,
             _t: new Date().getTime() 
         }); 
 
-        // 🟢 FIX 2: Tugma na sa binabato ng backend (res.pending at res.encoded)
         if (res && (res.pending || res.encoded)) {
             window.pendingData = res.pending || [];
-            window.completedData = res.encoded || []; // 'encoded' pala ang term mo para sa completed!
+            window.completedData = res.encoded || []; 
+            
+            // I-save ang fresh data sa memory para instant ulit next time
+            sessionStorage.setItem('workspaceCache_' + currentUser.username, JSON.stringify({
+                pending: window.pendingData,
+                encoded: window.completedData
+            }));
+
+            // I-update ang screen kapag dumating na yung fresh data
             renderLists();
         } else {
             console.error("Backend returned empty data.");
