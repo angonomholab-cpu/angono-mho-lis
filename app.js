@@ -2359,26 +2359,19 @@ function localGenerateNTPHtml(patientsArray) {
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
-            
-            /* 🟢 1. I-lock ang printer sa A5 Portrait size (Lapad x Taas) */
-            @page { size: 148mm 210mm; margin: 5mm; } 
-            
+             
+            @page { size: portrait; margin: 5mm; } 
+             
             .page-container { 
-                /* 🟢 2. Panatilihin ang A4 na sukat sa loob para hindi masira ang mga tables */
-                width: 190mm !important; 
-                max-width: 190mm !important;
+                width: 100% !important; 
+                max-width: none !important;
                 height: auto !important; 
-                min-height: 275mm !important; 
-                margin: 0 auto !important; 
-                padding: 6mm 10mm !important; 
+                min-height: auto !important; 
+                margin: 0 !important; 
+                padding: 5mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
-                overflow: visible !important; 
-                page-break-after: always;
-                page-break-inside: avoid;
-                
-                /* 🟢 3. MAGIC: Paliitin nang 70% ang buong A4 design para sumakto sa A5! */
-                zoom: 0.70; 
+                zoom: 1 !important; /* 🟢 Tinanggal na ang 0.70 zoom para hindi na lumitaw na makitid o small */
             } 
             .page-break { display: none !important; } 
         }
@@ -2546,23 +2539,16 @@ function localGenerateA5Html(patientsArray) {
             @page { size: 210mm 148mm; margin: 0; } 
             
             .page-container { 
-                /* 🟢 2. Saktong sukat ng A5 */
-                width: 210mm !important; 
-                max-width: 210mm !important;
-                height: 148mm !important; 
-                max-height: 148mm !important;
-                margin: 0 auto !important; 
-                padding: 4mm 10mm !important; /* Dito mo i-adjust ang space sa loob */
-                border: none !important; 
-                box-shadow: none !important; 
-                
-                /* 🟢 3. MAGIC CHEAT CODE: Babaan ito kung putol ang footer (e.g., 0.95 o 0.90) */
-                zoom: 0.95; 
-                
-                overflow: visible !important; /* Para laging lumabas ang text kahit sumagad */
-                page-break-after: always;
-                page-break-inside: avoid;
-            } 
+            width: 200mm; /* 🟢 Pinalawak natin para hindi magmukhang masikip/narrow */
+            background: white; 
+            padding: 10mm; 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        }
             .page-break { display: none !important; } 
         }
     </style>
@@ -2585,24 +2571,26 @@ function showPrintModal(htmlContent) {
         modal.style.left = '0';
         modal.style.width = '100vw';
         modal.style.height = '100vh';
-        // 🟢 BAGO: Medyo pinalinaw natin yung itim para makita mo yung app sa likod
         modal.style.backgroundColor = 'rgba(0,0,0,0.6)'; 
         modal.style.zIndex = '999999';
         modal.style.display = 'flex';
-        // 🟢 BAGO: Ise-center natin ang box sa gitna ng screen
-        modal.style.alignItems = 'center';      
+        modal.style.alignItems: 'center';       
         modal.style.justifyContent = 'center';  
         
+        // Kapag kinlik ang labas ng modal, magsasara
+        modal.onclick = function(e) {
+            if (e.target === modal) closePrintModal();
+        };
+
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
-        // 🟢 BAGO: Dito natin ginawang parang Windows Print Dialog (Hindi sagad sa dulo)
         iframe.style.width = '90%';
-        iframe.style.maxWidth = '1100px'; // Para hindi rin sobrang lapad sa malalaking monitor
+        iframe.style.maxWidth = '1100px'; 
         iframe.style.height = '90%';
-        iframe.style.maxHeight = '850px'; // Para hindi sagad sa ilalim
+        iframe.style.maxHeight = '850px'; 
         iframe.style.border = 'none';
-        iframe.style.borderRadius = '12px'; // Curved corners para mas modern
-        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; // Shadow para lutang na lutang
+        iframe.style.borderRadius = '12px'; 
+        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; 
         iframe.style.backgroundColor = '#e2e8f0';
         
         modal.appendChild(iframe);
@@ -2611,6 +2599,7 @@ function showPrintModal(htmlContent) {
     
     modal.style.display = 'flex';
     
+    // 🟢 DITO ANG FIX: Sinisigurado nating ang lahat ng window.close() sa loob ng HTML ay tatawag sa global close function
     const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
     const iframe = document.getElementById('print-iframe');
@@ -2618,3 +2607,12 @@ function showPrintModal(htmlContent) {
     iframe.contentWindow.document.write(safeHtml);
     iframe.contentWindow.document.close();
 }
+
+// 🟢 PANG-CLOSE NG PRINT MODAL
+function closePrintModal() {
+    const modal = document.getElementById('print-modal-overlay');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+window.closePrintModal = closePrintModal;
