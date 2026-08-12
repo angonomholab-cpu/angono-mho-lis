@@ -4,9 +4,9 @@ let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
 let pendingData = [];
 let currentRegistryPage = 1;
-let registryLimit = 20; // Pwede mong gawing 30 o 50 kung ilan gusto mo kada page
+let registryLimit = 20; 
 let completedData = [];
-let cachedPatients = []; // 🟢 BAGO: Dito iipunin ang lahat ng patients para instant
+let cachedPatients = []; 
 let isExistingPatient = false; 
 let editingPendingId = null;
 let currentQuickPatient = null;
@@ -15,12 +15,6 @@ let confirmActionCallback = null;
 window.CURRENT_TEST_TYPE = ""; 
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
-// ==========================================
-// 🔴 IDAGDAG ITO PARA GUMANA ANG MGA BUTTONS 🔴
-// ==========================================
-// ==========================================
-// 🔴 PERFECT MATCH PARA SA INDEX.HTML MO 🔴
-// ==========================================
 const availableTests = {
     'mtb': { 
         testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', 
@@ -63,7 +57,6 @@ const availableTests = {
         html: '<div class="field-group full-width"><label class="field-label">Source of Specimen</label><input type="text" data-key="Source" class="form-input"></div>' 
     }
 };
-// ==========================================
 
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
@@ -93,17 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const savedUser = localStorage.getItem('labUser');
         
-        // 🟢 FIX: KAPAG WALANG NAKA-LOG IN, DAPAT IPALABAS ANG LOGIN SCREEN 🟢
         if (!savedUser || savedUser === "null") {
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('app-loader').style.display = 'none';
-            return; // 🛑 Hihinto na rito ang code para makapag-type yung tao
+            return; 
         }
 
         currentUser = JSON.parse(savedUser);
         if (!currentUser.username) throw new Error("Invalid");
         
-        // 🟢 KAPAG MAY NAKA-LOG IN NA, ITAGO ANG LOGIN SCREEN 🟢
         document.getElementById('login-overlay').style.display = 'none';
         
         const dName = document.getElementById('display-full-name');
@@ -129,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     } catch (e) { 
-        // 🟢 FALLBACK: KUNG NAGKA-ERROR SA PAGBASA NG LOCAL STORAGE, BALIK SA LOGIN
         localStorage.removeItem('labUser'); 
         document.getElementById('login-overlay').style.display = 'flex'; 
     } finally { 
@@ -148,12 +138,10 @@ function toggleFab() {
     const icon = document.getElementById('fab-main-icon'); 
     if (menu.classList.contains('show')) { 
         menu.classList.remove('show'); 
-        // Kapag naka-hide: Left Arrow
         icon.classList.remove('ph-caret-right'); 
         icon.classList.add('ph-caret-left'); 
     } else { 
         menu.classList.add('show'); 
-        // Kapag naka-open: Right Arrow para i-close
         icon.classList.remove('ph-caret-left'); 
         icon.classList.add('ph-caret-right'); 
     } 
@@ -240,14 +228,9 @@ function showPage(targetId) {
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
 
-// ==========================================
-// 🔴 REPLACE APPLYPERMISSIONS FUNCTION 🔴
-// ==========================================
-
 function applyPermissions() {
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     
-    // 🟢 BAGONG FAB MENU IDs
     const navWork = document.getElementById('fab-nav-workspace'); 
     const navReg = document.getElementById('fab-nav-registry'); 
     const navRep = document.getElementById('fab-nav-reports'); 
@@ -257,16 +240,14 @@ function applyPermissions() {
     const colCompleted = document.getElementById('col-completed'); 
     const colRepeat = document.getElementById('col-repeat');
     
-    // Tago lahat muna by default bago i-filter
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none'; if(colRepeat) colRepeat.style.display = 'none';
 
     if (role === 'PATIENT') { 
         const fabMain = document.getElementById('fab-main-btn'); 
-        if(fabMain) fabMain.style.display = 'none'; // Wag ipakita ang circle menu sa patient
+        if(fabMain) fabMain.style.display = 'none'; 
     }
     else if (role === 'ADMIN' || role === 'STAFF') {
-        // LAB PERSONNEL - ALL ACCESS
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
@@ -282,14 +263,13 @@ function applyPermissions() {
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; 
         
-        // 🟢 RESTRICTION: Tago lahat maliban sa GXP, DSSM (At Serology para sa NTP Checker)
         document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || ''; 
             if (role === 'NTP_CHECKER') {
                 if (!attr.includes('GXP') && !attr.includes('DSSM') && !attr.includes('SERO')) {
                     card.style.display = 'none'; 
                 }
-            } else { // DOH_TB
+            } else { 
                 if (!attr.includes('GXP') && !attr.includes('DSSM')) {
                     card.style.display = 'none'; 
                 }
@@ -304,8 +284,6 @@ function applyPermissions() {
         }
     }
 
-    // 🟢 VIRAL LOAD STRICTLY ADMIN ONLY 🟢
-    // Kapag hindi ADMIN, itatago lang ang GXVL. Ang SERO ay bukas na sa Staff/Viewer/NTP!
     if (role !== 'ADMIN') {
         document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || '';
@@ -318,17 +296,11 @@ function applyPermissions() {
         if(btnViral) btnViral.style.display = 'none';
     }
 
-    // 🟢 WORKSPACE RESTRICTION (SEROLOGY ENTRY) 🟢
-    // Ang makakapag-request at makakapag-encode lang ng Serology sa Workspace ay ADMIN at STAFF.
     if (role !== 'ADMIN' && role !== 'STAFF') {
         const btnSero = document.getElementById('btn-sero');
         if(btnSero) btnSero.style.display = 'none';
     }
 }
-
-// ==========================================
-// 🔴 REPLACE THESE 4 FUNCTIONS IN APP.JS 🔴
-// ==========================================
 
 function openTestDetails(id) { 
     const config = availableTests[id]; 
@@ -338,7 +310,6 @@ function openTestDetails(id) {
     const area = document.getElementById('test-details-area'); 
     area.style.display = 'block'; 
     
-    // 🟢 FIXED: Added type="button", event.preventDefault(), and z-index: 99999 so it never gets blocked by the footer
     area.innerHTML = `
         <div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;">
             <i class="ph ph-info"></i> ${config.title}
@@ -390,7 +361,6 @@ function confirmDetail(id) {
     cancelDetail(); 
 }
 
-// ==========================================
 function toggleSimple(id) { const btn = document.getElementById('btn-'+id); if(labOrders[id]) { delete labOrders[id]; btn.classList.remove('active'); } else { labOrders[id] = { details: {}, subTests: [] }; btn.classList.add('active'); } updateSummary(); }
 function updateSummary() { const container = document.getElementById('order-summary'); container.innerHTML = ''; Object.keys(labOrders).forEach(key => { let label = availableTests[key].testName; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) label += `: ${labOrders[key].subTests.join(', ')}`; container.innerHTML += `<div class="badge badge-warning" style="cursor:pointer;" onclick="removeOrder('${key}')">${label} &times;</div>`; }); }
 function removeOrder(key) { delete labOrders[key]; document.getElementById('btn-'+key).classList.remove('active'); updateSummary(); }
@@ -398,9 +368,6 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
-// ==========================================
-// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (100% BULLETPROOF)
-// ==========================================
 async function loadPatientCache() {
     try {
         const res = await apiPost("getAllPatientsLight", {});
@@ -415,7 +382,6 @@ async function runDirectSearch(q) {
     const box = document.getElementById('direct-results-box'); 
     if(q.length < 2) { box.style.display='none'; return; }
     
-    // 🟢 FALLBACK: Kung nag-type si user pero wala pa sa memory ang masterlist, i-download agad!
     if (cachedPatients.length === 0) {
         box.style.display = 'block'; 
         box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Fetching masterlist database...</div>`;
