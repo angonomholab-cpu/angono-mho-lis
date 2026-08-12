@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyouxC4-EHJl4r0m4dz7cGFiScJtPnwWvsTdU9IXHEwQOwFn6dh0ljS6V6jOoUroPooLw/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGH8IYdvF5ylp1nbNyZUYxe8U8waLJdNVpJl02oSmYCczK6UqaBhTM1DJDN6DyWE1T3w/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -814,45 +814,42 @@ async function submitPendingUpdate() {
     }
 }
 // ==========================================
-// 100% FIXED DATA LOADER (MAY INSTANT CACHE TRICK)
+// 100% FIXED DATA LOADER (SUPER SPEED VIA POST)
 // ==========================================
 async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon');
     if (refIcon) refIcon.classList.add('ph-spin');
     
-    // ⚡ SPEED FIX: I-load agad ang huling nakita (Cache) para hindi blangko ang screen!
+    // ⚡ SPEED FIX 1: I-load agad ang huling nakita (Cache)
     const cachedWorkspace = sessionStorage.getItem('workspaceCache_' + currentUser.username);
     if (cachedWorkspace && window.pendingData.length === 0) {
         try {
             const parsed = JSON.parse(cachedWorkspace);
             window.pendingData = parsed.pending || [];
             window.completedData = parsed.encoded || [];
-            renderLists(); // Papalabas agad natin sa screen in 0.01 seconds!
+            renderLists(); // Papalabas agad sa screen in 0.01 seconds
         } catch(e) {}
     }
     
     try {
-        // Tahimik na kumukuha sa server sa background
-        let res = await apiGet("getPendingWorkload", { 
+        // ⚡ SPEED FIX 2: GUMAWA NG API POST SA HALIP NA GET (Mas mabilis sa Google Server!)
+        let res = await apiPost("getPendingWorkload", { 
             facility: currentUser.facility, 
-            role: currentUser.role,
-            _t: new Date().getTime() 
+            role: currentUser.role
         }); 
 
         if (res && (res.pending || res.encoded)) {
             window.pendingData = res.pending || [];
             window.completedData = res.encoded || []; 
             
-            // I-save ang fresh data sa memory para instant ulit next time
+            // I-save sa background memory para instant sa susunod
             sessionStorage.setItem('workspaceCache_' + currentUser.username, JSON.stringify({
                 pending: window.pendingData,
                 encoded: window.completedData
             }));
 
-            // I-update ang screen kapag dumating na yung fresh data
+            // Tahimik na i-update ang listahan
             renderLists();
-        } else {
-            console.error("Backend returned empty data.");
         }
     } catch(e) { 
         console.error("Refresh Error:", e); 
