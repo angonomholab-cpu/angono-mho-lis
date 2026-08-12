@@ -1045,9 +1045,10 @@ async function saveAndPrintResult(id, safeId, btn) {
         if (res.status === "success") {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
             
-            await loadPendingData(); // I-refresh ang lists para malipat sa Completed
+            // ⚡ SPEED FIX: Inalis ang 'await'. Magre-refresh na siya sa background nang tahimik!
+            loadPendingData(); 
             
-            // Auto trigger ng Print Preview
+            // ⚡ SPEED FIX: I-trigger na agad ang Print Preview nang walang delay!
             printDirect(null, id, tCodePrint); 
         }
     } catch (err) { 
@@ -1826,21 +1827,17 @@ async function submitStaffRegister() {
     finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
-// ==========================================
-// 🟢 INSTANT CLIENT-SIDE PRINTING (A5 & NTP)
-// ==========================================
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); 
     const correctCode = getTestCodeFromName(testName);
     
-    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
     
     try { 
         const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
-        if (!globalStaffList || globalStaffList.length === 0) {
-            await loadSettingsData(); 
-        }
+        
+        // ⚡ SPEED FIX: Inalis din ang muling pag-download ng e-sig dito!
+        
         if (res.status === "success" && res.data) { 
             const printData = res.data;
             let finalHtml = "";
@@ -1850,7 +1847,6 @@ async function printDirect(e, id, testName) {
             else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
             else { finalHtml = localGenerateA5Html(printData.content); }
             
-            // 🟢 BAGO: Papasok na ang Result Form sa Pop-up!
             showPrintModal(finalHtml); 
         } else { 
             showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
@@ -1871,14 +1867,13 @@ async function batchPrint() {
         requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
     });
 
-    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
 
     try {
         const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
-        if (!globalStaffList || globalStaffList.length === 0) {
-            await loadSettingsData(); 
-        }
+        
+        // ⚡ SPEED FIX: Inalis din ang muling pag-download ng e-sig dito!
+
         if (res.status === "success" && res.data) {
             const printData = res.data;
             let finalHtml = "";
@@ -1888,7 +1883,6 @@ async function batchPrint() {
             else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
             else { finalHtml = localGenerateA5Html(printData.content); }
             
-            // 🟢 BAGO: Papasok na ang Batch Form sa Pop-up!
             showPrintModal(finalHtml);
         } else { 
             showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); 
@@ -1941,20 +1935,18 @@ async function batchSaveResults(isPrint) {
     }
 
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
-    await loadPendingData();
+    
+    // ⚡ SPEED FIX: Inalis ang 'await' dito para mabilis sumunod ang print command.
+    loadPendingData(); 
 
     if (isPrint && printRequests.length > 0) {
-        // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
         try {
             const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
-            if (!globalStaffList || globalStaffList.length === 0) {
-                await loadSettingsData(); 
-            }
+            // ⚡ SPEED FIX: Inalis natin ang muling pag-download ng e-sig. Tapos na 'yun sa login pa lang!
+            
             if (res.status === "success" && res.data) {
                 const printData = res.data; let finalHtml = "";
-                
-                // 🟢 FIX 1: Kukunin ang test type mula sa mismong ni-check mong items, hindi sa kung anong tab ka nakatambay!
                 const firstTestCode = printRequests[0].testName;
                 const isNTP = firstTestCode === "GXP" || firstTestCode === "DSSM";
                 
@@ -1962,13 +1954,11 @@ async function batchSaveResults(isPrint) {
                 else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
                 else { finalHtml = localGenerateA5Html(printData.content); }
                 
-                // 🟢 BAGO: Papasok na ang Batch Form sa Pop-up!
                 showPrintModal(finalHtml);
             } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
         } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
     }
 }
-// 🟢 Taga-process ng data para sa NTP Form
 // 🟢 Taga-process ng data para sa NTP Form
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
