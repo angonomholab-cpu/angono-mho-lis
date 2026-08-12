@@ -1419,13 +1419,14 @@ function printRegistryLogbook() {
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
 
-
+// ==========================================
+// SILENT SETTINGS LOADER (NO ANNOYING POP-UPS)
+// ==========================================
 async function loadSettingsData() { 
     try {
-        // 🟢 BAGO: GINAWANG apiPost PARA PUMASOK SA TAMA SA BACKEND 🟢
         const res = await apiPost("getSettingsData", {}); 
         
-        if (res.status === "success") {
+        if (res && res.status === "success") {
             const data = res.data;
             globalStaffList = data.staff || [];
             globalFacilityList = data.facilities || [];
@@ -1444,14 +1445,14 @@ async function loadSettingsData() {
                 }
             });
         } else {
-            showAppAlert("Error", "Failed to load settings. Please try again.", "error");
+            // 🟢 FIX: Tinanggal natin ang showAppAlert dito.
+            // Kapag nag-hiccup ang Google server, mananahimik na lang ang app sa halip na mag-pop up.
+            console.warn("Settings background sync delayed. Will automatically retry later.");
         }
     } catch(e) { 
-        console.log("Settings Load Error: ", e); 
+        console.warn("Settings Load Error: ", e); 
     } 
 }
-
-
 
 function renderSettings(users) { 
     const uList = document.getElementById('list-users'); 
