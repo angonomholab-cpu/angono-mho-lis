@@ -2558,7 +2558,7 @@ async function loadPatientCache() {
 
 // 🟢 Taga-Pili ng Patient mula sa Resulta
 function selectPatientFromSearch(pid) {
-    const p = cachedPatients.find(x => x.id === pid);
+    const p = cachedPatients.find(x => String(x.id) === String(pid));
     if(!p) return;
     
     isExistingPatient = true; 
@@ -2585,19 +2585,24 @@ function selectPatientFromSearch(pid) {
     fetchHistory(p.id, 'history-section', 'history-list'); 
 }
 
-// 🟢 Walang timer! Lalabas agad habang nagta-type ka!
-function runDirectSearch(q) {
+// 🟢 Mabilis at Ligtas na Search
+async function runDirectSearch(q) {
     const box = document.getElementById('direct-results-box'); 
-    if(q.length < 2) { box.style.display='none'; return; }
+    if(!q || q.length < 2) { box.style.display='none'; return; }
     
+    // Download agad kung walang laman
     if (cachedPatients.length === 0) {
         box.style.display = 'block'; 
         box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Downloading Masterlist...</div>`;
-        loadPatientCache(); 
-        return;
+        await loadPatientCache(); 
     }
+
+    // Kung pagkatapos idownload ay wala pa rin, itago ang box.
+    if(cachedPatients.length === 0) { box.style.display = 'none'; return; }
     
     const query = q.toLowerCase();
+    
+    // 🟢 SAFE FILTER: Nilagyan natin ng p.name check para HINDI MAG-CRASH kapag may blangkong tao sa Excel!
     const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 8);
     
     if (results.length > 0) {
@@ -2616,16 +2621,17 @@ function runDirectSearch(q) {
     }
 }
 
-function runQuickSearch(q) {
+async function runQuickSearch(q) {
     const box = document.getElementById('quick-search-results'); 
-    if(q.length < 2) { box.style.display='none'; return; }
+    if(!q || q.length < 2) { box.style.display='none'; return; }
     
     if (cachedPatients.length === 0) {
         box.style.display = 'block'; 
         box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Downloading Masterlist...</div>`;
-        loadPatientCache();
-        return;
+        await loadPatientCache();
     }
+
+    if(cachedPatients.length === 0) { box.style.display = 'none'; return; }
 
     const query = q.toLowerCase();
     const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 15);
@@ -2672,12 +2678,34 @@ async function viewQuickProfile(p) {
 function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
 function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
 
-// Makikinig siya as you type! 
+
+// ==========================================
+// ⚡ SAFE EVENT BINDING (AS YOU TYPE + ANTI-SPAM)
+// ==========================================
+let typingTimer;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Para puwersahang patayin ang lumang search commands na nasa HTML
+    setTimeout(() => {
+        const el1 = document.getElementById('p_name');
+        const el2 = document.getElementById('quick-search-input');
+        if(el1) { el1.removeAttribute('onkeyup'); el1.removeAttribute('oninput'); }
+        if(el2) { el2.removeAttribute('onkeyup'); el2.removeAttribute('oninput'); }
+    }, 1000);
+});
+
+// Babasahin niya bawat pindot mo!
 document.addEventListener('input', function(e) {
     if (e.target && e.target.id === 'p_name') {
-        runDirectSearch(e.target.value);
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            runDirectSearch(e.target.value);
+        }, 300); // Wait 0.3s before filtering para smooth
     }
     if (e.target && e.target.id === 'quick-search-input') {
-        runQuickSearch(e.target.value);
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            runQuickSearch(e.target.value);
+        }, 300);
     }
 });
