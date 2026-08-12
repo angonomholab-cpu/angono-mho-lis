@@ -368,168 +368,7 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
-// ==========================================
-// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (100% BULLETPROOF)
-// ==========================================
-let isFetchingCache = false; // 🔒 Lock para iwas spam download
 
-async function loadPatientCache() {
-    if (isFetchingCache || cachedPatients.length > 0) return; // Wag umulit kung may laman na o nagda-download pa
-    isFetchingCache = true;
-    try {
-        const res = await apiPost("getAllPatientsLight", {});
-        if (res && res.status === "success") {
-            cachedPatients = res.data || [];
-            console.log("⚡ Instant Search Ready: Loaded " + cachedPatients.length + " patients locally.");
-        }
-    } catch(e) { 
-        console.error("Failed to load patient cache"); 
-    } finally {
-        isFetchingCache = false; // I-release ang lock
-    }
-}
-
-async function runDirectSearch(q) {
-    const box = document.getElementById('direct-results-box'); 
-    if(q.length < 2) { box.style.display='none'; return; }
-    
-    // 🟢 KUNG WALANG LAMAN ANG CACHE, MAG-FETCH
-    if (cachedPatients.length === 0) {
-        box.style.display = 'block'; 
-        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Fetching masterlist database...</div>`;
-        await loadPatientCache();
-    }
-    
-    // Kung wala pa rin (dahil empty ang database mo), itago
-    if (cachedPatients.length === 0) {
-        box.style.display = 'none';
-        return;
-    }
-    
-    const query = q.toLowerCase();
-    // 🟢 FIX: Idinagdag ang p.name check para hindi mag-crash kapag may blangkong pangalan sa Masterlist
-    const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 8);
-    
-    if (results.length > 0) {
-        box.style.display = 'block'; 
-        box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
-        
-        results.forEach(p => {
-            const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
-            
-            div.onclick = () => {
-                isExistingPatient = true; 
-                document.getElementById('finalPatientId').value = p.id; 
-                document.getElementById('p_name').value = p.name || ""; 
-                document.getElementById('p_age').value = p.age || ""; 
-                document.getElementById('p_address').value = p.address || ""; 
-                document.getElementById('p_contact').value = p.contact || ""; 
-                if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
-                
-                setSelectValue('p_sex', p.sex); 
-                setSelectValue('p_facility', p.facility || p.Facility);
-                
-                if (p.bday) { 
-                    try { 
-                        const d = new Date(p.bday); 
-                        document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
-                    } catch(e){} 
-                }
-                
-                box.style.display = 'none'; 
-                document.getElementById('new-entry-header').style.display = 'none'; 
-                document.getElementById('profile-header').style.display = 'flex';
-                fetchHistory(p.id, 'history-section', 'history-list'); 
-            }; 
-            box.appendChild(div);
-        });
-    } else { 
-        box.style.display = 'none'; 
-    }
-}
-
-async function runQuickSearch(q) {
-    const box = document.getElementById('quick-search-results'); 
-    if(q.length < 2) { box.style.display='none'; return; }
-    
-    // 🟢 FALLBACK FETCH
-    if (cachedPatients.length === 0) {
-        box.style.display = 'block'; 
-        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Fetching masterlist database...</div>`;
-        await loadPatientCache();
-    }
-
-    if (cachedPatients.length === 0) { box.style.display = 'none'; return; }
-
-    const query = q.toLowerCase();
-    // 🟢 FIX: Safety check for p.name
-    const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 15);
-    
-    if (results.length > 0) {
-        box.style.display = 'block'; box.innerHTML = '';
-        results.forEach(p => {
-            const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
-            div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; 
-            box.appendChild(div);
-        });
-    } else { 
-        box.style.display = 'none'; 
-    }
-}
-
-function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
-
-async function viewQuickProfile(p) {
-    currentQuickPatient = p; 
-    document.getElementById('quick-profile-view').style.display = 'flex'; 
-    document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; 
-    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
-    
-    fetchHistory(p.id, null, 'qs-history-list', true, false); 
-    
-    if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
-        const qsList = document.getElementById('qs-history-list');
-        const observer = new MutationObserver(() => {
-            const cards = qsList.querySelectorAll('.history-card');
-            cards.forEach(card => {
-                const content = card.innerText.toUpperCase();
-                if (content.includes('VIRAL LOAD') || content.includes('GXVL') || content.includes('HIV-1')) {
-                    card.remove(); 
-                }
-            });
-        });
-        observer.observe(qsList, { childList: true, subtree: true });
-    }
-}
-
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
-function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
-
-
-// ==========================================
-// ⚡ EVENT DELEGATION WITH DEBOUNCE (NO MORE SPAMMING)
-// ==========================================
-let directSearchTimer;
-let quickSearchTimer;
-
-document.addEventListener('input', function(e) {
-    if (e.target && e.target.id === 'p_name') {
-        clearTimeout(directSearchTimer);
-        // Mag-aantay muna ng 0.4 seconds bago maghanap para hindi masabunutan ang server
-        directSearchTimer = setTimeout(() => {
-            runDirectSearch(e.target.value);
-        }, 400);
-    }
-    if (e.target && e.target.id === 'quick-search-input') {
-        clearTimeout(quickSearchTimer);
-        quickSearchTimer = setTimeout(() => {
-            runQuickSearch(e.target.value);
-        }, 400);
-    }
-});
 async function loadPatientResults() {
     const histContainer = document.getElementById('my-portal-history'); if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
     const nameEl = document.getElementById('my-portal-name'); if(nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
@@ -2695,11 +2534,146 @@ async function batchPrint() {
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
     }
 } // <--- TAMA: Dito dapat sarado na ang batchPrint()
+// ==========================================
+// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (BAWAT PINDOT, WALANG DELAY)
+// ==========================================
+let isFetchingCache = false; 
+let cacheReady = false; // Flag para alam natin kung na-download na ang masterlist
+
+async function loadPatientCache() {
+    if (isFetchingCache || cacheReady) return; // Wag umulit kung meron na
+    isFetchingCache = true;
+    try {
+        const res = await apiPost("getAllPatientsLight", {});
+        if (res && res.status === "success") {
+            cachedPatients = res.data || [];
+            cacheReady = true; // Mark as done!
+            console.log("⚡ Instant Search Ready: Loaded " + cachedPatients.length + " patients locally.");
+        }
+    } catch(e) { 
+        console.error("Failed to load patient cache"); 
+    } finally {
+        isFetchingCache = false; 
+    }
+}
+
+// 🟢 TINANGGAL ANG ASYNC: Dahil nasa local memory na, mabilis na ito at hindi kailangang mag-antay!
+function runDirectSearch(q) {
+    const box = document.getElementById('direct-results-box'); 
+    if(q.length < 2) { box.style.display='none'; return; }
+    
+    // Kung hindi pa tapos mag-download ang masterlist, sabihan ang user
+    if (!cacheReady) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Loading database... Please wait a moment.</div>`;
+        loadPatientCache(); // Puwersahin ang download kung nakalimutan
+        return;
+    }
+    
+    const query = q.toLowerCase();
+    // 🟢 SAFE FILTER: Instant search sa bawat pag-type mo
+    const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 8);
+    
+    if (results.length > 0) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
+        
+        results.forEach(p => {
+            const div = document.createElement('div'); div.className = "search-item";
+            div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
+            
+            div.onclick = () => {
+                isExistingPatient = true; 
+                document.getElementById('finalPatientId').value = p.id; 
+                document.getElementById('p_name').value = p.name || ""; 
+                document.getElementById('p_age').value = p.age || ""; 
+                document.getElementById('p_address').value = p.address || ""; 
+                document.getElementById('p_contact').value = p.contact || ""; 
+                if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
+                
+                setSelectValue('p_sex', p.sex); 
+                setSelectValue('p_facility', p.facility || p.Facility);
+                
+                if (p.bday) { 
+                    try { 
+                        const d = new Date(p.bday); 
+                        document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
+                    } catch(e){} 
+                }
+                
+                box.style.display = 'none'; 
+                document.getElementById('new-entry-header').style.display = 'none'; 
+                document.getElementById('profile-header').style.display = 'flex';
+                fetchHistory(p.id, 'history-section', 'history-list'); 
+            }; 
+            box.appendChild(div);
+        });
+    } else { 
+        box.style.display = 'none'; 
+    }
+}
+
+function runQuickSearch(q) {
+    const box = document.getElementById('quick-search-results'); 
+    if(q.length < 2) { box.style.display='none'; return; }
+    
+    if (!cacheReady) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Loading database... Please wait a moment.</div>`;
+        loadPatientCache();
+        return;
+    }
+
+    const query = q.toLowerCase();
+    const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 15);
+    
+    if (results.length > 0) {
+        box.style.display = 'block'; box.innerHTML = '';
+        results.forEach(p => {
+            const div = document.createElement('div'); div.className = "search-item";
+            div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+            div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; 
+            box.appendChild(div);
+        });
+    } else { 
+        box.style.display = 'none'; 
+    }
+}
+
+function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
+
+async function viewQuickProfile(p) {
+    currentQuickPatient = p; 
+    document.getElementById('quick-profile-view').style.display = 'flex'; 
+    document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; 
+    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    
+    fetchHistory(p.id, null, 'qs-history-list', true, false); 
+    
+    if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
+        const qsList = document.getElementById('qs-history-list');
+        const observer = new MutationObserver(() => {
+            const cards = qsList.querySelectorAll('.history-card');
+            cards.forEach(card => {
+                const content = card.innerText.toUpperCase();
+                if (content.includes('VIRAL LOAD') || content.includes('GXVL') || content.includes('HIV-1')) {
+                    card.remove(); 
+                }
+            });
+        });
+        observer.observe(qsList, { childList: true, subtree: true });
+    }
+}
+
+function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
+function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
 
 // ==========================================
-// ⚡ EVENT DELEGATION (OVERRIDE ALL)
+// ⚡ EVENT DELEGATION (WALANG DELAY, DIRECT CALL)
 // ==========================================
 document.addEventListener('input', function(e) {
+    // Bawat pindot mo sa keyboard, ipapasa agad sa function nang walang timer!
     if (e.target && e.target.id === 'p_name') {
         runDirectSearch(e.target.value);
     }
@@ -2707,3 +2681,4 @@ document.addEventListener('input', function(e) {
         runQuickSearch(e.target.value);
     }
 });
+
