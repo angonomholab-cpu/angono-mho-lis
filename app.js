@@ -1,12 +1,12 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbnNwddhIj6xhzXPqgJ81jXP2ElCJr8gL0TBefyfxjtxkexXlsh5weGKNZ30bLA0rE7g/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwXH1ngtEYkk6H5a9JlAw_ybgYWjx8cfKVpEMwV0zUx6wdHc6RKSuNZukkconArjKVpg/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
 let pendingData = [];
 let currentRegistryPage = 1;
-let registryLimit = 20; 
+let registryLimit = 20; // Pwede mong gawing 30 o 50 kung ilan gusto mo kada page
 let completedData = [];
-let cachedPatients = []; 
+let cachedPatients = []; // 🟢 BAGO: Dito iipunin ang lahat ng patients para instant
 let isExistingPatient = false; 
 let editingPendingId = null;
 let currentQuickPatient = null;
@@ -15,6 +15,12 @@ let confirmActionCallback = null;
 window.CURRENT_TEST_TYPE = ""; 
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
+// ==========================================
+// 🔴 IDAGDAG ITO PARA GUMANA ANG MGA BUTTONS 🔴
+// ==========================================
+// ==========================================
+// 🔴 PERFECT MATCH PARA SA INDEX.HTML MO 🔴
+// ==========================================
 const availableTests = {
     'mtb': { 
         testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', 
@@ -57,6 +63,7 @@ const availableTests = {
         html: '<div class="field-group full-width"><label class="field-label">Source of Specimen</label><input type="text" data-key="Source" class="form-input"></div>' 
     }
 };
+// ==========================================
 
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
@@ -85,46 +92,33 @@ document.addEventListener('DOMContentLoaded', () => {
         applyLimitedMode(isLimited);
 
         const savedUser = localStorage.getItem('labUser');
-        
-        if (!savedUser || savedUser === "null") {
-            document.getElementById('login-overlay').style.display = 'flex';
-            document.getElementById('app-loader').style.display = 'none';
-            return; 
-        }
-
-        currentUser = JSON.parse(savedUser);
-        if (!currentUser.username) throw new Error("Invalid");
-        
-        document.getElementById('login-overlay').style.display = 'none';
-        
-        const dName = document.getElementById('display-full-name');
-        if(dName) dName.innerText = currentUser.fullName || currentUser.username;
-        
-        const dRole = document.getElementById('display-role-facility');
-        if(dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
-        
-        const dAvatar = document.getElementById('pill-avatar');
-        if(dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
-        
-        applyPermissions(); 
-        const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
-        
-        if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
-        else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') { showPage('registry'); }
-        else { 
-            showPage('workspace'); 
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            if (!currentUser.username) throw new Error("Invalid");
+            
+            document.getElementById('login-overlay').style.display = 'none';
+            
+            // Safety checks para hindi mag-crash
+            const dName = document.getElementById('display-full-name');
+            if(dName) dName.innerText = currentUser.fullName || currentUser.username;
+            
+            const dRole = document.getElementById('display-role-facility');
+            if(dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
+            
+            const dAvatar = document.getElementById('pill-avatar');
+            if(dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+            
+            applyPermissions(); 
+            const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
             if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
-                setTimeout(() => {
-                    loadSettingsData().then(() => loadPatientCache());
-                }, 1500);
+                loadPatientCache();
+                loadSettingsData();
             }
+            if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
+            else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
+            else showPage('workspace');
         }
-    } catch (e) { 
-        localStorage.removeItem('labUser'); 
-        document.getElementById('login-overlay').style.display = 'flex'; 
-    } finally { 
-        document.getElementById('app-loader').style.display = 'none'; 
-    }
+    } catch (e) { localStorage.removeItem('labUser'); document.getElementById('login-overlay').style.display = 'flex'; } finally { document.getElementById('app-loader').style.display = 'none'; }
 });
 
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
@@ -138,10 +132,12 @@ function toggleFab() {
     const icon = document.getElementById('fab-main-icon'); 
     if (menu.classList.contains('show')) { 
         menu.classList.remove('show'); 
+        // Kapag naka-hide: Left Arrow
         icon.classList.remove('ph-caret-right'); 
         icon.classList.add('ph-caret-left'); 
     } else { 
         menu.classList.add('show'); 
+        // Kapag naka-open: Right Arrow para i-close
         icon.classList.remove('ph-caret-left'); 
         icon.classList.add('ph-caret-right'); 
     } 
@@ -228,9 +224,14 @@ function showPage(targetId) {
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
 
+// ==========================================
+// 🔴 REPLACE APPLYPERMISSIONS FUNCTION 🔴
+// ==========================================
+
 function applyPermissions() {
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     
+    // 🟢 BAGONG FAB MENU IDs
     const navWork = document.getElementById('fab-nav-workspace'); 
     const navReg = document.getElementById('fab-nav-registry'); 
     const navRep = document.getElementById('fab-nav-reports'); 
@@ -240,14 +241,16 @@ function applyPermissions() {
     const colCompleted = document.getElementById('col-completed'); 
     const colRepeat = document.getElementById('col-repeat');
     
+    // Tago lahat muna by default bago i-filter
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none'; if(colRepeat) colRepeat.style.display = 'none';
 
     if (role === 'PATIENT') { 
         const fabMain = document.getElementById('fab-main-btn'); 
-        if(fabMain) fabMain.style.display = 'none'; 
+        if(fabMain) fabMain.style.display = 'none'; // Wag ipakita ang circle menu sa patient
     }
     else if (role === 'ADMIN' || role === 'STAFF') {
+        // LAB PERSONNEL - ALL ACCESS
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
@@ -263,13 +266,14 @@ function applyPermissions() {
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; 
         
+        // 🟢 RESTRICTION: Tago lahat maliban sa GXP, DSSM (At Serology para sa NTP Checker)
         document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || ''; 
             if (role === 'NTP_CHECKER') {
                 if (!attr.includes('GXP') && !attr.includes('DSSM') && !attr.includes('SERO')) {
                     card.style.display = 'none'; 
                 }
-            } else { 
+            } else { // DOH_TB
                 if (!attr.includes('GXP') && !attr.includes('DSSM')) {
                     card.style.display = 'none'; 
                 }
@@ -284,6 +288,8 @@ function applyPermissions() {
         }
     }
 
+    // 🟢 VIRAL LOAD STRICTLY ADMIN ONLY 🟢
+    // Kapag hindi ADMIN, itatago lang ang GXVL. Ang SERO ay bukas na sa Staff/Viewer/NTP!
     if (role !== 'ADMIN') {
         document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || '';
@@ -296,11 +302,17 @@ function applyPermissions() {
         if(btnViral) btnViral.style.display = 'none';
     }
 
+    // 🟢 WORKSPACE RESTRICTION (SEROLOGY ENTRY) 🟢
+    // Ang makakapag-request at makakapag-encode lang ng Serology sa Workspace ay ADMIN at STAFF.
     if (role !== 'ADMIN' && role !== 'STAFF') {
         const btnSero = document.getElementById('btn-sero');
         if(btnSero) btnSero.style.display = 'none';
     }
 }
+
+// ==========================================
+// 🔴 REPLACE THESE 4 FUNCTIONS IN APP.JS 🔴
+// ==========================================
 
 function openTestDetails(id) { 
     const config = availableTests[id]; 
@@ -310,6 +322,7 @@ function openTestDetails(id) {
     const area = document.getElementById('test-details-area'); 
     area.style.display = 'block'; 
     
+    // 🟢 FIXED: Added type="button", event.preventDefault(), and z-index: 99999 so it never gets blocked by the footer
     area.innerHTML = `
         <div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;">
             <i class="ph ph-info"></i> ${config.title}
@@ -361,6 +374,7 @@ function confirmDetail(id) {
     cancelDetail(); 
 }
 
+// ==========================================
 function toggleSimple(id) { const btn = document.getElementById('btn-'+id); if(labOrders[id]) { delete labOrders[id]; btn.classList.remove('active'); } else { labOrders[id] = { details: {}, subTests: [] }; btn.classList.add('active'); } updateSummary(); }
 function updateSummary() { const container = document.getElementById('order-summary'); container.innerHTML = ''; Object.keys(labOrders).forEach(key => { let label = availableTests[key].testName; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) label += `: ${labOrders[key].subTests.join(', ')}`; container.innerHTML += `<div class="badge badge-warning" style="cursor:pointer;" onclick="removeOrder('${key}')">${label} &times;</div>`; }); }
 function removeOrder(key) { delete labOrders[key]; document.getElementById('btn-'+key).classList.remove('active'); updateSummary(); }
@@ -368,6 +382,123 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
+// ==========================================
+// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (LOCAL CACHE)
+// ==========================================
+
+async function loadPatientCache() {
+    try {
+        const res = await apiGet("getAllPatientsLight");
+        if (res.status === "success") {
+            cachedPatients = res.data;
+            console.log("⚡ Instant Search Ready: Loaded " + cachedPatients.length + " patients locally.");
+        }
+    } catch(e) { console.error("Failed to load patient cache"); }
+}
+
+function runDirectSearch(q) {
+    const box = document.getElementById('direct-results-box'); 
+    const stat = document.getElementById('search-status');
+    
+    if(q.length < 2) { box.style.display='none'; return; }
+    
+    // ⚡ INSTANT LOCAL SEARCH (Wala nang 'await' o 'setTimeout')
+    const query = q.toLowerCase();
+    const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 8);
+    
+    if (results.length > 0) {
+        box.style.display = 'block'; 
+        box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
+        
+        results.forEach(p => {
+            const div = document.createElement('div'); div.className = "search-item";
+            div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'No Facility'}</div>`;
+            
+            div.onclick = () => {
+                isExistingPatient = true; 
+                document.getElementById('finalPatientId').value = p.id; 
+                document.getElementById('p_name').value = p.name || ""; 
+                document.getElementById('p_age').value = p.age || ""; 
+                document.getElementById('p_address').value = p.address || ""; 
+                document.getElementById('p_contact').value = p.contact || ""; 
+                if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
+                
+                setSelectValue('p_sex', p.sex); 
+                setSelectValue('p_facility', p.facility || p.Facility);
+                
+                if (p.bday) { 
+                    try { 
+                        const d = new Date(p.bday); 
+                        document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
+                    } catch(e){} 
+                }
+                
+                box.style.display = 'none'; 
+                document.getElementById('new-entry-header').style.display = 'none'; 
+                document.getElementById('profile-header').style.display = 'flex';
+                fetchHistory(p.id, 'history-section', 'history-list'); 
+            }; 
+            box.appendChild(div);
+        });
+    } else { 
+        box.style.display = 'none'; 
+    }
+}
+
+function runQuickSearch(q) {
+    const box = document.getElementById('quick-search-results'); 
+    if(q.length < 2) { box.style.display='none'; return; }
+    
+    // ⚡ INSTANT LOCAL SEARCH
+    const query = q.toLowerCase();
+    const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 15);
+    
+    if (results.length > 0) {
+        box.style.display = 'block'; box.innerHTML = '';
+        results.forEach(p => {
+            const div = document.createElement('div'); div.className = "search-item";
+            div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+            div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; 
+            box.appendChild(div);
+        });
+    } else { 
+        box.style.display = 'none'; 
+    }
+}
+
+function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
+
+async function viewQuickProfile(p) {
+    currentQuickPatient = p; 
+    document.getElementById('quick-profile-view').style.display = 'flex'; 
+    document.getElementById('quick-profile-view').style.flexDirection = 'column';
+    document.getElementById('qs-name').innerText = p.name; 
+    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    
+    // Tatawagin ang normal na history fetcher
+    fetchHistory(p.id, null, 'qs-history-list', true, false); 
+    
+    // 🟢 BAGO: TOTAL INVISIBILITY PARA SA VIRAL LOAD KUNG HINDI ADMIN 🟢
+    if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
+        const qsList = document.getElementById('qs-history-list');
+        
+        // Susubaybayan natin ang box, kapag may pumasok na "VIRAL LOAD", BUBURAHIN agad natin!
+        const observer = new MutationObserver(() => {
+            const cards = qsList.querySelectorAll('.history-card');
+            cards.forEach(card => {
+                const content = card.innerText.toUpperCase();
+                // Kung mabasa ng system na may GXVL o Viral Load, ide-delete niya yung buong element bago pa makita.
+                if (content.includes('VIRAL LOAD') || content.includes('GXVL') || content.includes('HIV-1')) {
+                    card.remove(); 
+                }
+            });
+        });
+        observer.observe(qsList, { childList: true, subtree: true });
+    }
+}
+
+function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
+function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
 
 async function loadPatientResults() {
     const histContainer = document.getElementById('my-portal-history'); if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
@@ -667,42 +798,27 @@ async function submitPendingUpdate() {
     }
 }
 // ==========================================
-// 100% FIXED DATA LOADER (SUPER SPEED VIA POST)
+// 100% FIXED DATA LOADER (TUGMA NA SA BACKEND)
 // ==========================================
 async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon');
     if (refIcon) refIcon.classList.add('ph-spin');
     
-    // ⚡ SPEED FIX 1: I-load agad ang huling nakita (Cache)
-    const cachedWorkspace = sessionStorage.getItem('workspaceCache_' + currentUser.username);
-    if (cachedWorkspace && window.pendingData.length === 0) {
-        try {
-            const parsed = JSON.parse(cachedWorkspace);
-            window.pendingData = parsed.pending || [];
-            window.completedData = parsed.encoded || [];
-            renderLists(); // Papalabas agad sa screen in 0.01 seconds
-        } catch(e) {}
-    }
-    
     try {
-        // ⚡ SPEED FIX 2: GUMAWA NG API POST SA HALIP NA GET (Mas mabilis sa Google Server!)
-        let res = await apiPost("getPendingWorkload", { 
+        // 🟢 FIX 1: Ginamit natin ang TAMANG action name na nasa Code.gs ("getPendingWorkload")
+        let res = await apiGet("getPendingWorkload", { 
             facility: currentUser.facility, 
-            role: currentUser.role
+            role: currentUser.role,
+            _t: new Date().getTime() 
         }); 
 
+        // 🟢 FIX 2: Tugma na sa binabato ng backend (res.pending at res.encoded)
         if (res && (res.pending || res.encoded)) {
             window.pendingData = res.pending || [];
-            window.completedData = res.encoded || []; 
-            
-            // I-save sa background memory para instant sa susunod
-            sessionStorage.setItem('workspaceCache_' + currentUser.username, JSON.stringify({
-                pending: window.pendingData,
-                encoded: window.completedData
-            }));
-
-            // Tahimik na i-update ang listahan
+            window.completedData = res.encoded || []; // 'encoded' pala ang term mo para sa completed!
             renderLists();
+        } else {
+            console.error("Backend returned empty data.");
         }
     } catch(e) { 
         console.error("Refresh Error:", e); 
@@ -909,7 +1025,36 @@ function renderLists() {
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
 
+async function saveAndPrintResult(id, safeId, btn) {
+    const inputs = document.querySelectorAll('.res-' + safeId); 
+    const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+    let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+    let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+    let tCodePrint = getTestCodeFromName(item.test);
+    
+    if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
+        if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
+    }
+    
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+    const oldText = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
+    try {
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        if (res.status === "success") {
+            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
+            
+            await loadPendingData(); // I-refresh ang lists para malipat sa Completed
+            
+            // Auto trigger ng Print Preview
+            printDirect(null, id, tCodePrint); 
+        }
+    } catch (err) { 
+        btn.disabled = false; btn.innerHTML = oldText; 
+        showAppAlert("Error", "Failed to save and print.", "error");
+    }
+}
 
 async function moveToPendingRepeat(idStr) {
     const item = window.completedData.find(i => String(i.id) === String(idStr)); if(!item) return;
@@ -1269,14 +1414,13 @@ function printRegistryLogbook() {
     setTimeout(() => { printWin.print(); printWin.close(); }, 800);
 }
 
-// ==========================================
-// SILENT SETTINGS LOADER (NO ANNOYING POP-UPS)
-// ==========================================
+
 async function loadSettingsData() { 
     try {
+        // 🟢 BAGO: GINAWANG apiPost PARA PUMASOK SA TAMA SA BACKEND 🟢
         const res = await apiPost("getSettingsData", {}); 
         
-        if (res && res.status === "success") {
+        if (res.status === "success") {
             const data = res.data;
             globalStaffList = data.staff || [];
             globalFacilityList = data.facilities || [];
@@ -1295,14 +1439,14 @@ async function loadSettingsData() {
                 }
             });
         } else {
-            // 🟢 FIX: Tinanggal natin ang showAppAlert dito.
-            // Kapag nag-hiccup ang Google server, mananahimik na lang ang app sa halip na mag-pop up.
-            console.warn("Settings background sync delayed. Will automatically retry later.");
+            showAppAlert("Error", "Failed to load settings. Please try again.", "error");
         }
     } catch(e) { 
-        console.warn("Settings Load Error: ", e); 
+        console.log("Settings Load Error: ", e); 
     } 
 }
+
+
 
 function renderSettings(users) { 
     const uList = document.getElementById('list-users'); 
@@ -1682,6 +1826,78 @@ async function submitStaffRegister() {
     finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
+// ==========================================
+// 🟢 INSTANT CLIENT-SIDE PRINTING (A5 & NTP)
+// ==========================================
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName);
+    
+    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    
+    try { 
+        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+        if (!globalStaffList || globalStaffList.length === 0) {
+            await loadSettingsData(); 
+        }
+        if (res.status === "success" && res.data) { 
+            const printData = res.data;
+            let finalHtml = "";
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM";
+            
+            if (printData.type === "HTML") { finalHtml = printData.content; } 
+            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+            else { finalHtml = localGenerateA5Html(printData.content); }
+            
+            // 🟢 BAGO: Papasok na ang Result Form sa Pop-up!
+            showPrintModal(finalHtml); 
+        } else { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+        } 
+    } catch (err) { 
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    } 
+}
+async function batchPrint() {
+    const checked = document.querySelectorAll('.chk-reg:checked');
+    if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+
+    let requests = [];
+    checked.forEach(chk => {
+        const rowData = JSON.parse(decodeURIComponent(chk.value));
+        const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE'));
+        const tCode = rowData[codeCol];
+        requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
+    });
+
+    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+
+    try {
+        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
+        if (!globalStaffList || globalStaffList.length === 0) {
+            await loadSettingsData(); 
+        }
+        if (res.status === "success" && res.data) {
+            const printData = res.data;
+            let finalHtml = "";
+            const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+            
+            if (printData.type === "HTML") { finalHtml = printData.content; } 
+            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+            else { finalHtml = localGenerateA5Html(printData.content); }
+            
+            // 🟢 BAGO: Papasok na ang Batch Form sa Pop-up!
+            showPrintModal(finalHtml);
+        } else { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); 
+        }
+    } catch (err) { 
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    }
+}
+
 async function downloadDirect(e, id, testName) {
     if(e) e.stopPropagation(); 
     showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info");
@@ -1695,7 +1911,57 @@ async function batchDownload() {
     batchPrint(); 
 }
 
+async function batchSaveResults(isPrint) {
+    const checked = document.querySelectorAll('.chk-pending:checked');
+    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
 
+    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
+    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
+    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+
+    let successCount = 0; let printRequests = [];
+
+    for (let chk of checked) {
+        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+        const inputs = document.querySelectorAll('.res-' + safeId);
+
+        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+        let tCodePrint = getTestCodeFromName(item.test);
+
+        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
+
+        try {
+            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+            if (res.status === "success") { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); }
+        } catch(e) {}
+    }
+
+    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
+    await loadPendingData();
+
+    if (isPrint && printRequests.length > 0) {
+        // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+        try {
+            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
+            if (res.status === "success" && res.data) {
+                const printData = res.data; let finalHtml = "";
+                const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+                if (printData.type === "HTML") { finalHtml = printData.content; } 
+                else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+                else { finalHtml = localGenerateA5Html(printData.content); }
+                
+                // 🟢 BAGO: Papasok na ang Batch Form sa Pop-up!
+                showPrintModal(finalHtml);
+            } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
+        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
+    }
+}
+// 🟢 Taga-process ng data para sa NTP Form
 // 🟢 Taga-process ng data para sa NTP Form
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
@@ -2123,9 +2389,7 @@ function localGenerateNTPHtml(patientsArray) {
         <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
         <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
     </div>
-    ${combinedHtml}
-    ${(String(currentUser.role).toUpperCase() === 'ADMIN' || String(currentUser.role).toUpperCase() === 'STAFF') ? '<script>setTimeout(function(){ window.print(); }, 800);</script>' : ''}
-    </body></html>`;
+    ${combinedHtml}</body></html>`;
 }
 
 function localGenerateA5Html(patientsArray) {
@@ -2308,9 +2572,7 @@ function localGenerateA5Html(patientsArray) {
         <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
         <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
     </div>
-    ${combinedHtml}
-    ${(String(currentUser.role).toUpperCase() === 'ADMIN' || String(currentUser.role).toUpperCase() === 'STAFF') ? '<script>setTimeout(function(){ window.print(); }, 800);</script>' : ''}
-    </body></html>`;
+    ${combinedHtml}</body></html>`;
 }
 
 function showPrintModal(htmlContent) {
@@ -2323,26 +2585,24 @@ function showPrintModal(htmlContent) {
         modal.style.left = '0';
         modal.style.width = '100vw';
         modal.style.height = '100vh';
+        // 🟢 BAGO: Medyo pinalinaw natin yung itim para makita mo yung app sa likod
         modal.style.backgroundColor = 'rgba(0,0,0,0.6)'; 
         modal.style.zIndex = '999999';
         modal.style.display = 'flex';
+        // 🟢 BAGO: Ise-center natin ang box sa gitna ng screen
         modal.style.alignItems = 'center';      
         modal.style.justifyContent = 'center';  
         
-        // 🟢 BAGO: Kapag kinlick ang maitim na background sa labas, magsasara din agad!
-        modal.onclick = function(e) {
-            if (e.target === modal) window.closePrintModal();
-        };
-
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
+        // 🟢 BAGO: Dito natin ginawang parang Windows Print Dialog (Hindi sagad sa dulo)
         iframe.style.width = '90%';
-        iframe.style.maxWidth = '1100px'; 
+        iframe.style.maxWidth = '1100px'; // Para hindi rin sobrang lapad sa malalaking monitor
         iframe.style.height = '90%';
-        iframe.style.maxHeight = '850px'; 
+        iframe.style.maxHeight = '850px'; // Para hindi sagad sa ilalim
         iframe.style.border = 'none';
-        iframe.style.borderRadius = '12px'; 
-        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; 
+        iframe.style.borderRadius = '12px'; // Curved corners para mas modern
+        iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; // Shadow para lutang na lutang
         iframe.style.backgroundColor = '#e2e8f0';
         
         modal.appendChild(iframe);
@@ -2351,7 +2611,6 @@ function showPrintModal(htmlContent) {
     
     modal.style.display = 'flex';
     
-    // 🟢 FIX: Nilagyan ng backslash (\) para hindi magdoble ang parenthesis at gumana ang Close Button!
     const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
     const iframe = document.getElementById('print-iframe');
@@ -2359,353 +2618,3 @@ function showPrintModal(htmlContent) {
     iframe.contentWindow.document.write(safeHtml);
     iframe.contentWindow.document.close();
 }
-
-// ==========================================
-// ⚡ SUPER SPEED FIX: Instant Local Printing
-// ==========================================
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName);
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
-    
-    // 🟢 FIX: Kunin na lang sa local data para instant, wag nang maghintay sa server!
-    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
-
-    if (item) {
-        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-        let resultsArr = [];
-        for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
-
-        let patientData = {
-            id: item.patientId, name: item.name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
-            facility: detailsObj.facility || detailsObj.Facility || item.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
-            dateRequest: item.date ? new Date(item.date).toLocaleDateString() : TODAY_STR, 
-            dateExamined: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-            dateResult: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-            testCode: item.id, testName: item.test,
-            encoder: item.encoder || "System", verifier: "", results: resultsArr
-        };
-
-        const isNTP = correctCode === "GXP" || correctCode === "DSSM";
-        let finalHtml = isNTP ? localGenerateNTPHtml([patientData]) : localGenerateA5Html([patientData]);
-        showPrintModal(finalHtml);
-    } else {
-        // Fallback: Kapag wala sa local cache (e.g. galing Registry), tsaka lang tatawag sa server
-        try { 
-            const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
-            if (res.status === "success" && res.data) { 
-                let printData = res.data;
-                let finalHtml = printData.type === "HTML" ? printData.content : ((correctCode === "GXP" || correctCode === "DSSM") ? localGenerateNTPHtml(printData.content) : localGenerateA5Html(printData.content));
-                showPrintModal(finalHtml); 
-            } else { showPrintModal('<h2 style="text-align:center;">Document not found.</h2>'); } 
-        } catch (err) { showPrintModal('<h2 style="text-align:center;">Print Error.</h2>'); } 
-    }
-}
-
-// ⚡ SUPER SPEED FIX: Magpa-pop up ang form habang tahimik na nagse-save ang server
-async function saveAndPrintResult(id, safeId, btn) {
-    const inputs = document.querySelectorAll('.res-' + safeId); 
-    const item = window.pendingData.find(d => String(d.id) === String(id).trim());
-    let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-    let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-    let tCodePrint = getTestCodeFromName(item.test);
-    
-    if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) {
-        if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; }
-    }
-    
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-    btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
-
-    // 🟢 FIX: Ilalabas natin AGAD ang form para walang delay sa mata mo!
-    let resultsArr = [];
-    let finalDetails = { ...detailsObj, ...newResults };
-    for (let key in finalDetails) { resultsArr.push({ param: key, res: finalDetails[key] }); }
-    
-    let patientData = {
-        id: item.patientId, name: item.name || finalDetails.name || "", age: finalDetails.age || finalDetails.Age || "", sex: finalDetails.sex || finalDetails.Sex || "",
-        facility: finalDetails.facility || finalDetails.Facility || "", address: finalDetails.address || finalDetails.Address || "", contact: finalDetails.contact || finalDetails.Contact || "",
-        dateRequest: TODAY_STR, dateExamined: TODAY_STR, dateResult: TODAY_STR, testCode: item.id, testName: item.test,
-        encoder: currentUser.fullName || currentUser.username, verifier: "", results: resultsArr
-    };
-    
-    const isNTP = tCodePrint === "GXP" || tCodePrint === "DSSM";
-    let finalHtml = isNTP ? localGenerateNTPHtml([patientData]) : localGenerateA5Html([patientData]);
-    showPrintModal(finalHtml); 
-
-    // Hayaan lang nating tapusin ng server ang pag-save sa background
-    apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test })
-    .then(res => {
-        if (res.status === "success") {
-            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
-            loadPendingData(); 
-        }
-    }).catch(err => {
-        btn.disabled = false; btn.innerHTML = "Save Error"; 
-        showAppAlert("Error", "Failed to save to server. Please try again.", "error");
-    });
-}
-
-async function batchSaveResults(isPrint) {
-    const checked = document.querySelectorAll('.chk-pending:checked');
-    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
-
-    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]');
-    const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
-    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-    if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-
-    let successCount = 0; let printRequests = [];
-
-    for (let chk of checked) {
-        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
-        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
-        const inputs = document.querySelectorAll('.res-' + safeId);
-
-        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
-        let tCodePrint = getTestCodeFromName(item.test);
-
-        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = JSON.stringify({ ...detailsObj, ...newResults });
-
-        try {
-            const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-            if (res.status === "success") { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); }
-        } catch(e) {}
-    }
-
-    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success");
-    
-    // ⚡ SPEED FIX: Background refresh na lang, walang await
-    loadPendingData();
-
-    if (isPrint && printRequests.length > 0) {
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-        try {
-            const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
-            if (res.status === "success" && res.data) {
-                const printData = res.data; let finalHtml = "";
-                const firstTestCode = printRequests[0].testName;
-                const isNTP = firstTestCode === "GXP" || firstTestCode === "DSSM";
-                
-                if (printData.type === "HTML") { finalHtml = printData.content; } 
-                else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-                else { finalHtml = localGenerateA5Html(printData.content); }
-                
-                showPrintModal(finalHtml);
-            } else { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); }
-        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
-    }
-}
-
-// ⚡ SPEED FIX: Inalis ang redundant settings download sa Batch Print
-async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked');
-    if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-
-    let requests = [];
-    checked.forEach(chk => {
-        const rowData = JSON.parse(decodeURIComponent(chk.value));
-        const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE'));
-        const tCode = rowData[codeCol];
-        requests.push({ testCode: tCode, testName: window.CURRENT_TEST_TYPE });
-    });
-
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-
-    try {
-        const res = await apiPost("printFromRegistry", { requests: requests, role: currentUser.role });
-        
-        if (res.status === "success" && res.data) {
-            const printData = res.data;
-            let finalHtml = "";
-            const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
-            
-            if (printData.type === "HTML") { finalHtml = printData.content; } 
-            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-            else { finalHtml = localGenerateA5Html(printData.content); }
-            
-            showPrintModal(finalHtml);
-        } else { 
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error generating print view.</h2>'); 
-        }
-    } catch (err) { 
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
-    }
-} // <--- TAMA: Dito dapat sarado na ang batchPrint()
-
-// ==========================================
-// ⚡ INSTANT SEARCH (AS YOU TYPE, ZERO DELAY)
-// ==========================================
-let isFetchingCache = false; 
-
-async function loadPatientCache() {
-    if (isFetchingCache || cachedPatients.length > 0) return; 
-    isFetchingCache = true;
-    try {
-        const res = await apiPost("getAllPatientsLight", {});
-        if (res && res.status === "success") {
-            cachedPatients = res.data || [];
-            console.log("⚡ Database Loaded: " + cachedPatients.length + " patients.");
-        }
-    } catch(e) { 
-        console.error("Cache load failed"); 
-    } finally {
-        isFetchingCache = false;
-    }
-}
-
-// 🟢 Taga-Pili ng Patient mula sa Resulta
-function selectPatientFromSearch(pid) {
-    const p = cachedPatients.find(x => String(x.id) === String(pid));
-    if(!p) return;
-    
-    isExistingPatient = true; 
-    document.getElementById('finalPatientId').value = p.id; 
-    document.getElementById('p_name').value = p.name || ""; 
-    document.getElementById('p_age').value = p.age || ""; 
-    document.getElementById('p_address').value = p.address || ""; 
-    document.getElementById('p_contact').value = p.contact || ""; 
-    if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
-    
-    setSelectValue('p_sex', p.sex); 
-    setSelectValue('p_facility', p.facility || p.Facility);
-    
-    if (p.bday) { 
-        try { 
-            const d = new Date(p.bday); 
-            document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
-        } catch(e){} 
-    }
-    
-    document.getElementById('direct-results-box').style.display = 'none'; 
-    document.getElementById('new-entry-header').style.display = 'none'; 
-    document.getElementById('profile-header').style.display = 'flex';
-    fetchHistory(p.id, 'history-section', 'history-list'); 
-}
-
-// 🟢 Mabilis at Ligtas na Search
-async function runDirectSearch(q) {
-    const box = document.getElementById('direct-results-box'); 
-    if(!q || q.length < 2) { box.style.display='none'; return; }
-    
-    // Download agad kung walang laman
-    if (cachedPatients.length === 0) {
-        box.style.display = 'block'; 
-        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Downloading Masterlist...</div>`;
-        await loadPatientCache(); 
-    }
-
-    // Kung pagkatapos idownload ay wala pa rin, itago ang box.
-    if(cachedPatients.length === 0) { box.style.display = 'none'; return; }
-    
-    const query = q.toLowerCase();
-    
-    // 🟢 SAFE FILTER: Nilagyan natin ng p.name check para HINDI MAG-CRASH kapag may blangkong tao sa Excel!
-    const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 8);
-    
-    if (results.length > 0) {
-        box.style.display = 'block'; 
-        let html = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide</button></div>`;
-        
-        results.forEach(p => {
-            html += `<div class="search-item" onclick="selectPatientFromSearch('${p.id}')">
-                        <div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div>
-                        <div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || p.Facility || 'N/A'}</div>
-                     </div>`;
-        });
-        box.innerHTML = html;
-    } else { 
-        box.style.display = 'none'; 
-    }
-}
-
-async function runQuickSearch(q) {
-    const box = document.getElementById('quick-search-results'); 
-    if(!q || q.length < 2) { box.style.display='none'; return; }
-    
-    if (cachedPatients.length === 0) {
-        box.style.display = 'block'; 
-        box.innerHTML = `<div style="padding:10px; text-align:center; color:var(--pri); font-size:0.8rem;"><i class="ph ph-spinner ph-spin"></i> Downloading Masterlist...</div>`;
-        await loadPatientCache();
-    }
-
-    if(cachedPatients.length === 0) { box.style.display = 'none'; return; }
-
-    const query = q.toLowerCase();
-    const results = cachedPatients.filter(p => p.name && p.name.toLowerCase().includes(query)).slice(0, 15);
-    
-    if (results.length > 0) {
-        box.style.display = 'block'; box.innerHTML = '';
-        results.forEach(p => {
-            const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'N/A'}</div>`;
-            div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; 
-            box.appendChild(div);
-        });
-    } else { 
-        box.style.display = 'none'; 
-    }
-}
-
-function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
-
-async function viewQuickProfile(p) {
-    currentQuickPatient = p; 
-    document.getElementById('quick-profile-view').style.display = 'flex'; 
-    document.getElementById('quick-profile-view').style.flexDirection = 'column';
-    document.getElementById('qs-name').innerText = p.name; 
-    document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
-    
-    fetchHistory(p.id, null, 'qs-history-list', true, false); 
-    
-    if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
-        const qsList = document.getElementById('qs-history-list');
-        const observer = new MutationObserver(() => {
-            const cards = qsList.querySelectorAll('.history-card');
-            cards.forEach(card => {
-                const content = card.innerText.toUpperCase();
-                if (content.includes('VIRAL LOAD') || content.includes('GXVL') || content.includes('HIV-1')) {
-                    card.remove(); 
-                }
-            });
-        });
-        observer.observe(qsList, { childList: true, subtree: true });
-    }
-}
-
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
-function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
-
-
-// ==========================================
-// ⚡ SAFE EVENT BINDING (AS YOU TYPE + ANTI-SPAM)
-// ==========================================
-let typingTimer;
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Para puwersahang patayin ang lumang search commands na nasa HTML
-    setTimeout(() => {
-        const el1 = document.getElementById('p_name');
-        const el2 = document.getElementById('quick-search-input');
-        if(el1) { el1.removeAttribute('onkeyup'); el1.removeAttribute('oninput'); }
-        if(el2) { el2.removeAttribute('onkeyup'); el2.removeAttribute('oninput'); }
-    }, 1000);
-});
-
-// Babasahin niya bawat pindot mo!
-document.addEventListener('input', function(e) {
-    if (e.target && e.target.id === 'p_name') {
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => {
-            runDirectSearch(e.target.value);
-        }, 300); // Wait 0.3s before filtering para smooth
-    }
-    if (e.target && e.target.id === 'quick-search-input') {
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => {
-            runQuickSearch(e.target.value);
-        }, 300);
-    }
-});
