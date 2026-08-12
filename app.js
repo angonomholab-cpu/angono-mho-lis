@@ -398,13 +398,10 @@ function setSelectValue(id, val) { const el = document.getElementById(id); if (!
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if(isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if(name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length-1][0] : name.substring(0,2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random()*90+10)}`; }
 
-// ==========================================
-// 🟢 BAGO: INSTANT SEARCH FUNCTIONS (LOCAL CACHE)
-// ==========================================
-
 async function loadPatientCache() {
     try {
-        const res = await apiGet("getAllPatientsLight");
+        // 🟢 FIX: Gawing apiPost para palaging fresh at hindi i-cache ng Vercel
+        const res = await apiPost("getAllPatientsLight", {});
         if (res.status === "success") {
             cachedPatients = res.data;
             console.log("⚡ Instant Search Ready: Loaded " + cachedPatients.length + " patients locally.");
@@ -2680,4 +2677,33 @@ async function batchPrint() {
     } catch (err) { 
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
     }
+    // ==========================================
+// ⚡ FORCE INSTANT SEARCH OVERRIDE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // I-delay nang kaunti ang pagkabit para sigurado na tapos na mag-render ang HTML
+    setTimeout(() => {
+        // I-target ang mga search input box
+        // TANDAAN: I-check kung 'p_name' nga ang ID ng search box mo sa New Entry
+        const newEntrySearch = document.getElementById('p_name'); 
+        const quickSearchInput = document.getElementById('quick-search-input');
+
+        // Sapilitang tanggalin ang delay (setTimeout) at lumang functions mula sa HTML
+        if (newEntrySearch) {
+            newEntrySearch.removeAttribute('onkeyup');
+            newEntrySearch.removeAttribute('oninput');
+            newEntrySearch.addEventListener('input', (e) => {
+                runDirectSearch(e.target.value);
+            });
+        }
+
+        if (quickSearchInput) {
+            quickSearchInput.removeAttribute('onkeyup');
+            quickSearchInput.removeAttribute('oninput');
+            quickSearchInput.addEventListener('input', (e) => {
+                runQuickSearch(e.target.value);
+            });
+        }
+    }, 2000); 
+});
 }
