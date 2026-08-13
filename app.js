@@ -2554,10 +2554,7 @@ function localGenerateA5Html(patientsArray) {
                 margin: 0 auto !important; 
                 padding: 4mm 10mm !important; /* Dito mo i-adjust ang space sa loob */
                 border: none !important; 
-                box-shadow: none !important; 
-                
-                /* 🟢 3. MAGIC CHEAT CODE: Babaan ito kung putol ang footer (e.g., 0.95 o 0.90) */
-                zoom: 0.95; 
+                box-shadow: none !important;  
                 
                 overflow: visible !important; /* Para laging lumabas ang text kahit sumagad */
                 page-break-after: always;
