@@ -2376,31 +2376,38 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 DYNAMIC FIT TO ANY PAPER (A4, A5, ETC.) 🟢 */
+        /* 🟢 AUTOMATIC PAPER DETECTOR (A4 vs A5) 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
-            /* 'auto' tells the browser to use whatever paper size you select in the printer dialog */
+            /* Hayaan ang printer na mag-decide ng size */
             @page { size: auto; margin: 5mm; } 
             
             .page-container { 
-                width: 100% !important; 
-                max-width: 100% !important;
-                height: 97vh !important; /* Binabanat ang form pataas at pababa para sumakto sa papel */
-                max-height: 97vh !important;
+                /* Naka-fix ang drawing base para hindi masira ang porma ng text at table */
+                width: 200mm !important; 
+                min-height: 275mm !important; 
                 margin: 0 auto !important; 
-                padding: 5mm !important; 
+                padding: 10mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
-                
-                zoom: 1 !important; 
                 
                 overflow: hidden !important; 
                 page-break-after: always;
                 page-break-inside: avoid;
+                
+                /* 🟢 A4 SCALING: Saktong 96% gaya ng timpla mo para hindi putok */
+                zoom: 0.96 !important; 
             } 
             .page-break { display: none !important; } 
+        }
+
+        /* 🟢 A5 SCALING DETECTOR: Kapag A5 ang papel sa printer (148mm width), magiging 65% kusa! */
+        @media print and (max-width: 160mm) {
+            .page-container {
+                zoom: 0.65 !important; /* Saktong 65% para kasya lahat sa A5 */
+            }
         }
     </style>
     </head><body>
