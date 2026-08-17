@@ -1967,7 +1967,10 @@ async function batchSaveResults(isPrint) {
             const res = await apiPost("printFromRegistry", { requests: printRequests, role: currentUser.role });
             if (res.status === "success" && res.data) {
                 const printData = res.data; let finalHtml = "";
-                const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+                // 🟢 FIX: Kukunin na natin ang Test Type mismo sa pinili mong item
+                const firstTestCode = printRequests[0].testName; 
+                const isNTP = firstTestCode === "GXP" || firstTestCode === "DSSM";
+                
                 if (printData.type === "HTML") { finalHtml = printData.content; } 
                 else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
                 else { finalHtml = localGenerateA5Html(printData.content); }
@@ -2327,7 +2330,7 @@ function localGenerateNTPHtml(patientsArray) {
         .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
 
         /* 🟢 LINAWAKAN ANG VIEW SA SCREEN PARA DI NARROW */
-        .page-container { width: 200mm; max-width: 100%; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-left: auto; margin-right: auto; }
 
         .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
@@ -2373,21 +2376,21 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 AUTOMATIC FIT-TO-PAGE PARA SA PRINTER 🟢 */
+        /* 🟢 DYNAMIC FIT TO ANY PAPER (A4, A5, ETC.) 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
-            /* Pinipilit ang printer na i-Portrait at walang margin sa gilid para flexible */
-            @page { size: portrait; margin: 0; } 
+            /* 'auto' tells the browser to use whatever paper size you select in the printer dialog */
+            @page { size: auto; margin: 5mm; } 
             
             .page-container { 
                 width: 100% !important; 
                 max-width: 100% !important;
-                height: 98vh !important; /* Pilitin isakto ang taas sa current paper size ng printer mo */
-                max-height: 98vh !important;
+                height: 97vh !important; /* Binabanat ang form pataas at pababa para sumakto sa papel */
+                max-height: 97vh !important;
                 margin: 0 auto !important; 
-                padding: 10mm !important; /* Space sa luob para di dumikit ang text sa dulo ng papel */
+                padding: 5mm !important; 
                 border: none !important; 
                 box-shadow: none !important; 
                 
