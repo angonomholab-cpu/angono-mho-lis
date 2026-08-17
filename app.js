@@ -2326,7 +2326,8 @@ function localGenerateNTPHtml(patientsArray) {
         .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; }
         .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; }
 
-        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* 🟢 LINAWAKAN ANG VIEW SA SCREEN PARA DI NARROW */
+        .page-container { width: 200mm; max-width: 100%; height: auto; min-height: 275mm; padding: 10mm 10mm 15mm 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
         .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; }
@@ -2372,30 +2373,29 @@ function localGenerateNTPHtml(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
 
-        /* 🟢 FORCED A5 PORTRAIT WITH PROPORTIONAL FIT 🟢 */
+        /* 🟢 AUTOMATIC FIT-TO-PAGE PARA SA PRINTER 🟢 */
         @media print { 
             .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             
-            /* 🟢 1. I-lock ang printer sa A5 Portrait size (Lapad x Taas) */
-            @page { size: 148mm 210mm; margin: 5mm; } 
+            /* Pinipilit ang printer na i-Portrait at walang margin sa gilid para flexible */
+            @page { size: portrait; margin: 0; } 
             
             .page-container { 
-                /* 🟢 2. Panatilihin ang A4 na sukat sa loob para hindi masira ang mga tables */
-                width: 190mm !important; 
-                max-width: 190mm !important;
-                height: auto !important; 
-                min-height: 275mm !important; 
+                width: 100% !important; 
+                max-width: 100% !important;
+                height: 98vh !important; /* Pilitin isakto ang taas sa current paper size ng printer mo */
+                max-height: 98vh !important;
                 margin: 0 auto !important; 
-                padding: 6mm 10mm !important; 
+                padding: 10mm !important; /* Space sa luob para di dumikit ang text sa dulo ng papel */
                 border: none !important; 
                 box-shadow: none !important; 
-                overflow: visible !important; 
+                
+                zoom: 1 !important; 
+                
+                overflow: hidden !important; 
                 page-break-after: always;
                 page-break-inside: avoid;
-                
-                /* 🟢 3. MAGIC: Paliitin nang 70% ang buong A4 design para sumakto sa A5! */
-                zoom: 0.70; 
             } 
             .page-break { display: none !important; } 
         }
