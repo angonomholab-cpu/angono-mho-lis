@@ -1826,38 +1826,55 @@ async function submitStaffRegister() {
     finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
-// ==========================================
-// 🟢 INSTANT CLIENT-SIDE PRINTING (A5 & NTP)
-// ==========================================
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); 
     const correctCode = getTestCodeFromName(testName);
     
-    // 🟢 BAGO: Sa Pop-up na ipapakita ang loading
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
     
-    try { 
-        const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
-        if (!globalStaffList || globalStaffList.length === 0) {
-            await loadSettingsData(); 
-        }
-        if (res.status === "success" && res.data) { 
-            const printData = res.data;
-            let finalHtml = "";
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM";
-            
-            if (printData.type === "HTML") { finalHtml = printData.content; } 
-            else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
-            else { finalHtml = localGenerateA5Html(printData.content); }
-            
-            // 🟢 BAGO: Papasok na ang Result Form sa Pop-up!
-            showPrintModal(finalHtml); 
-        } else { 
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+    // ⚡ INSTANT LOAD MULA SA MEMORY BROWSER MO
+    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
+
+    if (item) {
+        if (!globalStaffList || globalStaffList.length === 0) { await loadSettingsData(); }
+
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+        let resultsArr = [];
+        for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
+
+        let patientData = {
+            id: item.patientId, name: item.name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
+            facility: detailsObj.facility || detailsObj.Facility || item.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
+            dateRequest: item.date ? new Date(item.date).toLocaleDateString() : TODAY_STR, 
+            dateExamined: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+            dateResult: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+            testCode: item.id, testName: item.test,
+            encoder: item.encoder || "System", verifier: "", results: resultsArr
+        };
+
+        const isNTP = correctCode === "GXP" || correctCode === "DSSM";
+        let finalHtml = isNTP ? localGenerateNTPHtml([patientData]) : localGenerateA5Html([patientData]);
+        showPrintModal(finalHtml);
+    } else {
+        // Fallback: Tatawag sa Server kung wala sa local list (ex. lumang records sa Registry tab)
+        try { 
+            const res = await apiPost("printFromRegistry", { requests: [{testCode: id, testName: correctCode}], role: currentUser.role }); 
+            if (!globalStaffList || globalStaffList.length === 0) { await loadSettingsData(); }
+            if (res.status === "success" && res.data) { 
+                const printData = res.data;
+                let finalHtml = "";
+                const isNTP = correctCode === "GXP" || correctCode === "DSSM";
+                if (printData.type === "HTML") { finalHtml = printData.content; } 
+                else if (isNTP) { finalHtml = localGenerateNTPHtml(printData.content); } 
+                else { finalHtml = localGenerateA5Html(printData.content); }
+                showPrintModal(finalHtml); 
+            } else { 
+                showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+            } 
+        } catch (err) { 
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
         } 
-    } catch (err) { 
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
-    } 
+    }
 }
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked');
@@ -2552,11 +2569,13 @@ function localGenerateA5Html(patientsArray) {
                 height: 148mm !important; 
                 max-height: 148mm !important;
                 margin: 0 auto !important; 
-                padding: 4mm 10mm !important; /* Dito mo i-adjust ang space sa loob */
+                padding: 4mm 10mm !important;
                 border: none !important; 
-                box-shadow: none !important;  
+                box-shadow: none !important; 
                 
-                overflow: visible !important; /* Para laging lumabas ang text kahit sumagad */
+                zoom: 1.05 !important; /* 🟢 ITO YUNG 105% SCALE NA HINAHANAP MO */
+                
+                overflow: visible !important; 
                 page-break-after: always;
                 page-break-inside: avoid;
             } 
@@ -2615,3 +2634,10 @@ function showPrintModal(htmlContent) {
     iframe.contentWindow.document.write(safeHtml);
     iframe.contentWindow.document.close();
 }
+// 🟢 PANG-CLOSE NG PRINT MODAL
+window.closePrintModal = function() {
+    const modal = document.getElementById('print-modal-overlay');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
