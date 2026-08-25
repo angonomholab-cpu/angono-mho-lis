@@ -266,32 +266,35 @@ function applyPermissions() {
     else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex'; 
         
-        // 🟢 RESTRICTION: Tago lahat maliban sa GXP, DSSM (At Serology para sa NTP Checker)
-        document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
+        // 🟢 FIX: Hanapin lahat ng tabs/chips sa Registry at i-filter nang maayos
+        document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || ''; 
+            
+            // Itago muna ang LAHAT ng sections sa Registry
+            card.style.display = 'none'; 
+            
             if (role === 'NTP_CHECKER') {
-                if (!attr.includes('GXP') && !attr.includes('DSSM') && !attr.includes('SERO')) {
-                    card.style.display = 'none'; 
+                // I-restore/Ipakita lang kapag GXP, DSSM, o SERO
+                if (attr.includes('GXP') || attr.includes('DSSM') || attr.includes('SERO')) {
+                    card.style.display = ''; 
                 }
             } else { // DOH_TB
-                if (!attr.includes('GXP') && !attr.includes('DSSM')) {
-                    card.style.display = 'none'; 
+                // I-restore/Ipakita lang kapag GXP o DSSM
+                if (attr.includes('GXP') || attr.includes('DSSM')) {
+                    card.style.display = ''; 
                 }
             }
         });
         
-        if(role === 'NTP_CHECKER') { 
-            document.querySelectorAll('.chip-group .chip').forEach(chip => { 
-                if (chip.getAttribute('onclick') && !chip.getAttribute('onclick').includes('tb')) chip.style.display = 'none'; 
-            }); 
-            if(typeof switchTab === 'function') switchTab('tb'); 
-        }
+        // 🟢 BONUS FIX: Para hindi blangko ang table pag-login, auto-load ang GeneXpert
+        setTimeout(() => { 
+            if(typeof openRegistryTab === 'function') openRegistryTab('GXP', 1); 
+        }, 800);
     }
 
     // 🟢 VIRAL LOAD STRICTLY ADMIN ONLY 🟢
-    // Kapag hindi ADMIN, itatago lang ang GXVL. Ang SERO ay bukas na sa Staff/Viewer/NTP!
     if (role !== 'ADMIN') {
-        document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => { 
+        document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn').forEach(card => { 
             const attr = card.getAttribute('onclick') || '';
             if(attr.includes('GXVL')) {
                 card.style.display = 'none'; 
