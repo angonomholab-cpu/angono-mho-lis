@@ -1114,12 +1114,14 @@ function getResultTemplate(code, safeId, item) {
      case 'FA': return `<div class="form-grid grid-2">${select('Color','Color',['Brown','Yellow','Green','Black','Red'])}${select('Consistency','Consistency',['Formed','Soft','Loose','Watery'])}<div class="full-width">${input('parasite','Parasite')}</div>${input('RBC','RBC')}${input('WBC','WBC')}</div>${rem}`;
      case 'GRAM': return `<div class="form-grid grid-2"><div class="full-width font-bold" style="color:var(--pri);">Gram Positive</div>${input('GP_Quantity','Qty')}${input('GP_Morphology','Morph')}${input('GP_Arrangement','Arrange')}<div class="full-width font-bold" style="color:var(--sec); margin-top:8px;">Gram Negative</div>${input('GN_Quantity','Qty')}${input('GN_Morphology','Morph')}${input('GN_Arrangement','Arrange')}</div>${rem}`;
      case 'SERO': return `<div class="form-grid grid-3">${select('HIV','HIV',['NONREACTIVE','REACTIVE'],['HIV','SERO'])}${select('HBSAG','HBsAg',['NONREACTIVE','REACTIVE'],['HBSAG','SERO'])}${select('SYPHILIS','Syphilis',['NONREACTIVE','REACTIVE'],['SYPHILIS','SERO'])}</div>${rem}`;
-     case 'DENGUE': 
-    return `<div class="form-grid grid-3">
-        ${select('Dengue_Result', 'Dengue NS1', ['', 'Negative', 'Positive'])}
-        ${select('Dengue_IgG', 'Dengue IgG', ['', 'Negative', 'Positive'])}
-        ${select('Dengue_IgM', 'Dengue IgM', ['', 'Negative', 'Positive'])}
-    </div>${rem}`;
+          case 'DENGUE': {
+        let showDuo = req.includes('DUO');
+        return `<div class="form-grid grid-3">
+            ${select('Dengue_Result', 'Dengue NS1', ['', 'Negative', 'Positive'])}
+            ${showDuo ? select('Dengue_IgG', 'Dengue IgG', ['', 'Negative', 'Positive']) : ''}
+            ${showDuo ? select('Dengue_IgM', 'Dengue IgM', ['', 'Negative', 'Positive']) : ''}
+        </div>${rem}`;
+     }
      default: return `<div class="form-grid grid-1">${input('Result','Result')}</div>${rem}`;
  }
 }
@@ -2468,7 +2470,25 @@ function localGenerateA5Html(patientsArray) {
         
         if (isViral) { let choiceObj = p.results.find(r => r.param.toUpperCase().includes("CHOIC") || r.param.toUpperCase().includes("RESULT")); let numObj = p.results.find(r => r.param.toUpperCase().includes("NUMB") || r.param.toUpperCase().includes("COPIES")); let resultVal = choiceObj ? choiceObj.res : "N/A"; let copiesVal = numObj ? numObj.res : ""; let logVal = "N/A"; let cleanNum = String(copiesVal).replace(/[^0-9.]/g, ''); if (cleanNum && !isNaN(cleanNum)) { logVal = Math.log10(parseFloat(cleanNum)).toFixed(2); } else if (String(copiesVal).includes("<")) { logVal = "< 1.60"; } mainContent = `<div style="width:90%; margin-top:10px; border:2px solid #000; padding:15px;"><div style="font-weight:bold; font-size:12px; text-decoration:underline; margin-bottom:15px; text-align:center;">HIV-1 VIRAL LOAD QUANTIFICATION</div><table style="width:100%; border:none;"><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">HIV-1 QUALITATIVE RESULT:</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${resultVal}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">RESULT (Copies/mL):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${copiesVal || "N/A"}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">LOG VALUE (log10):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${logVal}</td></tr></table><div style="font-size:8px; font-style:italic; margin-top:15px; text-align:center;">Test Method: Real-Time PCR (GeneXpert). Linear Range: 40 to 10,000,000 copies/mL.</div></div>`; }
         else if (isGram) { const findRes = (keyPart) => { let found = p.results.find(r => r.param.toUpperCase().includes(keyPart)); return (found && found.res && found.res.trim() !== "") ? found.res : "NONE SEEN"; }; let posQuant = findRes("GP_QUANT"); let posMorph = findRes("GP_MORPH"); let posArr = findRes("GP_ARRANG"); let negQuant = findRes("GN_QUANT"); let negMorph = findRes("GN_MORPH"); let negArr = findRes("GN_ARRANG"); mainContent = `<table class="res-table" style="width: 100%; margin-top: 10px;"><thead><tr><th width="20%">TEST</th><th width="20%">QUANTITY</th><th width="30%">MORPHOLOGY</th><th width="30%">ARRANGEMENT</th></tr></thead><tbody><tr><td style="font-weight:bold; padding:8px;">Gram Positive</td><td style="text-align:center;">${posQuant}</td><td style="text-align:center;">${posMorph}</td><td style="text-align:center;">${posArr}</td></tr><tr><td style="font-weight:bold; padding:8px;">Gram Negative</td><td style="text-align:center;">${negQuant}</td><td style="text-align:center;">${negMorph}</td><td style="text-align:center;">${negArr}</td></tr></tbody></table>`; }
-        else if (isDengue) { let resVal = p.results.find(r => r.param.toUpperCase().includes("RESULT") || r.param.toUpperCase().includes("ANTIGEN"))?.res || ""; let color = (resVal.toUpperCase().includes("POS") || resVal.toUpperCase().includes("REACTIVE")) ? "red" : "black"; mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 90%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody><tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE NS1 ANTIGEN</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${color};">${resVal}</td></tr></tbody></table></div>`; }
+        else if (isDengue) { 
+    let resObj = p.results.find(r => r.param.toUpperCase() === "DENGUE_RESULT" || r.param.toUpperCase().includes("ANTIGEN")); 
+    let resVal = resObj ? resObj.res : "";
+    let igg = p.results.find(r => r.param.toUpperCase().includes("IGG"));
+    let igm = p.results.find(r => r.param.toUpperCase().includes("IGM"));
+    let color = (String(resVal).toUpperCase().includes("POS") || String(resVal).toUpperCase().includes("REACTIVE")) ? "red" : "black"; 
+
+    let rows = `<tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE NS1 ANTIGEN</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${color};">${resVal}</td></tr>`;
+    if (igg && igg.res) {
+        let iggColor = String(igg.res).toUpperCase().includes("POS") ? "red" : "black";
+        rows += `<tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE IgG</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${iggColor};">${igg.res}</td></tr>`;
+    }
+    if (igm && igm.res) {
+        let igmColor = String(igm.res).toUpperCase().includes("POS") ? "red" : "black";
+        rows += `<tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE IgM</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${igmColor};">${igm.res}</td></tr>`;
+    }
+
+    mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 90%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody>${rows}</tbody></table></div>`; 
+}
         else if (isSero) {
             let hivRes = p.results.find(r => r.param.toUpperCase().includes("HIV"))?.res;
             let syphRes = p.results.find(r => r.param.toUpperCase().includes("SYPHILIS"))?.res;
