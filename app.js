@@ -38,6 +38,23 @@ const availableTests = {
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
+    if (modal) {
+        const t = document.getElementById('alert-title'); if(t) t.innerText = title;
+        const m = document.getElementById('alert-msg'); if(m) m.innerText = message;
+        const i = document.getElementById('alert-icon');
+        if(i) {
+            i.className = 'ph ' + (type === 'error' ? 'ph-warning-circle' : (type === 'success' ? 'ph-check-circle' : 'ph-info'));
+            i.style.color = type === 'error' ? 'var(--danger)' : (type === 'success' ? 'var(--success)' : 'var(--pri)');
+        }
+        modal.style.display = 'flex';
+    } else {
+        console.log(title, message);
+    }
+}
+
+async function apiGet(action, params = {}) {
+    try {
+        switch (action) {
             case "patientLogin": {
                 const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).eq('password', params.password).maybeSingle();
                 if (error) throw error;
@@ -59,8 +76,6 @@ function showAppAlert(title, message, type = 'info') {
                     bday: p.bday || p.Birthday
                 }))};
             }
-            case "getPatientHistory": {
-                const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
             case "getPatientHistory": {
                 const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
                 if (error) throw error;
