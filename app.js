@@ -1,6 +1,11 @@
 // 🟢 PURE SUPABASE ARCHITECTURE 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
 
+// Fallback just in case hindi kumagat ang index.html setup
+if (!window.sb && window.supabase) {
+    window.sb = window.supabase.createClient('https://mtohvtmupjfdabrrpnii.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b2h2dG11cGpmZGFicnJwbmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njg2MzQsImV4cCI6MjEwNTU0NDYzNH0.lh5n2LY4x9_kyPcgUOdtDUxEpiBClTMDCKNSzQTTH64');
+}
+
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
 let pendingData = [];
@@ -45,24 +50,9 @@ function customConfirm(message, callback) { document.getElementById('custom-conf
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
-// 🟢 BAGO: PURE SUPABASE WRAPPERS 🟢
 async function apiGet(action, params = {}) {
     try {
         switch (action) {
-            case "loginUser": {
-                const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).eq('password', params.password).maybeSingle();
-                if (error) throw error;
-                if (!data) return { status: "FAIL" };
-                if (data.status === "PENDING") return { status: "PENDING" };
-                if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
-                return { status: "SUCCESS", username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username };
-            }
-            case "patientLogin": {
-                const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).eq('password', params.password).maybeSingle();
-                if (error) throw error;
-                if (!data) return { status: "FAIL" };
-                return { status: "SUCCESS", patientId: data.id, name: data.full_name };
-            }
             case "getAllPatientsLight": {
                 const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
                 if (error) throw error;
@@ -219,8 +209,11 @@ async function apiPost(action, payload) {
     } catch (err) { return { status: "error", message: String(err) }; }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initializeAppUI() {
     try {
+        const loader = document.getElementById('app-loader');
+        if (loader) loader.style.display = 'none'; // Force hide loader immediately
+
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
         const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
         const toggleLimit = document.getElementById('toggle-limited-mode');
@@ -230,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedUser = localStorage.getItem('labUser');
         if (savedUser) {
             currentUser = JSON.parse(savedUser);
-            if (!currentUser.username) throw new Error("Invalid");
+            if (!currentUser.username) throw new Error("Invalid User");
             
             document.getElementById('login-overlay').style.display = 'none';
             
@@ -256,12 +249,19 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('login-overlay').style.display = 'flex';
         }
     } catch (e) { 
+        console.error("Init Error:", e);
         localStorage.removeItem('labUser'); 
         document.getElementById('login-overlay').style.display = 'flex'; 
-    } finally { 
-        document.getElementById('app-loader').style.display = 'none'; 
     }
-});
+}
+
+// 🟢 GUARANTEED EXECUTION: Siguradong tatanggalin ang loader 🟢
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAppUI);
+} else {
+    initializeAppUI();
+}
+
 
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 function applyLimitedMode(isLimited) {
@@ -278,16 +278,44 @@ function switchLoginTab(type) {
 }
 
 async function attemptLogin() {
-    const u = document.getElementById('login_user').value.trim(); const p = document.getElementById('login_pass').value.trim();
-    const btn = document.getElementById('btn-login'); const err = document.getElementById('login-error');
+    const u = document.getElementById('login_user').value.trim(); 
+    const p = document.getElementById('login_pass').value.trim();
+    const btn = document.getElementById('btn-login'); 
+    const err = document.getElementById('login-error');
+    
     if (!u || !p) { err.style.display = 'block'; err.innerText = "Enter credentials."; return; }
+    
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     
     try {
-        const res = await apiGet("loginUser", { username: u, password: p });
-        if (res.status === "SUCCESS") { currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
-        else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
-    } catch (e) { showAppAlert("Error", "Server Error.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
+        // DIRECT SUPABASE CALL PARA MAKITA ANG EKSAKTONG ERROR
+        const { data, error } = await sb.from('app_users').select('*').ilike('username', u).eq('password', p).maybeSingle();
+        
+        if (error) {
+            // IPAPALABAS ANG SUPABASE ERROR MESSAGE
+            showAppAlert("Database Error", "Supabase says: " + error.message + "\n\nCheck if your column names match exactly: username, password, status, role, facility, full_name (all lowercase).", "error");
+            err.style.display = 'block'; err.innerHTML = "DB Error. Please check popup.";
+        } 
+        else if (!data) {
+            err.style.display = 'block'; err.innerHTML = "Invalid username or password.";
+        } 
+        else if (data.status === "PENDING") { 
+            err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; 
+        } 
+        else if (data.status === "REJECTED" || data.status === "BANNED") { 
+            err.style.display = 'block'; err.innerHTML = "Account Blocked."; 
+        } 
+        else { 
+            currentUser = { username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username }; 
+            localStorage.setItem('labUser', JSON.stringify(currentUser)); 
+            window.location.reload(); 
+        }
+    } catch (e) { 
+        showAppAlert("Critical Error", String(e), "error"); 
+        err.style.display = 'block'; err.innerHTML = "System Error.";
+    } finally { 
+        btn.innerHTML = 'Log In'; btn.disabled = false; 
+    }
 }
 
 async function attemptPatientLogin() {
@@ -297,10 +325,18 @@ async function attemptPatientLogin() {
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     
     try {
-        const res = await apiGet("patientLogin", { email: e, password: p });
-        if (res.status === "SUCCESS") { currentUser = { username: res.patientId, facility: "PATIENT", role: "PATIENT", fullName: res.name }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
-        else { err.style.display = 'block'; err.innerHTML = "Invalid credentials."; }
-    } catch (err) { err.style.display = 'block'; err.innerHTML = "Server Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
+        const { data, error } = await sb.from('patients').select('*').ilike('email', e).eq('password', p).maybeSingle();
+        if (error) {
+            showAppAlert("Database Error", "Supabase says: " + error.message, "error");
+            err.style.display = 'block'; err.innerHTML = "DB Error.";
+        } else if (!data) {
+            err.style.display = 'block'; err.innerHTML = "Invalid credentials.";
+        } else {
+            currentUser = { username: data.id, facility: "PATIENT", role: "PATIENT", fullName: data.full_name }; 
+            localStorage.setItem('labUser', JSON.stringify(currentUser)); 
+            window.location.reload(); 
+        }
+    } catch (errObj) { err.style.display = 'block'; err.innerHTML = "System Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
 }
 
 function showPatientResend() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-resend-card').style.display = 'block'; }
@@ -911,7 +947,6 @@ async function generateReport() {
     const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; 
     
     try { 
-        // 🟢 PURE SUPABASE REPORTS: Nagbabasa diretso sa database at compute sa frontend
         let q = sb.from('lab_tests').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
         if(targetFacility !== "ALL") q = q.eq('facility', targetFacility);
         const { data, error } = await q;
