@@ -1306,14 +1306,13 @@ function isDateInPeriod(dStr, type, val, year) {
     if (String(d.getFullYear()) !== String(year)) return false; 
     if (type === 'annual') return true; 
 
-    let monthNum = d.getMonth() + 1; // 1 to 12
+    let monthNum = d.getMonth() + 1; 
     let monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
     let shortNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
     let valStr = String(val).toLowerCase().trim();
 
     if (type === 'monthly') {
-        // Kung ang value ay pangalan (hal. "january" o "jan") o numero (hal. "9" o "09")
         if (valStr === String(monthNum) || valStr === String(monthNum).padStart(2, '0')) return true;
         if (valStr === monthNames[monthNum - 1] || valStr === shortNames[monthNum - 1]) return true;
         if (valStr === `${d.getFullYear()}-${String(monthNum).padStart(2, '0')}`) return true;
@@ -1670,11 +1669,21 @@ function showPrintModal(htmlContent) {
     }
     modal.style.display = 'flex';
 
-    // Siguraduhing napapalitan ang window.close() ng parent function para gumana ang close button sa loob ng iframe
+    const iframe = document.getElementById('print-iframe');
+    
+    // Linisin at isalin ang window.close() para sa parent handler
     let safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
-    const iframe = document.getElementById('print-iframe');
+    // Isulat nang direkta sa document ng iframe para maiwasan ang blank rendering ng srcdoc sa ilang browser
     iframe.srcdoc = safeHtml;
+    setTimeout(() => {
+        try {
+            let doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(safeHtml);
+            doc.close();
+        } catch(e) {}
+    }, 50);
 }
 
 window.closePrintModal = function() {
