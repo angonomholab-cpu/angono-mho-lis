@@ -21,7 +21,36 @@ const TODAY_STR = new Date().toLocaleDateString();
 const availableTests = {
     'mtb': { testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', html: '<div class="field-group"><label class="field-label">History of Treatment</label><select data-key="History of Treatment" class="form-select"><option value="New">New</option><option value="Retreatment">Retreatment</option></select></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' },
     'viral': { testName: 'Viral Load', testCode: 'GXVL', title: 'HIV-1 Viral Load', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Proceed to confirmation to add this test.</div>' },
-    'dssm': { testName: 'DSSM', testCode: 'DSSM', title: 'DSSM (AFB Smear)', html: '<div class="field-group"><label class="field-label">Category</label><select data-key="Category" class="form-select" onchange="handleDSSMCategory(this)"><option value="Diagnosis">Diagnosis</option><option value="Follow-up">Follow-up</option></select></div><div class="field-group" id="dssm-history-group"><label class="field-label">History of Treatment</label><input type="text" data-key="History of Treatment" class="form-input" value="New" readonly></div><div class="field-group" id="dssm-xray-group"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div><div class="field-group" id="dssm-case-group" style="display:none;"><label class="field-label">TB Case Number</label><input type="text" data-key="TB Case Number" class="form-input"></div><div class="field-group" id="dssm-month-group" style="display:none;"><label class="field-label">Month of Treatment</label><input type="text" data-key="Month of Treatment" class="form-input"></div>' },
+    'dssm': { 
+    testName: 'DSSM', 
+    testCode: 'DSSM', 
+    title: 'DSSM (AFB Smear)', 
+    html: `
+        <div class="field-group">
+            <label class="field-label">Category</label>
+            <select data-key="Category" class="form-select" onchange="toggleDssmCategory(this)">
+                <option value="Diagnosis">Diagnosis</option>
+                <option value="Follow-up">Follow-up</option>
+            </select>
+        </div>
+        <div class="field-group" id="dssm-history-group">
+            <label class="field-label">History of Treatment</label>
+            <input type="text" data-key="History of Treatment" class="form-input" value="New" readonly style="background:var(--bg-subtle);">
+        </div>
+        <div class="field-group full-width" id="dssm-xray-group">
+            <label class="field-label">X-Ray Result (Remarks)</label>
+            <input type="text" data-key="X-Ray Result" class="form-input" placeholder="Enter X-ray remarks...">
+        </div>
+        <div class="field-group" id="dssm-tbcase-group" style="display:none;">
+            <label class="field-label">TB Case Number</label>
+            <input type="text" data-key="TB Case Number" class="form-input">
+        </div>
+        <div class="field-group" id="dssm-monthtreat-group" style="display:none;">
+            <label class="field-label">Month of Treatment</label>
+            <input type="text" data-key="Month of Treatment" class="form-input">
+        </div>
+    ` 
+}
     'hema': { testName: 'Hematology', testCode: 'HEMA', title: 'Hematology', html: '<div class="chip-group"><div class="chip" data-val="CBC" onclick="toggleSub(this)">CBC</div><div class="chip" data-val="Blood Typing" onclick="toggleSub(this)">Blood Typing</div></div>' },
     'chem': { testName: 'Blood Chemistry', testCode: 'CHEM', title: 'Blood Chemistry', html: '<div class="chip-group"><div class="chip" data-val="FBS" onclick="toggleSub(this)">FBS</div><div class="chip" data-val="RBS" onclick="toggleSub(this)">RBS</div><div class="chip" data-val="Cholesterol" onclick="toggleSub(this)">Cholesterol</div><div class="chip" data-val="Triglycerides" onclick="toggleSub(this)">Triglycerides</div><div class="chip" data-val="HDL" onclick="toggleSub(this)">HDL</div><div class="chip" data-val="LDL" onclick="toggleSub(this)">LDL</div><div class="chip" data-val="BUN" onclick="toggleSub(this)">BUN</div><div class="chip" data-val="Creatinine" onclick="toggleSub(this)">Creatinine</div><div class="chip" data-val="Uric Acid" onclick="toggleSub(this)">Uric Acid</div><div class="chip" data-val="SGOT" onclick="toggleSub(this)">SGOT/AST</div><div class="chip" data-val="SGPT" onclick="toggleSub(this)">SGPT/ALT</div><div class="chip" data-val="HbA1c" onclick="toggleSub(this)">HbA1c</div></div>' },
     'uria': { testName: 'Urinalysis', testCode: 'UA', title: 'Clinical Microscopy - Urine', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Standard Urinalysis selected.</div>' },
@@ -30,6 +59,26 @@ const availableTests = {
     'dengue': { testName: 'Dengue', testCode: 'DENGUE', title: 'Dengue Rapid Test', html: '<label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="dn_duo_check" style="width:18px; height:18px; accent-color:var(--pri);"> Dengue Duo (NS1 + IgG/IgM)</label>' },
     'gram': { testName: 'Gram Stain', testCode: 'GRAM', title: 'Gram Stain', html: '<div class="field-group full-width"><label class="field-label">Source of Specimen</label><input type="text" data-key="Source" class="form-input"></div>' }
 };
+
+function toggleDssmCategory(selectEl) {
+    const val = selectEl.value;
+    const historyGrp = document.getElementById('dssm-history-group');
+    const xrayGrp = document.getElementById('dssm-xray-group');
+    const tbCaseGrp = document.getElementById('dssm-tbcase-group');
+    const monthTreatGrp = document.getElementById('dssm-monthtreat-group');
+    
+    if (val === 'Diagnosis') {
+        if(historyGrp) historyGrp.style.display = 'block';
+        if(xrayGrp) xrayGrp.style.display = 'block';
+        if(tbCaseGrp) tbCaseGrp.style.display = 'none';
+        if(monthTreatGrp) monthTreatGrp.style.display = 'none';
+    } else {
+        if(historyGrp) historyGrp.style.display = 'none';
+        if(xrayGrp) xrayGrp.style.display = 'none';
+        if(tbCaseGrp) tbCaseGrp.style.display = 'block';
+        if(monthTreatGrp) monthTreatGrp.style.display = 'block';
+    }
+}
 
 function handleDSSMCategory(sel) {
     const val = sel.value;
