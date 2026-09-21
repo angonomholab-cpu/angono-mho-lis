@@ -57,6 +57,8 @@ function parseAnyDate(dStr) {
     if(parts.length === 3) {
         let try1 = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
         if(!isNaN(try1.getTime())) return try1;
+        let try2 = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
+        if(!isNaN(try2.getTime())) return try2;
     }
     return null;
 }
@@ -131,29 +133,29 @@ async function apiGet(action, params = {}) {
                 }
                 
                 if (params.searchQuery) {
-                    if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
-                    else q = q.ilike('name', `%${params.searchQuery}%`); 
-                }
+                if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
+                else q = q.ilike('name', `%${params.searchQuery}%`); 
+            }
 
-                // Sorting ascending / descending
-                const isAsc = params.sortOrder === 'ASC';
-                let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
-                if (error) throw new Error(`View/Table '${tName}': ` + error.message);
-                
-                // 🟢 BULLETPROOF JAVASCRIPT MONTH FILTER
-                if (params.monthFilter && data) {
-                    const [fY, fM] = params.monthFilter.split('-');
-                    data = data.filter(row => {
-                        let rDate = row.date || row.date_received || row.Date || row["Date Received"];
-                        const d = parseAnyDate(rDate);
-                        if (!d) return false;
-                        return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
-                    });
-                }
+            // Sorting ascending / descending
+            const isAsc = params.sortOrder === 'ASC';
+            let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
+            if (error) throw new Error(`View/Table '${tName}': ` + error.message);
+            
+            // 🟢 BULLETPROOF JAVASCRIPT MONTH FILTER
+            if (params.monthFilter && data) {
+                const [fY, fM] = params.monthFilter.split('-');
+                data = data.filter(row => {
+                    let rDate = row.date || row.date_received || row.Date || row["Date Received"];
+                    const d = parseAnyDate(rDate);
+                    if (!d) return false;
+                    return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
+                });
+            }
 
-                if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
-                
-                const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
+            if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+            
+            const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
                 const rows = data.map(row => headers.map(h => row[h]));
                 return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: data.length } };
             }
@@ -170,23 +172,23 @@ async function apiPost(action, payload) {
                 return { status: "success" };
             }
             case "submitForm": {
-                const f = payload.formObject;
-                const tests = JSON.parse(f.testsData || "[]");
-                let patientId = f.patientId || ("MHOA-" + Date.now());
+            const f = payload.formObject;
+            const tests = JSON.parse(f.testsData || "[]");
+            let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                await sb.from('patients').upsert({
-                    id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
-                }, { onConflict: 'id' });
+            await sb.from('patients').upsert({
+                id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
+            }, { onConflict: 'id' });
 
-                // 🟢 FIXED: Save test_code explicitly, and let Supabase auto-generate 'id' integer.
-                const rows = tests.map(t => ({
-                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
-                    details: t.details || {}, status: t.status || 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
-                }));
-                await sb.from('lab_tests').insert(rows);
-                return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
-            }
-            case "saveLabResult": {
+            // 🟢 FIXED: Save test_code explicitly, and let Supabase auto-generate 'id' integer.
+            const rows = tests.map(t => ({
+                patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
+                details: t.details || {}, status: t.status || 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
+            }));
+            await sb.from('lab_tests').insert(rows);
+            return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
+        }
+        case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
                 await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
                 return { status: "success" };
@@ -265,12 +267,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const style = document.createElement('style');
         style.innerHTML = `
             .pending-card, .completed-card, .history-card { transition: all 0.3s ease !important; background-color: var(--bg-surface) !important; }
-            .pending-card:hover, .completed-card:hover, .history-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; background-color: var(--bg-subtle) !important; }
-            .dark-mode .pending-card:hover, .dark-mode .completed-card:hover, .dark-mode .history-card:hover { box-shadow: 0 4px 15px rgba(255,255,255,0.05) !important; background-color: #1e293b !important; }
+            .pending-card:hover, .completed-card:hover, .history-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2) !important; background-color: var(--bg-subtle) !important; border-left: 4px solid var(--pri) !important; z-index: 2; position: relative;}
+            .dark-mode .pending-card:hover, .dark-mode .completed-card:hover, .dark-mode .history-card:hover { box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important; background-color: #1e293b !important; }
             
             #col-pending, #col-completed, #col-repeat, #col-entry { transition: box-shadow 0.3s ease, border 0.3s ease; border-radius: 8px; border: 1px solid transparent; }
-            #col-pending:hover, #col-completed:hover, #col-repeat:hover, #col-entry:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); }
-            .dark-mode #col-pending:hover, .dark-mode #col-completed:hover, .dark-mode #col-repeat:hover, .dark-mode #col-entry:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); }
+            #col-pending:hover, #col-completed:hover, #col-repeat:hover, #col-entry:hover { box-shadow: 0 0 25px rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); }
+            .dark-mode #col-pending:hover, .dark-mode #col-completed:hover, .dark-mode #col-repeat:hover, .dark-mode #col-entry:hover { box-shadow: 0 0 25px rgba(59, 130, 246, 0.3); border: 1px solid rgba(59, 130, 246, 0.6); }
             
             .btn, .btn-icon, .chip { transition: all 0.2s ease; }
             .btn:hover, .chip:hover { filter: brightness(1.1); transform: scale(1.02); }
@@ -433,24 +435,24 @@ function applyPermissions() {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
-        
-        // 🟢 INJECT AUDIT LOG BELL ICON FOR ADMIN
-        if (role === 'ADMIN') {
-            let bell = document.getElementById('notif-bell');
-            if (!bell) {
-                bell = document.createElement('div');
-                bell.id = 'notif-bell';
-                bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot"></span>';
-                bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
-                bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
-                bell.onmouseout = () => bell.style.transform = 'scale(1)';
-                bell.onclick = toggleAuditLogs;
-                document.body.appendChild(bell);
-            }
-            if(typeof checkNewNotifs === 'function') checkNewNotifs(); // Check for red dot immediately
+    
+    // 🟢 INJECT AUDIT LOG BELL ICON FOR ADMIN
+    if (role === 'ADMIN') {
+        let bell = document.getElementById('notif-bell');
+        if (!bell) {
+            bell = document.createElement('div');
+            bell.id = 'notif-bell';
+            bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot"></span>';
+            bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
+            bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
+            bell.onmouseout = () => bell.style.transform = 'scale(1)';
+            bell.onclick = toggleAuditLogs;
+            document.body.appendChild(bell);
         }
+        if(typeof checkNewNotifs === 'function') checkNewNotifs(); // Check for red dot immediately
+    }
 
-    } else if (role === 'ENCODER') {
+} else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'VIEWER') {
@@ -591,7 +593,7 @@ function runDirectSearch(q) {
     if(q.length < 2) { box.style.display='none'; return; }
     
     const query = q.toLowerCase();
-    const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 8);
+    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 8);
     
     if (results.length > 0) {
         box.style.display = 'block'; 
@@ -613,7 +615,7 @@ function runDirectSearch(q) {
 
 function runQuickSearch(q) {
     const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-    const query = q.toLowerCase(); const results = cachedPatients.filter(p => p.name.toLowerCase().includes(query)).slice(0, 15);
+    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 15);
     if (results.length > 0) {
         box.style.display = 'block'; box.innerHTML = '';
         results.forEach(p => {
@@ -843,7 +845,7 @@ function renderLists() {
         return filterFn(i) && (encodedDateStr === TODAY_STR);
     });
 
-    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border: 1px dashed var(--border-color);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button><button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button></div></div>` : '';
+    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border: 1px solid var(--pri); box-shadow: 0 4px 10px rgba(0,0,0,0.1);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button><button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button></div></div>` : '';
 
     const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = ""; 
@@ -1332,7 +1334,7 @@ function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
     p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
     const tName = (p.testName || "").toUpperCase(); p.isDSSM = tName.includes("DSSM") || tName.includes("AFB"); p.isGXP = tName.includes("GXP") || tName.includes("GEN");
-    const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)"; const findRes = (key) => p.results?.find(r => r.param.toUpperCase() === key.toUpperCase())?.res || "";
+    const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)"; const findRes = (key) => p.results?.find(r => r.param && r.param.toUpperCase() === key.toUpperCase())?.res || "";
     const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
     p.history = findRes("History of Treatment"); let phys = findRes("Source of Request") || p.physician || ""; p.physician = (phys === "undefined") ? "" : phys; p.xray = findRes("X-Ray Result"); p.monthTreat = findRes("Month of Treatment"); p.reason = findRes("Reason for Examination") || "Diagnosis";
     if(p.results) { p.results.forEach(r => {
@@ -1577,7 +1579,7 @@ function showPrintModal(htmlContent) {
     modal.style.display = 'flex';
     const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     const iframe = document.getElementById('print-iframe');
-    iframe.contentWindow.document.open(); iframe.contentWindow.document.write(safeHtml); iframe.contentWindow.document.close();
+    iframe.srcdoc = safeHtml;
 }
 
 window.closePrintModal = function() { const modal = document.getElementById('print-modal-overlay'); if (modal) { modal.style.display = 'none'; } };
