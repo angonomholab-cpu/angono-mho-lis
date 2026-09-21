@@ -1,3 +1,9 @@
+// 🟢 SUPABASE SETUP 🟢
+const supabaseUrl = 'https://mtohvtmupjfdabrrpnii.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b2h2dG11cGpmZGFicnJwbmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njg2MzQsImV4cCI6MjEwNTU0NDYzNH0.lh5n2LY4x9_kyPcgUOdtDUxEpiBClTMDCKNSzQTTH64';
+
+// I-initialize ang database connection
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwXH1ngtEYkk6H5a9JlAw_ybgYWjx8cfKVpEMwV0zUx6wdHc6RKSuNZukkconArjKVpg/exec"; 
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
