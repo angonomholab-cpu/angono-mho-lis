@@ -47,6 +47,20 @@ function customConfirm(message, callback) { document.getElementById('custom-conf
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
+// 🟢 BULLETPROOF DATE PARSER (Para sa Month Filter ng Registry at Reports)
+function parseAnyDate(dStr) {
+    if(!dStr) return null;
+    let d = new Date(dStr);
+    if(!isNaN(d.getTime())) return d;
+    // Fallback kung format ay DD/MM/YYYY o DD-MM-YYYY
+    let parts = String(dStr).split(/[-/]/);
+    if(parts.length === 3) {
+        let try1 = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
+        if(!isNaN(try1.getTime())) return try1;
+    }
+    return null;
+}
+
 async function apiGet(action, params = {}) {
     try {
         switch (action) {
@@ -120,7 +134,8 @@ async function apiGet(action, params = {}) {
                     if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
                     else q = q.ilike('name', `%${params.searchQuery}%`); 
                 }
-                
+
+                // Sorting ascending / descending
                 const isAsc = params.sortOrder === 'ASC';
                 let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
@@ -129,9 +144,9 @@ async function apiGet(action, params = {}) {
                 if (params.monthFilter && data) {
                     const [fY, fM] = params.monthFilter.split('-');
                     data = data.filter(row => {
-                        if (!row.date) return false;
-                        const d = new Date(row.date);
-                        if (isNaN(d.getTime())) return false;
+                        let rDate = row.date || row.date_received || row.Date || row["Date Received"];
+                        const d = parseAnyDate(rDate);
+                        if (!d) return false;
                         return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
                     });
                 }
@@ -246,6 +261,25 @@ window.addEventListener('error', function(e) {
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        // 🟢 INJECT HOVER HALO, GLOW EFFECTS, AT NIGHT MODE FIXES CSS
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .pending-card, .completed-card, .history-card { transition: all 0.3s ease !important; background-color: var(--bg-surface) !important; }
+            .pending-card:hover, .completed-card:hover, .history-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; background-color: var(--bg-subtle) !important; }
+            .dark-mode .pending-card:hover, .dark-mode .completed-card:hover, .dark-mode .history-card:hover { box-shadow: 0 4px 15px rgba(255,255,255,0.05) !important; background-color: #1e293b !important; }
+            
+            #col-pending, #col-completed, #col-repeat, #col-entry { transition: box-shadow 0.3s ease, border 0.3s ease; border-radius: 8px; border: 1px solid transparent; }
+            #col-pending:hover, #col-completed:hover, #col-repeat:hover, #col-entry:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); }
+            .dark-mode #col-pending:hover, .dark-mode #col-completed:hover, .dark-mode #col-repeat:hover, .dark-mode #col-entry:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); }
+            
+            .btn, .btn-icon, .chip { transition: all 0.2s ease; }
+            .btn:hover, .chip:hover { filter: brightness(1.1); transform: scale(1.02); }
+            .btn-icon:hover { transform: scale(1.1); }
+            
+            #notif-red-dot { display:none; position:absolute; top:-5px; right:-5px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red; }
+        `;
+        document.head.appendChild(style);
+
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
         const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
         const toggleLimit = document.getElementById('toggle-limited-mode');
@@ -406,11 +440,14 @@ function applyPermissions() {
             if (!bell) {
                 bell = document.createElement('div');
                 bell.id = 'notif-bell';
-                bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span style="position:absolute; top:-5px; right:-5px; background:var(--danger); width:8px; height:8px; border-radius:50%;"></span>';
-                bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;';
+                bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot"></span>';
+                bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
+                bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
+                bell.onmouseout = () => bell.style.transform = 'scale(1)';
                 bell.onclick = toggleAuditLogs;
                 document.body.appendChild(bell);
             }
+            if(typeof checkNewNotifs === 'function') checkNewNotifs(); // Check for red dot immediately
         }
 
     } else if (role === 'ENCODER') {
@@ -436,11 +473,26 @@ function applyPermissions() {
     if (role !== 'ADMIN' && role !== 'STAFF') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
 }
 
+async function checkNewNotifs() {
+    try {
+        const lastViewed = localStorage.getItem('last_notif_time') || "0";
+        const { data } = await sb.from('audit_logs').select('created_at').order('created_at', { ascending: false }).limit(1);
+        if(data && data.length > 0) {
+            const latestTime = new Date(data[0].created_at).getTime();
+            const dot = document.getElementById('notif-red-dot');
+            if(dot) dot.style.display = latestTime > parseInt(lastViewed) ? 'block' : 'none';
+        }
+    } catch(e) {}
+}
+
 async function toggleAuditLogs() {
     let dropdown = document.getElementById('audit-dropdown');
     if (dropdown && dropdown.style.display === 'block') {
         dropdown.style.display = 'none'; // Sinasara kapag kinlick ulit
     } else {
+        localStorage.setItem('last_notif_time', Date.now().toString());
+        const dot = document.getElementById('notif-red-dot');
+        if(dot) dot.style.display = 'none';
         await showAuditLogs();
     }
 }
@@ -807,8 +859,7 @@ function renderLists() {
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         }
         
-        // 🟢 FIXED Hover Highlights and Custom Test Code (GXP-2026...) display
-        return `<div class="pending-card" id="card-${safeId}" style="transition: all 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-subtle)'" onmouseout="this.style.backgroundColor='white'"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.testCode || item.id}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
+        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.id}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
     
     pList.innerHTML = batchActionsHtml + pendingCardsHtml;
@@ -816,7 +867,7 @@ function renderLists() {
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
             const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let fac = d.facility || d.Facility || "N/A";
-            return `<div class="pending-card" style="border-left: 3px solid var(--warning); background: var(--warning-light-bg); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.filter='brightness(0.95)'" onmouseout="this.style.filter='brightness(1)'"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div></div>${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}</div>`;
+            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div></div>${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}</div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
     }
@@ -824,8 +875,8 @@ function renderLists() {
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test); let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
-        // 🟢 IDINAGDAG ANG UNDO BUTTON DITO (at testCode display)
-        return `<div class="completed-card" style="margin-bottom:8px; transition: all 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-subtle)'" onmouseout="this.style.backgroundColor='white'"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.testCode || item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
+        // 🟢 IDINAGDAG ANG UNDO BUTTON DITO
+        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
@@ -1171,7 +1222,21 @@ function buildReportData(data, type, val, year, targetFacility) {
 
 function createHivGrid() { return { m: {c15:0, c1524:0, c2534:0, c3549:0, c50:0}, f: {c15:0, c1524:0, c2534:0, c3549:0, c50:0, mat:0}, kap: {msm:0, tgw:0, msw:0, fsw:0, pwid:0, tb:0}, total: 0 }; }
 function fillHivGrid(grid, age, sex, isMat, kap, isTB) { grid.total++; let bucket = "c50"; if(age<15) bucket="c15"; else if(age<=24) bucket="c1524"; else if(age<=34) bucket="c2534"; else if(age<=49) bucket="c3549"; if(sex==='M') grid.m[bucket]++; else { grid.f[bucket]++; if(isMat) grid.f.mat++; } if(kap.includes("MSM")) grid.kap.msm++; if(kap.includes("TGW")) grid.kap.tgw++; if(kap.includes("MSW")) grid.kap.msw++; if(kap.includes("FSW")) grid.kap.fsw++; if(kap.includes("PWID")) grid.kap.pwid++; if(isTB) grid.kap.tb++; }
-function isDateInPeriod(dStr, type, val, year) { if(!dStr) return false; let d = new Date(dStr); if(isNaN(d.getTime())) return false; if (String(d.getFullYear()) !== String(year)) return false; if (type === 'annual') return true; let m = d.getMonth() + 1; if (type === 'monthly') return m == val; if (type === 'quarterly') { if (val == 1) return (m >= 1 && m <= 3); if (val == 2) return (m >= 4 && m <= 6); if (val == 3) return (m >= 7 && m <= 9); if (val == 4) return (m >= 10 && m <= 12); } return false; }
+function isDateInPeriod(dStr, type, val, year) { 
+    const d = parseAnyDate(dStr);
+    if(!d) return false; 
+    if (String(d.getFullYear()) !== String(year)) return false; 
+    if (type === 'annual') return true; 
+    let m = d.getMonth() + 1; 
+    if (type === 'monthly') return String(m) === String(val); 
+    if (type === 'quarterly') { 
+        if (val == 1) return (m >= 1 && m <= 3); 
+        if (val == 2) return (m >= 4 && m <= 6); 
+        if (val == 3) return (m >= 7 && m <= 9); 
+        if (val == 4) return (m >= 10 && m <= 12); 
+    } 
+    return false; 
+}
 
 function renderFHSIS(data) { if (!data) return; const facMap = { "SAN ISIDRO": "SI", "SAN VICENTE": "SV", "KALAYAAN": "KA", "STO. NIÑO": "SN", "SAN ROQUE": "SR", "MAHABANG PARANG": "MP", "POB. ITAAS": "PI", "POB. IBABA": "PB", "BAGUMBAYAN": "BA", "SAN PEDRO": "SP", "ANGONO RHU I": "R1" }; const keys = [ "syp_s_t", "syp_s_10", "syp_s_15", "syp_s_20", "syp_p_t", "syp_p_10", "syp_p_15", "syp_p_20", "hiv_s_t", "hiv_s_10", "hiv_s_15", "hiv_s_20", "hiv_r_t", "hiv_r_10", "hiv_r_15", "hiv_r_20", "hbs_s_t", "hbs_s_10", "hbs_s_15", "hbs_s_20", "hbs_r_t", "hbs_r_10", "hbs_r_15", "hbs_r_20" ]; keys.forEach(key => { let rowTotal = 0; Object.keys(facMap).forEach(facName => { let val = (data[facName] && data[facName][key]) ? data[facName][key] : 0; let cellId = key + "_" + facMap[facName]; let cell = document.getElementById(cellId); if (cell) { cell.innerText = val; rowTotal += val; } }); let totalCell = document.getElementById(key + "_TOT"); if (totalCell) totalCell.innerText = rowTotal; }); }
 function renderTB(tb) { const row = (lbl, n, r) => `<tr><td style="font-weight:600; text-align:left;">${lbl}</td><td class="text-center">${n || 0}</td><td class="text-center">${r || 0}</td></tr>`; document.getElementById('tb-exam-body').innerHTML = row("EXAMINED", tb.exam.new, tb.exam.ret) + row("INVALID / ERROR", tb.invalid.new, tb.invalid.ret) + row("INITIAL RESULT", tb.initial.new, tb.initial.ret); document.getElementById('tb-res-body').innerHTML = row("MTB DETECTED", tb.pos.new, tb.pos.ret) + row(" > RIF RESISTANT", tb.rr.new, tb.rr.ret) + row(" > TRACE DETECTED", tb.tt.new, tb.tt.ret) + row(" > INDETERMINATE", tb.ti.new, tb.ti.ret) + row(" > SENSITIVE", tb.t.new, tb.t.ret) + row("MTB NOT DETECTED", tb.n.new, tb.n.ret); document.getElementById('tb-cart').innerText = tb.cartridges || 0; const dssmEl = document.getElementById('tb-dssm'); if(dssmEl) dssmEl.innerText = tb.dssm || 0; }
@@ -1198,6 +1263,7 @@ function showStaffRegister() {
 
 function startAutoSync() {
     setInterval(async () => {
+        if(typeof checkNewNotifs === 'function') checkNewNotifs(); // 🟢 Check for new notifs every sync
         const pendingSection = document.getElementById('col-pending'); const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
         if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
             try {
