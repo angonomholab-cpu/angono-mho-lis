@@ -219,14 +219,14 @@ async function apiGet(action, params = {}) {
                 let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
-                // BULLETPROOF JAVASCRIPT MONTH FILTER (Based on Date Received / date)
+                // BULLETPROOF JAVASCRIPT MONTH FILTER
                 if (params.monthFilter && data) {
                     const [fY, fM] = params.monthFilter.split('-');
                     data = data.filter(row => {
-                        let rDate = row.date || row.date_received || row.Date || row["Date Received"];
+                        let rDate = row.date || row.date_received || row.Date || row["Date Received"] || row.date_examined || row.created_at;
                         const d = parseAnyDate(rDate);
                         if (!d) return false;
-                        return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
+                        return String(d.getFullYear()) === fY && parseInt(d.getMonth() + 1, 10) === parseInt(fM, 10);
                     });
                 }
 
@@ -1297,7 +1297,7 @@ function isDateInPeriod(dStr, type, val, year) {
     if (String(d.getFullYear()) !== String(year)) return false; 
     if (type === 'annual') return true; 
     let m = d.getMonth() + 1; 
-    if (type === 'monthly') return String(m) === String(val); 
+    if (type === 'monthly') return parseInt(m, 10) === parseInt(val, 10); // Binago sa parseInt para sakop ang "9" at "09"
     if (type === 'quarterly') { 
         if (val == 1) return (m >= 1 && m <= 3); 
         if (val == 2) return (m >= 4 && m <= 6); 
