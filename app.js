@@ -21,7 +21,7 @@ const TODAY_STR = new Date().toLocaleDateString();
 const availableTests = {
     'mtb': { testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', html: '<div class="field-group"><label class="field-label">History of Treatment</label><select data-key="History of Treatment" class="form-select"><option value="New">New</option><option value="Retreatment">Retreatment</option></select></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' },
     'viral': { testName: 'Viral Load', testCode: 'GXVL', title: 'HIV-1 Viral Load', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Proceed to confirmation to add this test.</div>' },
-    'dssm': { testName: 'DSSM', testCode: 'DSSM', title: 'DSSM (AFB Smear)', html: '<div class="field-group"><label class="field-label">TB Case Number</label><input type="text" data-key="TB Case Number" class="form-input"></div><div class="field-group"><label class="field-label">Month of Treatment</label><input type="text" data-key="Month of Treatment" class="form-input"></div>' },
+    'dssm': { testName: 'DSSM', testCode: 'DSSM', title: 'DSSM (AFB Smear)', html: '<div class="field-group"><label class="field-label">Category</label><select data-key="Category" class="form-select" onchange="handleDSSMCategory(this)"><option value="Diagnosis">Diagnosis</option><option value="Follow-up">Follow-up</option></select></div><div class="field-group" id="dssm-history-group"><label class="field-label">History of Treatment</label><input type="text" data-key="History of Treatment" class="form-input" value="New" readonly></div><div class="field-group" id="dssm-xray-group"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div><div class="field-group" id="dssm-case-group" style="display:none;"><label class="field-label">TB Case Number</label><input type="text" data-key="TB Case Number" class="form-input"></div><div class="field-group" id="dssm-month-group" style="display:none;"><label class="field-label">Month of Treatment</label><input type="text" data-key="Month of Treatment" class="form-input"></div>' },
     'hema': { testName: 'Hematology', testCode: 'HEMA', title: 'Hematology', html: '<div class="chip-group"><div class="chip" data-val="CBC" onclick="toggleSub(this)">CBC</div><div class="chip" data-val="Blood Typing" onclick="toggleSub(this)">Blood Typing</div></div>' },
     'chem': { testName: 'Blood Chemistry', testCode: 'CHEM', title: 'Blood Chemistry', html: '<div class="chip-group"><div class="chip" data-val="FBS" onclick="toggleSub(this)">FBS</div><div class="chip" data-val="RBS" onclick="toggleSub(this)">RBS</div><div class="chip" data-val="Cholesterol" onclick="toggleSub(this)">Cholesterol</div><div class="chip" data-val="Triglycerides" onclick="toggleSub(this)">Triglycerides</div><div class="chip" data-val="HDL" onclick="toggleSub(this)">HDL</div><div class="chip" data-val="LDL" onclick="toggleSub(this)">LDL</div><div class="chip" data-val="BUN" onclick="toggleSub(this)">BUN</div><div class="chip" data-val="Creatinine" onclick="toggleSub(this)">Creatinine</div><div class="chip" data-val="Uric Acid" onclick="toggleSub(this)">Uric Acid</div><div class="chip" data-val="SGOT" onclick="toggleSub(this)">SGOT/AST</div><div class="chip" data-val="SGPT" onclick="toggleSub(this)">SGPT/ALT</div><div class="chip" data-val="HbA1c" onclick="toggleSub(this)">HbA1c</div></div>' },
     'uria': { testName: 'Urinalysis', testCode: 'UA', title: 'Clinical Microscopy - Urine', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Standard Urinalysis selected.</div>' },
@@ -30,6 +30,26 @@ const availableTests = {
     'dengue': { testName: 'Dengue', testCode: 'DENGUE', title: 'Dengue Rapid Test', html: '<label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="dn_duo_check" style="width:18px; height:18px; accent-color:var(--pri);"> Dengue Duo (NS1 + IgG/IgM)</label>' },
     'gram': { testName: 'Gram Stain', testCode: 'GRAM', title: 'Gram Stain', html: '<div class="field-group full-width"><label class="field-label">Source of Specimen</label><input type="text" data-key="Source" class="form-input"></div>' }
 };
+
+function handleDSSMCategory(sel) {
+    const val = sel.value;
+    const caseGroup = document.getElementById('dssm-case-group');
+    const monthGroup = document.getElementById('dssm-month-group');
+    const historyGroup = document.getElementById('dssm-history-group');
+    const xrayGroup = document.getElementById('dssm-xray-group');
+    if(!caseGroup) return;
+    if(val === 'Follow-up') {
+        caseGroup.style.display = 'block';
+        monthGroup.style.display = 'block';
+        if(historyGroup) historyGroup.style.display = 'none';
+        if(xrayGroup) xrayGroup.style.display = 'none';
+    } else {
+        caseGroup.style.display = 'none';
+        monthGroup.style.display = 'none';
+        if(historyGroup) historyGroup.style.display = 'block';
+        if(xrayGroup) xrayGroup.style.display = 'block';
+    }
+}
 
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
@@ -47,12 +67,10 @@ function customConfirm(message, callback) { document.getElementById('custom-conf
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
-// 🟢 BULLETPROOF DATE PARSER (Para sa Month Filter ng Registry at Reports)
 function parseAnyDate(dStr) {
     if(!dStr) return null;
     let d = new Date(dStr);
     if(!isNaN(d.getTime())) return d;
-    // Fallback kung format ay DD/MM/YYYY o DD-MM-YYYY
     let parts = String(dStr).split(/[-/]/);
     if(parts.length === 3) {
         let try1 = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
@@ -84,7 +102,7 @@ async function apiGet(action, params = {}) {
                 const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
                 if (error) throw error;
                 return { status: "success", data: (data || []).map(p => ({
-                    id: p.id, name: p.full_name, age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
+                    id: p.id, name: p.full_name || "", age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
                 }))};
             }
             case "getPatientHistory": {
@@ -105,7 +123,6 @@ async function apiGet(action, params = {}) {
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 
-                // 🟢 FIXED: Ensure testCode is mapped correctly for the workspace
                 const toFrontend = r => ({ id: r.id, testCode: r.test_code || r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
             }
@@ -125,7 +142,7 @@ async function apiGet(action, params = {}) {
                 
                 if (tName === 'lab_tests') {
                      const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                     q = q.eq('test_name', tMap[params.type] || params.type).eq('status', 'COMPLETED'); // COMPLETED ONLY!
+                     q = q.eq('test_name', tMap[params.type] || params.type).eq('status', 'COMPLETED'); 
                 }
 
                 if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
@@ -133,29 +150,28 @@ async function apiGet(action, params = {}) {
                 }
                 
                 if (params.searchQuery) {
-                if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
-                else q = q.ilike('name', `%${params.searchQuery}%`); 
-            }
+                    if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
+                    else q = q.ilike('name', `%${params.searchQuery}%`); 
+                }
 
-            // Sorting ascending / descending
-            const isAsc = params.sortOrder === 'ASC';
-            let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
-            if (error) throw new Error(`View/Table '${tName}': ` + error.message);
-            
-            // 🟢 BULLETPROOF JAVASCRIPT MONTH FILTER
-            if (params.monthFilter && data) {
-                const [fY, fM] = params.monthFilter.split('-');
-                data = data.filter(row => {
-                    let rDate = row.date || row.date_received || row.Date || row["Date Received"];
-                    const d = parseAnyDate(rDate);
-                    if (!d) return false;
-                    return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
-                });
-            }
+                const isAsc = params.sortOrder === 'ASC';
+                let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
+                if (error) throw new Error(`View/Table '${tName}': ` + error.message);
+                
+                // BULLETPROOF JAVASCRIPT MONTH FILTER (Based on Date Received / date)
+                if (params.monthFilter && data) {
+                    const [fY, fM] = params.monthFilter.split('-');
+                    data = data.filter(row => {
+                        let rDate = row.date || row.date_received || row.Date || row["Date Received"];
+                        const d = parseAnyDate(rDate);
+                        if (!d) return false;
+                        return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
+                    });
+                }
 
-            if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
-            
-            const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
+                if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+                
+                const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
                 const rows = data.map(row => headers.map(h => row[h]));
                 return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: data.length } };
             }
@@ -172,23 +188,22 @@ async function apiPost(action, payload) {
                 return { status: "success" };
             }
             case "submitForm": {
-            const f = payload.formObject;
-            const tests = JSON.parse(f.testsData || "[]");
-            let patientId = f.patientId || ("MHOA-" + Date.now());
+                const f = payload.formObject;
+                const tests = JSON.parse(f.testsData || "[]");
+                let patientId = f.patientId || ("MHOA-" + Date.now());
 
-            await sb.from('patients').upsert({
-                id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
-            }, { onConflict: 'id' });
+                await sb.from('patients').upsert({
+                    id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
+                }, { onConflict: 'id' });
 
-            // 🟢 FIXED: Save test_code explicitly, and let Supabase auto-generate 'id' integer.
-            const rows = tests.map(t => ({
-                patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
-                details: t.details || {}, status: t.status || 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
-            }));
-            await sb.from('lab_tests').insert(rows);
-            return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
-        }
-        case "saveLabResult": {
+                const rows = tests.map(t => ({
+                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
+                    details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
+                }));
+                await sb.from('lab_tests').insert(rows);
+                return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
+            }
+            case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
                 await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
                 return { status: "success" };
@@ -263,22 +278,21 @@ window.addEventListener('error', function(e) {
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        // 🟢 INJECT HOVER HALO, GLOW EFFECTS, AT NIGHT MODE FIXES CSS
         const style = document.createElement('style');
         style.innerHTML = `
-            .pending-card, .completed-card, .history-card { transition: all 0.3s ease !important; background-color: var(--bg-surface) !important; }
-            .pending-card:hover, .completed-card:hover, .history-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2) !important; background-color: var(--bg-subtle) !important; border-left: 4px solid var(--pri) !important; z-index: 2; position: relative;}
-            .dark-mode .pending-card:hover, .dark-mode .completed-card:hover, .dark-mode .history-card:hover { box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important; background-color: #1e293b !important; }
+            .pending-card, .completed-card, .history-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; background-color: var(--bg-surface) !important; }
+            .pending-card:hover, .completed-card:hover, .history-card:hover { transform: translateY(-4px) scale(1.015); box-shadow: 0 10px 30px rgba(59, 130, 246, 0.25) !important; background-color: var(--bg-subtle) !important; border-left: 5px solid var(--pri) !important; z-index: 5; position: relative;}
+            .dark-mode .pending-card:hover, .dark-mode .completed-card:hover, .dark-mode .history-card:hover { box-shadow: 0 10px 30px rgba(59, 130, 246, 0.45) !important; background-color: #1e293b !important; }
             
             #col-pending, #col-completed, #col-repeat, #col-entry { transition: box-shadow 0.3s ease, border 0.3s ease; border-radius: 8px; border: 1px solid transparent; }
             #col-pending:hover, #col-completed:hover, #col-repeat:hover, #col-entry:hover { box-shadow: 0 0 25px rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); }
-            .dark-mode #col-pending:hover, .dark-mode #col-completed:hover, .dark-mode #col-repeat:hover, .dark-mode #col-entry:hover { box-shadow: 0 0 25px rgba(59, 130, 246, 0.3); border: 1px solid rgba(59, 130, 246, 0.6); }
             
             .btn, .btn-icon, .chip { transition: all 0.2s ease; }
             .btn:hover, .chip:hover { filter: brightness(1.1); transform: scale(1.02); }
-            .btn-icon:hover { transform: scale(1.1); }
+            .btn-icon:hover { transform: scale(1.15); }
             
-            #notif-red-dot { display:none; position:absolute; top:-5px; right:-5px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red; }
+            .data-table tbody tr { transition: all 0.15s ease-in-out; }
+            .data-table tbody tr:hover { transform: scale(1.005); background-color: rgba(59, 130, 246, 0.08) !important; box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 2; position: relative; }
         `;
         document.head.appendChild(style);
 
@@ -320,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('labUser'); 
         document.getElementById('login-overlay').style.display = 'flex'; 
     } finally { 
-        // FAILSAFE: Always remove loader after 1 second
         setTimeout(() => {
             const loader = document.getElementById('app-loader');
             if(loader) loader.style.display = 'none';
@@ -435,24 +448,23 @@ function applyPermissions() {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
-    
-    // 🟢 INJECT AUDIT LOG BELL ICON FOR ADMIN
-    if (role === 'ADMIN') {
-        let bell = document.getElementById('notif-bell');
-        if (!bell) {
-            bell = document.createElement('div');
-            bell.id = 'notif-bell';
-            bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot"></span>';
-            bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
-            bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
-            bell.onmouseout = () => bell.style.transform = 'scale(1)';
-            bell.onclick = toggleAuditLogs;
-            document.body.appendChild(bell);
+        
+        if (role === 'ADMIN') {
+            let bell = document.getElementById('notif-bell');
+            if (!bell) {
+                bell = document.createElement('div');
+                bell.id = 'notif-bell';
+                bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot" style="display:none; position:absolute; top:-5px; right:-5px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red;"></span>';
+                bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
+                bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
+                bell.onmouseout = () => bell.style.transform = 'scale(1)';
+                bell.onclick = toggleAuditLogs;
+                document.body.appendChild(bell);
+            }
+            if(typeof checkNewNotifs === 'function') checkNewNotifs();
         }
-        if(typeof checkNewNotifs === 'function') checkNewNotifs(); // Check for red dot immediately
-    }
 
-} else if (role === 'ENCODER') {
+    } else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'VIEWER') {
@@ -490,7 +502,7 @@ async function checkNewNotifs() {
 async function toggleAuditLogs() {
     let dropdown = document.getElementById('audit-dropdown');
     if (dropdown && dropdown.style.display === 'block') {
-        dropdown.style.display = 'none'; // Sinasara kapag kinlick ulit
+        dropdown.style.display = 'none';
     } else {
         localStorage.setItem('last_notif_time', Date.now().toString());
         const dot = document.getElementById('notif-red-dot');
@@ -504,7 +516,6 @@ async function showAuditLogs() {
     if (!dropdown) {
         dropdown = document.createElement('div');
         dropdown.id = 'audit-dropdown';
-        // Maliit at malinis na dropdown sa upper right
         dropdown.style.cssText = 'position:fixed; top:65px; right:20px; width:300px; max-height:400px; background:var(--bg-surface); box-shadow:0 10px 25px rgba(0,0,0,0.2); border-radius:8px; z-index:99999; overflow-y:auto; display:none; flex-direction:column; border:1px solid var(--border-color);';
         document.body.appendChild(dropdown);
     }
@@ -534,7 +545,6 @@ async function showAuditLogs() {
     }
 }
 
-// Logic para dalhin ka sa tamang page kapag kinlick ang Notification
 function handleNotifClick(action) {
     document.getElementById('audit-dropdown').style.display = 'none';
     const a = String(action).toUpperCase();
@@ -543,7 +553,7 @@ function handleNotifClick(action) {
     } else if (a.includes('PRINT') || a.includes('EDIT')) {
         showPage('registry');
     } else if (a.includes('LOGIN') || a.includes('LOGOUT')) {
-        showPage('settings'); // Para makita sa Users List
+        showPage('settings');
     }
 }
 
@@ -589,7 +599,7 @@ async function loadPatientCache() {
 }
 
 function runDirectSearch(q) {
-    const box = document.getElementById('direct-results-box'); const stat = document.getElementById('search-status');
+    const box = document.getElementById('direct-results-box'); 
     if(q.length < 2) { box.style.display='none'; return; }
     
     const query = q.toLowerCase();
@@ -600,7 +610,7 @@ function runDirectSearch(q) {
         box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
         results.forEach(p => {
             const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+            div.innerHTML = `<div style="font-weight:600;">${p.name || "Unnamed"} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age || "?"}y | ${p.sex || "?"} | ${p.facility || 'No Facility'}</div>`;
             div.onclick = () => {
                 isExistingPatient = true; document.getElementById('finalPatientId').value = p.id; document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || ""; document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
                 setSelectValue('p_sex', p.sex); setSelectValue('p_facility', p.facility);
@@ -620,7 +630,7 @@ function runQuickSearch(q) {
         box.style.display = 'block'; box.innerHTML = '';
         results.forEach(p => {
             const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age}y | ${p.sex} | ${p.facility || 'No Facility'}</div>`;
+            div.innerHTML = `<div style="font-weight:600;">${p.name || "Unnamed"}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age || "?"}y | ${p.sex || "?"} | ${p.facility || 'No Facility'}</div>`;
             div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
         });
     } else { box.style.display = 'none'; }
@@ -705,7 +715,6 @@ async function finalSubmit() {
 
   let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
   
-  // 🟢 TEST CODE GENERATOR FIX (e.g. GXP-20260921-123)
   const d = new Date();
   const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
@@ -714,7 +723,7 @@ async function finalSubmit() {
       const generatedTestCode = `${availableTests[key].testCode}-${dateStr}-${randNum}`;
 
       const entry = { 
-          test_code: generatedTestCode, // <-- DITO PAPASOK ANG SERIAL CODE para iwas Supabase ID Error
+          test_code: generatedTestCode, 
           name: availableTests[key].testName, 
           code: availableTests[key].testCode, 
           details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } 
@@ -776,7 +785,7 @@ async function submitPendingUpdate() {
     try {
         let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
         const pEmailEl = document.getElementById('p_email');
-        let demogUpdates = { age: document.getElementById('p_age') ? document.getElementById('p_age').value : "", sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : "" };
+        let demogUpdates = { age: document.getElementById('p_age') ? document.getElementById('p_age'].value : "", sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : "" };
         const pBdayEl = document.getElementById('p_bday'); if(pBdayEl && pBdayEl.value) demogUpdates.bday = pBdayEl.value;
 
         let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); const pNameEl = document.getElementById('p_name');
@@ -794,7 +803,6 @@ async function loadPendingData() {
     } catch(e) { console.error("Refresh Error:", e); } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
 }
 
-// 🟢 LITERAL UNDO BUTTON IMPLEMENTATION
 window.undoResult = function(id) {
     customConfirm("Are you sure you want to UNDO this result? It will go back to Pending.", async () => {
         const btn = document.getElementById('btn-undo-'+id);
@@ -806,9 +814,8 @@ window.undoResult = function(id) {
             let d = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
             delete d.date_examined;
             delete d.dateEncoded;
-            // Burahin din yung ibang essential fields na sinave (opsyonal) pero para safe, ibabalik lang status
             
-            await sb.from('lab_tests').update({ status: 'PENDING', details: d, encoder: null }).eq('id', id);
+            await sb.from('lab_tests').update({ status: 'PENDING', details: d }).eq('id', id);
             await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "UNDO RESULT", details: `Undid result for Test ID: ${id}` });
             
             showAppAlert("Success", "Record reverted to Pending.", "success");
@@ -832,13 +839,11 @@ function renderLists() {
 
     const filterFn = (item) => { let t = String(item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t); if(isLimited && !allowedTests.includes(tCode)) return false; let typeMatch = (filterVal === "ALL") || t.includes(filterVal); return typeMatch; };
 
-    // 🟢 TULUYANG HINIWALAY ANG FOR REPEAT SA PENDING
     const fPending = window.pendingData.filter(i => filterFn(i) && String(i.status).toUpperCase() !== 'FOR REPEAT'); 
     const fRepeat = window.pendingData.filter(i => filterFn(i) && String(i.status).toUpperCase() === 'FOR REPEAT');
 
-    fPending.sort((a, b) => { let dateA = new Date(a.date); dateA.setHours(0,0,0,0); let dateB = new Date(b.date); dateB.setHours(0,0,0,0); if (dateB.getTime() !== dateA.getTime()) { return dateB.getTime() - dateA.getTime(); } return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true }); });
+    fPending.sort((a, b) => { let dateA = new Date(a.date); dateA.setHours(0,0,0,0); let dateB = new Date(b.date); dateB.setHours(0,0,0,0); if (dateB.getTime() !== dateA.getTime()) { return dateB.getTime() - dateA.getTime(); } return String(a.testCode || a.id || "").localeCompare(String(b.testCode || b.id || ""), undefined, { numeric: true }); });
 
-    // 🟢 STRICT TODAY'S COMPLETED
     const fComp = window.completedData.filter(i => {
         let encodedDateStr = TODAY_STR; 
         try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.date_examined) { encodedDateStr = new Date(d.date_examined).toLocaleDateString(); } else if (i.date) { encodedDateStr = new Date(i.date).toLocaleDateString(); } } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
@@ -861,7 +866,10 @@ function renderLists() {
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         }
         
-        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.id}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
+        // Display full test_code (e.g. GXP-20260921-123)
+        const displaySerial = item.testCode || item.id;
+
+        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${displaySerial}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
     
     pList.innerHTML = batchActionsHtml + pendingCardsHtml;
@@ -877,8 +885,8 @@ function renderLists() {
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test); let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
-        // 🟢 IDINAGDAG ANG UNDO BUTTON DITO
-        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
+        const displaySerial = item.testCode || item.id;
+        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
@@ -938,7 +946,6 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
     window.CURRENT_TEST_TYPE = type; currentRegistryPage = page; 
     const titleEl = document.getElementById('regTitle'); 
     if(titleEl) {
-        // 🟢 INJECT TOGGLE SORT BUTTON 🟢
         titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type} <button onclick="window.REGISTRY_SORT_ORDER = window.REGISTRY_SORT_ORDER === 'ASC' ? 'DESC' : 'ASC'; openRegistryTab('${type}');" class="btn btn-secondary text-xs" style="margin-left:15px; padding:4px 8px;"><i class="ph ph-sort-ascending"></i> Toggle Sort (${window.REGISTRY_SORT_ORDER})</button>`;
     }
     
@@ -959,7 +966,6 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
             window.CURRENT_REGISTRY_HEADERS = registryData.headers || []; window.CURRENT_REGISTRY_TITLE = registryData.title || type;
             
-            // 🟢 BEAUTIFY HEADERS FOR UI
             const formatHeader = (str) => {
                 if(!str) return '';
                 if(str.toUpperCase() === 'ID') return 'ID';
@@ -975,8 +981,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
             rows.forEach((row) => {
-                // 🟢 HOVER EFFECT PARA SA REGISTRY ROWS
-                html += `<tr onclick="this.classList.toggle('expanded-row')" style="cursor:pointer; transition: background 0.1s ease;" onmouseover="this.style.background='var(--bg-subtle)';" onmouseout="this.style.background='transparent';"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                html += `<tr onclick="this.classList.toggle('expanded-row')" style="cursor:pointer;"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 let isInitialRow = false; hMap.forEach(c => { let hName = c.original.toUpperCase().trim(); if (hName === 'REPEAT' || hName === 'TEST TYPE') { if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true; } });
                 hMap.forEach(c => {
                     let val = row[c.index] || ''; let hName = c.original.toUpperCase().trim();
@@ -1156,7 +1161,8 @@ function buildReportData(data, type, val, year, targetFacility) {
     let filterFac = (targetFacility || "").trim().toUpperCase(); if (filterFac === "ADMIN" || filterFac === "ALL" || filterFac === "MAIN") filterFac = "";
 
     data.forEach(row => {
-        if (!isDateInPeriod(row.date, type, val, year)) return;
+        let rDate = row.date || row.date_received || row.Date || row["Date Received"];
+        if (!isDateInPeriod(rDate, type, val, year)) return;
         let rowFac = String(row.facility || "").toUpperCase().trim(); if (filterFac !== "" && rowFac !== filterFac) return;
 
         let tName = String(row.test_name || "").toUpperCase(); report.workload[tName] = (report.workload[tName] || 0) + 1;
@@ -1251,7 +1257,7 @@ function printReport() {
     let activeTab = ""; document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
     const headerHtml = `<table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;"><tr><td style="width: 70px; text-align: left; vertical-align: middle;"><img src="./icon-192.png" style="width: 50px; height: 50px;"></td><td style="text-align: center; vertical-align: middle;"><h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1><h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3><p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></td><td style="width: 70px; text-align: right; vertical-align: middle;"><img src="./icon-512.png" style="width: 50px; height: 50px;"></td></tr></table>`;
     const footerHtml = document.querySelector('.rep-footer').outerHTML;
-    const htmlContent = `<html><head><title>Print Report</title><link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display"><style>@page { size: A4 landscape; margin: 10mm; } body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;} table.main-layout { width: 100%; border-collapse: collapse; } .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; } .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; } .data-table th { background-color: #f0f0f0 !important; } .text-center { text-align: center; } .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; } .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; } thead { display: table-header-group; } tfoot { display: table-footer-group; } .controls-area, .chip-group, button { display: none !important; }</style></head><body><table class="main-layout"><thead><tr><td>${headerHtml}</td></tr></thead><tbody><tr><td>${activeTab}</td></tr></tbody><tfoot><tr><td>${footerHtml}</td></tr></tfoot></table><script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 800); };</script></body></html>`;
+    const htmlContent = `<html><head><title>Print Report</title><link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display"><style>@page { size: A4 landscape; margin: 10mm; } body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;} table.main-layout { width: 100%; border-collapse: collapse; } .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; } .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; } .data-table th { background-color: #f0f0f0 !important; } .text-center { text-align: center; } .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; } .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; } thead { display: table-header-group; } tfoot { display: table-footer-group; } .controls-area, .chip-group, button { display: none !important; }</style></head><body><table class="main-layout"><thead><tr><td>${headerHtml}</td></tr></thead><tbody><tr><td>${activeTab}</td></tr></tbody><tfoot><tr><td>${footerHtml}</td></tr></tfoot></table><script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 800); };</script></html>`;
     const win = window.open('', '_blank'); win.document.write(htmlContent); win.document.close();
 }
 
@@ -1265,7 +1271,7 @@ function showStaffRegister() {
 
 function startAutoSync() {
     setInterval(async () => {
-        if(typeof checkNewNotifs === 'function') checkNewNotifs(); // 🟢 Check for new notifs every sync
+        if(typeof checkNewNotifs === 'function') checkNewNotifs();
         const pendingSection = document.getElementById('col-pending'); const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
         if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
             try {
@@ -1369,7 +1375,7 @@ async function printDirect(e, id, testName) {
     try {
         if (!item) { 
             const { data, error } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle(); 
-            if(data) item = { id: data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
+            if(data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
         }
         if (item) {
             if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
