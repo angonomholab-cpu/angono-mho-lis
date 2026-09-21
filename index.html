@@ -728,6 +728,15 @@
 
     <!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 🟢 SUPABASE SETUP: papalit sa Google Sheets/Apps Script backend -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // 🔴 PALITAN ITO ng URL at Anon Key mula sa Supabase Project Settings > API
+        const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+        const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+        window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    <script src="supabase-api.js"></script>
     <script src="app.js"></script>
     <script>
         function togglePass(id, icon) {

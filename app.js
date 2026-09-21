@@ -86,8 +86,8 @@ function customConfirm(message, callback) { document.getElementById('custom-conf
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
-async function apiGet(action, params = {}) { let url = new URL(SCRIPT_URL); url.searchParams.append('action', action); for (let key in params) if (params[key] !== undefined) url.searchParams.append(key, params[key]); const res = await fetch(url); return await res.json(); }
-async function apiPost(action, payload) { const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, ...payload }) }); return await res.json(); }
+// 🟢 apiGet / apiPost ay ngayon nasa supabase-api.js na (Supabase backend na, hindi na Google Sheets).
+// Siguraduhing naka-load ang supabase-api.js BAGO ang app.js sa index.html.
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
