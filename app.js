@@ -149,7 +149,10 @@ async function apiGet(action, params = {}) {
             }
             case "getAllPatientsLight": {
                 const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
-                if (error) throw error;
+                if (error) {
+                    console.error("Patient cache error:", error);
+                    return { status: "success", data: [] }; // Safe fallback para hindi mag-crash
+                }
                 return { status: "success", data: (data || []).map(p => ({
                     id: p.id, name: p.full_name || "", age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
                 }))};
