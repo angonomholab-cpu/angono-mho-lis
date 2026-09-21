@@ -834,7 +834,7 @@ async function submitPendingUpdate() {
     try {
         let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
         const pEmailEl = document.getElementById('p_email');
-        let demogUpdates = { age: document.getElementById('p_age') ? document.getElementById('p_age'].value : "", sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : "" };
+        let demogUpdates = { age: document.getElementById('p_age') ? document.getElementById('p_age').value : "", sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : "" };
         const pBdayEl = document.getElementById('p_bday'); if(pBdayEl && pBdayEl.value) demogUpdates.bday = pBdayEl.value;
 
         let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); const pNameEl = document.getElementById('p_name');
