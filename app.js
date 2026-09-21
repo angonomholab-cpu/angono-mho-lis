@@ -49,6 +49,166 @@ function customConfirm(message, callback) { document.getElementById('custom-conf
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
+// 🟢 BAGO: PURE SUPABASE WRAPPERS (PAPALIT SA GOOGLE SCRIPT) 🟢
+async function apiGet(action, params = {}) {
+    try {
+        switch (action) {
+            case "loginUser": {
+                const { data, error } = await supabase.from('app_users').select('*').eq('username', params.username).eq('password', params.password).maybeSingle();
+                if (error) throw error;
+                if (!data) return { status: "FAIL" };
+                if (data.status === "PENDING") return { status: "PENDING" };
+                if (data.status !== "ACTIVE") return { status: "FAIL" };
+                return { status: "SUCCESS", username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username };
+            }
+            case "patientLogin": {
+                const { data, error } = await supabase.from('patients').select('*').eq('email', params.email).eq('password', params.password).maybeSingle();
+                if (error) throw error;
+                if (!data) return { status: "FAIL" };
+                return { status: "SUCCESS", patientId: data.id, name: data.full_name };
+            }
+            case "getAllPatientsLight": {
+                const { data, error } = await supabase.from('patients').select('*');
+                if (error) throw error;
+                return { status: "success", data: (data || []).map(p => ({
+                    id: p.id, name: p.full_name, age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
+                }))};
+            }
+            case "getPatientHistory": {
+                const { data, error } = await supabase.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
+                if (error) throw error;
+                let rows = data || [];
+                if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
+                return { status: "success", data: rows.map(r => ({
+                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Done"), fullData: { ...r.details, "Test Code": r.id }
+                }))};
+            }
+            case "getPendingWorkload": {
+                let pendingQ = supabase.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
+                if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
+                const { data: pending } = await pendingQ.order('date', { ascending: false });
+                
+                let compQ = supabase.from('lab_tests').select('*').eq('status', 'COMPLETED');
+                if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
+                const { data: completed } = await compQ.order('date_encoded', { ascending: false }).limit(200);
+                
+                const toFrontend = r => ({ id: r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
+                return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
+            }
+            case "getFacilityList": {
+                const { data } = await supabase.from('facilities').select('name');
+                return { status: "success", data: data || [] };
+            }
+            case "getRegistryDataOptimized": {
+                // 🟢 FIX: Dynamic na pupunta sa mga 'export_' tables mo para makuha ang old data!
+                const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
+                const tName = exportTables[params.type];
+                if (!tName) return { status: "error", message: "Table not mapped" };
+                
+                const { data, count } = await supabase.from(tName).select('*', { count: 'exact' }).limit(params.limit || 50);
+                if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+                
+                const headers = Object.keys(data[0]);
+                const rows = data.map(row => headers.map(h => row[h]));
+                return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: count || 0 } };
+            }
+            case "getReportData": {
+                // Pansamantalang babalik ng empty format para hindi mag-crash ang DOH Reports mo.
+                return { status: "success", data: { tb: { exam: {}, pos: {}, rr: {}, t: {}, ti: {}, n: {}, tt: {}, invalid: {}, initial: {}, cartridges: 0, dssm: 0 }, hiv: { tested: {m:{},f:{},kap:{}}, reactive: {m:{},f:{},kap:{}} }, sti: { hiv: {}, syph: {}, hbsag: {} }, dengue: { pos: 0, neg: 0, total: 0 }, workload: {} } };
+            }
+            default: return { status: "error", message: "GET action not implemented: " + action };
+        }
+    } catch (err) { return { status: "error", message: String(err) }; }
+}
+
+async function apiPost(action, payload) {
+    try {
+        switch (action) {
+            case "submitForm": {
+                const f = payload.formObject;
+                const tests = JSON.parse(f.testsData || "[]");
+                let patientId = f.patientId || ("MHOA-" + Date.now());
+
+                await supabase.from('patients').upsert({
+                    id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
+                }, { onConflict: 'id' });
+
+                const rows = tests.map(t => ({
+                    id: `${patientId}-${t.code}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.code,
+                    details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
+                }));
+                await supabase.from('lab_tests').insert(rows);
+                return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
+            }
+            case "saveLabResult": {
+                const details = JSON.parse(payload.jsonDetails || "{}");
+                await supabase.from('lab_tests').update({ details, status: 'COMPLETED', date_encoded: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                return { status: "success" };
+            }
+            case "updatePatientAndTestDetails": {
+                const details = JSON.parse(payload.newJsonDetails || "{}");
+                await supabase.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
+                await supabase.from('patients').update({ full_name: payload.newName, age: details.age, sex: details.sex, address: details.address, contact: details.contact, facility: details.facility, email: details.email || null, bday: details.bday || null }).eq('id', payload.patientId);
+                return { status: "success", data: "Updated" };
+            }
+            case "deletePendingTestById": {
+                await supabase.from('lab_tests').delete().eq('id', payload.testId);
+                return { status: "success" };
+            }
+            case "getSettingsData": {
+                const [{ data: staff }, { data: facilities }, { data: users }] = await Promise.all([
+                    supabase.from('staff').select('*'), supabase.from('facilities').select('*'), supabase.from('app_users').select('*')
+                ]);
+                return { status: "success", data: {
+                    staff: (staff || []).map(s => ({ name: s.name, role: s.role, license: s.license, sigUrl: s.sig_url })),
+                    facilities: (facilities || []).map(f => ({ name: f.name, address: f.address, person: f.contact_person, number: f.contact_number })),
+                    users: (users || []).map(u => ({ username: u.username, fullname: u.full_name || u.username, role: u.role, facility: u.facility, status: u.status }))
+                }};
+            }
+            case "saveStaffData": {
+                await supabase.from('staff').delete().neq('name', '000'); 
+                const rows = (payload.staffArray || []).map(s => ({ name: s.name, role: s.role, license: s.license, sig_url: s.sigUrl }));
+                if (rows.length) await supabase.from('staff').insert(rows);
+                return { status: "success" };
+            }
+            case "saveNewUser": {
+                const d = payload.data;
+                await supabase.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
+                return { status: "success" };
+            }
+            case "registerUser": {
+                const d = payload.data;
+                await supabase.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
+                return { status: "success" };
+            }
+            case "updateUserFull": {
+                const d = payload.updatedData;
+                const updateObj = { username: d.u, full_name: d.name, role: d.role, facility: d.fac, status: d.status };
+                if (d.p) updateObj.password = d.p;
+                await supabase.from('app_users').update(updateObj).eq('username', payload.oldUsername);
+                return { status: "success" };
+            }
+            case "deleteUser": {
+                await supabase.from('app_users').delete().eq('username', payload.targetUsername);
+                return { status: "success" };
+            }
+            case "approveUser": {
+                const status = payload.userAction === 'APPROVE' ? 'ACTIVE' : 'REJECTED';
+                await supabase.from('app_users').update({ status }).eq('username', payload.targetUsername);
+                return { status: "success" };
+            }
+            case "editRegistryRecord": {
+                const { data: row } = await supabase.from('lab_tests').select('details').eq('patient_id', payload.patientId).eq('test_name', payload.testType).maybeSingle();
+                const merged = { ...(row?.details || {}), ...payload.updates };
+                await supabase.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
+                return { status: "success" };
+            }
+            default: return { status: "error", message: "POST action not implemented: " + action };
+        }
+    } catch (err) { return { status: "error", message: String(err) }; }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     try {
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
@@ -63,10 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentUser.username) throw new Error("Invalid");
             
             document.getElementById('login-overlay').style.display = 'none';
+            
+            // Safety checks para hindi mag-crash
             const dName = document.getElementById('display-full-name');
             if(dName) dName.innerText = currentUser.fullName || currentUser.username;
+            
             const dRole = document.getElementById('display-role-facility');
             if(dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
+            
             const dAvatar = document.getElementById('pill-avatar');
             if(dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
             
@@ -79,9 +243,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if(r === 'PATIENT') { showPage('patient'); loadPatientResults(); }
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
             else showPage('workspace');
+        } else {
+            // 🟢 ITO ANG DAHILAN KUNG BAKIT STUCK SA LOADING (Nilagyan natin ng ELSE) 🟢
+            document.getElementById('login-overlay').style.display = 'flex';
         }
-    } catch (e) { localStorage.removeItem('labUser'); document.getElementById('login-overlay').style.display = 'flex'; } finally { document.getElementById('app-loader').style.display = 'none'; startAutoSync(); }
+    } catch (e) { 
+        localStorage.removeItem('labUser'); 
+        document.getElementById('login-overlay').style.display = 'flex'; 
+    } finally { 
+        document.getElementById('app-loader').style.display = 'none'; 
+    }
 });
+
+function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
+// ... existing code ...
 
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 function applyLimitedMode(isLimited) {
