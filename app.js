@@ -148,13 +148,22 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
+                // Binawasan muna natin sa core columns para iwas 400 error kung may kulang sa table
+                const { data, error } = await sb.from('patients').select('*');
                 if (error) {
                     console.error("Patient cache error:", error);
-                    return { status: "success", data: [] }; // Safe fallback para hindi mag-crash
+                    return { status: "success", data: [] };
                 }
                 return { status: "success", data: (data || []).map(p => ({
-                    id: p.id, name: p.full_name || "", age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
+                    id: p.id, 
+                    name: p.full_name || p.name || "", 
+                    age: p.age || "", 
+                    sex: p.sex || "", 
+                    facility: p.facility || "", 
+                    address: p.address || "", 
+                    contact: p.contact || "", 
+                    email: p.email || "", 
+                    bday: p.bday || ""
                 }))};
             }
             case "getPatientHistory": {
