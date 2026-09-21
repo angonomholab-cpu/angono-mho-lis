@@ -1671,19 +1671,11 @@ function showPrintModal(htmlContent) {
 
     const iframe = document.getElementById('print-iframe');
     
-    // Linisin at isalin ang window.close() para sa parent handler
+    // Palitan ang window.close() para gumana ang close button sa modal
     let safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
-    // Isulat nang direkta sa document ng iframe para maiwasan ang blank rendering ng srcdoc sa ilang browser
+    // Gamitin ang srcdoc nang nag-iisa para hindi maging blangko sa Safari
     iframe.srcdoc = safeHtml;
-    setTimeout(() => {
-        try {
-            let doc = iframe.contentDocument || iframe.contentWindow.document;
-            doc.open();
-            doc.write(safeHtml);
-            doc.close();
-        } catch(e) {}
-    }, 50);
 }
 
 window.closePrintModal = function() {
