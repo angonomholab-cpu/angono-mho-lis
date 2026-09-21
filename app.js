@@ -1481,17 +1481,22 @@ async function printDirect(e, id, testName) {
         if (item) {
             if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
             let pObj = mapSupabaseToPrintObject(item);
-            console.log("Mapped Print Object:", pObj); // I-check ito sa console kungkumpleto
             
             const isNTP = correctCode === "GXP" || correctCode === "DSSM"; 
-            let finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            let finalHtml = "";
+            try {
+                finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            } catch (genErr) {
+                console.error("Template Generation Error:", genErr);
+                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p><pre style="background:#f1f5f9; padding:10px; font-size:11px;">${JSON.stringify(pObj, null, 2)}</pre></body></html>`;
+            }
             
             showPrintModal(finalHtml);
         } else {
             showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found.</h2>'); 
         }
     } catch (err) {
-        console.error("Print Generation Error:", err); // Tingnan kung anong error dito
+        console.error("Print Generation Error:", err);
         showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
     }
 }
