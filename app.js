@@ -792,7 +792,6 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
         const cQuery = forceCol !== null ? forceCol : ((document.getElementById('colFilter') && document.getElementById('colFilter').value !== "ALL") ? document.getElementById('colFilter').options[document.getElementById('colFilter').selectedIndex].text : "ALL"); 
 
         const res = await apiGet("getRegistryDataOptimized", { type: type, facility: currentUser.facility, role: currentUser.role, page: currentRegistryPage, limit: registryLimit, searchQuery: sQuery, monthFilter: mQuery, colFilter: cQuery });
-        if (res.status === "error") throw new Error(res.message);
         
         if (res && res.status === "success" && res.data) {
             const registryData = res.data;
@@ -803,11 +802,14 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             const formatHeader = (str) => {
                 if(!str) return '';
                 if(str.toUpperCase() === 'ID') return 'ID';
+                if(str.toLowerCase() === 'date_examined') return 'Date Examined';
+                if(str.toLowerCase() === 'date_encoded') return 'Date Examined';
+                if(str.toLowerCase() === 'date') return 'Date';
                 return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             };
             const displayHeaders = window.CURRENT_REGISTRY_HEADERS.map(formatHeader);
 
-            const hMap = displayHeaders.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: window.CURRENT_REGISTRY_HEADERS[i] }).filter(x=>x);
+            const hMap = displayHeaders.map((h, i) => window.CURRENT_REGISTRY_HEADERS[i].includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: window.CURRENT_REGISTRY_HEADERS[i] }).filter(x=>x);
             const colFilter = document.getElementById('colFilter'); if(colFilter) { colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach((c, displayIndex) => colFilter.innerHTML += `<option value="${displayIndex}">${c.text}</option>`); }
 
             const rows = registryData.rows || [];
