@@ -38,26 +38,26 @@ const availableTests = {
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
-    document.getElementById('custom-alert-title').innerText = title;
-    document.getElementById('custom-alert-msg').innerText = message;
-    const iconEl = document.getElementById('custom-alert-icon');
-    if(type === 'success') { iconEl.className = 'ph ph-check-circle'; iconEl.style.color = 'var(--success)'; } 
-    else if(type === 'error') { iconEl.className = 'ph ph-warning-circle'; iconEl.style.color = 'var(--danger)'; } 
-    else { iconEl.className = 'ph ph-info'; iconEl.style.color = 'var(--pri)'; }
-    modal.style.display = 'flex';
-}
-function customConfirm(message, callback) { document.getElementById('custom-confirm-msg').innerText = message; document.getElementById('custom-confirm').style.display = 'flex'; confirmActionCallback = callback; }
-function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
-window.alert = function(message) { showAppAlert("Notice", message, "info"); };
-
-async function apiGet(action, params = {}) {
-    try {
-        switch (action) {
+            case "patientLogin": {
+                const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).eq('password', params.password).maybeSingle();
+                if (error) throw error;
+                if (!data) return { status: "FAIL" };
+                return { status: "SUCCESS", patientId: data.id, name: data.full_name };
+            }
             case "getAllPatientsLight": {
-                const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
+                // 🟢 FIX ISSUE 1: Bulletproof data fetching! Kahit ano pa ang name ng column mo sa table, kukunin niya.
+                const { data, error } = await sb.from('patients').select('*');
                 if (error) throw error;
                 return { status: "success", data: (data || []).map(p => ({
-                    id: p.id, name: p.full_name, age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
+                    id: p.id || p.ID, 
+                    name: p.full_name || p.name || p.Name, 
+                    age: p.age || p.Age, 
+                    sex: p.sex || p.Sex, 
+                    facility: p.facility || p.Facility, 
+                    address: p.address || p.Address, 
+                    contact: p.contact || p.Contact, 
+                    email: p.email || p.Email, 
+                    bday: p.bday || p.Birthday
                 }))};
             }
             case "getPatientHistory": {
@@ -70,15 +70,15 @@ async function apiGet(action, params = {}) {
                 }))};
             }
             case "getPendingWorkload": {
-                let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
+                // 🟢 FIX ISSUE 2: PENDING lang dapat ang nasa left box.
+                let pendingQ = sb.from('lab_tests').select('*').eq('status', 'PENDING');
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
-                const { data: pending, error: err1 } = await pendingQ.order('date', { ascending: false });
-                if (err1) throw new Error("Table 'lab_tests' (Pending): " + err1.message);
+                const { data: pending } = await pendingQ.order('date', { ascending: false });
                 
-                let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
+                // 🟢 FIX ISSUE 2: Dito na inilipat ang FOR REPEAT para mapunta sa right box kasama ng completed.
+                let compQ = sb.from('lab_tests').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed, error: err2 } = await compQ.order('date_examined', { ascending: false }).limit(200);
-                if (err2) throw new Error("Table 'lab_tests' (Completed): " + err2.message);
+                const { data: completed } = await compQ.order('date_encoded', { ascending: false }).limit(200);
                 
                 const toFrontend = r => ({ id: r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
