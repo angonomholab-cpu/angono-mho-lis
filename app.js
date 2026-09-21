@@ -1702,8 +1702,9 @@ function showPrintModal(htmlContent) {
     // Palitan ang window.close() para gumana ang close button sa modal
     let safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
     
-    // Gamitin ang srcdoc nang nag-iisa para hindi maging blangko sa Safari
-    iframe.srcdoc = safeHtml;
+    // Gumamit ng Blob URL sa halip na srcdoc para hindi maging blangko sa Safari
+    const blob = new Blob([safeHtml], { type: 'text/html;charset=utf-8' });
+    iframe.src = URL.createObjectURL(blob);
 }
 
 window.closePrintModal = function() {
