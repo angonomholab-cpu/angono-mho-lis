@@ -77,7 +77,7 @@ async function apiGet(action, params = {}) {
                 let rows = data || [];
                 if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
                 return { status: "success", data: rows.map(r => ({
-                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.id }
+                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.test_code || r.id }
                 }))};
             }
             case "getPendingWorkload": {
@@ -89,7 +89,8 @@ async function apiGet(action, params = {}) {
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 
-                const toFrontend = r => ({ id: r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
+                // 🟢 FIXED: Ensure testCode is mapped correctly for the workspace
+                const toFrontend = r => ({ id: r.id, testCode: r.test_code || r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
             }
             case "getFacilityList": {
@@ -119,16 +120,22 @@ async function apiGet(action, params = {}) {
                     if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
                     else q = q.ilike('name', `%${params.searchQuery}%`); 
                 }
-
-                if (params.monthFilter) {
-                    q = q.like('date', `${params.monthFilter}%`); // MONTH FILTER ENABLED
-                }
                 
-                // Sorting ascending / descending
                 const isAsc = params.sortOrder === 'ASC';
-                const { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
+                let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
+                // 🟢 BULLETPROOF JAVASCRIPT MONTH FILTER
+                if (params.monthFilter && data) {
+                    const [fY, fM] = params.monthFilter.split('-');
+                    data = data.filter(row => {
+                        if (!row.date) return false;
+                        const d = new Date(row.date);
+                        if (isNaN(d.getTime())) return false;
+                        return String(d.getFullYear()) === fY && String(d.getMonth() + 1).padStart(2, '0') === fM;
+                    });
+                }
+
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
                 
                 const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
@@ -156,10 +163,10 @@ async function apiPost(action, payload) {
                     id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
                 }, { onConflict: 'id' });
 
+                // 🟢 FIXED: Save test_code explicitly, and let Supabase auto-generate 'id' integer.
                 const rows = tests.map(t => ({
-                    id: t.id,
-                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.code,
-                    details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
+                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
+                    details: t.details || {}, status: t.status || 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
                 }));
                 await sb.from('lab_tests').insert(rows);
                 return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
@@ -653,7 +660,7 @@ async function finalSubmit() {
       const generatedTestCode = `${availableTests[key].testCode}-${dateStr}-${randNum}`;
 
       const entry = { 
-          id: generatedTestCode, // <-- DITO PAPASOK ANG SERIAL CODE
+          test_code: generatedTestCode, // <-- DITO PAPASOK ANG SERIAL CODE para iwas Supabase ID Error
           name: availableTests[key].testName, 
           code: availableTests[key].testCode, 
           details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } 
@@ -733,6 +740,7 @@ async function loadPendingData() {
     } catch(e) { console.error("Refresh Error:", e); } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
 }
 
+// 🟢 LITERAL UNDO BUTTON IMPLEMENTATION
 window.undoResult = function(id) {
     customConfirm("Are you sure you want to UNDO this result? It will go back to Pending.", async () => {
         const btn = document.getElementById('btn-undo-'+id);
@@ -744,8 +752,9 @@ window.undoResult = function(id) {
             let d = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
             delete d.date_examined;
             delete d.dateEncoded;
+            // Burahin din yung ibang essential fields na sinave (opsyonal) pero para safe, ibabalik lang status
             
-            await sb.from('lab_tests').update({ status: 'PENDING', details: d }).eq('id', id);
+            await sb.from('lab_tests').update({ status: 'PENDING', details: d, encoder: null }).eq('id', id);
             await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "UNDO RESULT", details: `Undid result for Test ID: ${id}` });
             
             showAppAlert("Success", "Record reverted to Pending.", "success");
@@ -798,7 +807,8 @@ function renderLists() {
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         }
         
-        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.id}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
+        // 🟢 FIXED Hover Highlights and Custom Test Code (GXP-2026...) display
+        return `<div class="pending-card" id="card-${safeId}" style="transition: all 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-subtle)'" onmouseout="this.style.backgroundColor='white'"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.testCode || item.id}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
     
     pList.innerHTML = batchActionsHtml + pendingCardsHtml;
@@ -806,7 +816,7 @@ function renderLists() {
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
             const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let fac = d.facility || d.Facility || "N/A";
-            return `<div class="pending-card" style="border-left: 3px solid var(--warning); background: var(--warning-light-bg); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div></div>${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}</div>`;
+            return `<div class="pending-card" style="border-left: 3px solid var(--warning); background: var(--warning-light-bg); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.filter='brightness(0.95)'" onmouseout="this.style.filter='brightness(1)'"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div></div>${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}</div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
     }
@@ -814,8 +824,8 @@ function renderLists() {
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test); let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
-        // 🟢 IDINAGDAG ANG UNDO BUTTON DITO
-        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
+        // 🟢 IDINAGDAG ANG UNDO BUTTON DITO (at testCode display)
+        return `<div class="completed-card" style="margin-bottom:8px; transition: all 0.2s;" onmouseover="this.style.backgroundColor='var(--bg-subtle)'" onmouseout="this.style.backgroundColor='white'"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.testCode || item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
@@ -926,7 +936,6 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 }); html += `</tr>`;
             });
             html += `</tbody></table>`;
-            // Remove pagination UI since we are loading all up to 1000 rows
             cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing Top ${registryData.totalRows} Records</span>`;
         } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
     } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
@@ -1196,8 +1205,8 @@ function startAutoSync() {
                 if(currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
                 const { data } = await q;
                 if (data) {
-                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
-                    window.completedData = data.filter(d => d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.completedData = data.filter(d => d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
                     renderLists();
                 }
             } catch (e) {}
@@ -1279,7 +1288,7 @@ function mapSupabaseToPrintObject(d) {
         dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
         dateExamined: detailsObj.date_examined || detailsObj.dateEncoded ? new Date(detailsObj.date_examined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
         dateResult: new Date().toLocaleDateString(), 
-        testCode: d.id, testName: d.test_name || d.test, encoder: d.encoder || "System", verifier: "", results: resultsArr
+        testCode: d.test_code || d.id, testName: d.test_name || d.test, encoder: d.encoder || "System", verifier: "", results: resultsArr
     };
 }
 
