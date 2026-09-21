@@ -72,11 +72,13 @@ async function apiGet(action, params = {}) {
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
-                const { data: pending } = await pendingQ.order('date', { ascending: false });
+                const { data: pending, error: err1 } = await pendingQ.order('date', { ascending: false });
+                if (err1) throw new Error("Table 'lab_tests' (Pending): " + err1.message);
                 
                 let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed } = await compQ.order('date_encoded', { ascending: false }).limit(200);
+                const { data: completed, error: err2 } = await compQ.order('date_encoded', { ascending: false }).limit(200);
+                if (err2) throw new Error("Table 'lab_tests' (Completed): " + err2.message);
                 
                 const toFrontend = r => ({ id: r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
@@ -108,7 +110,8 @@ async function apiGet(action, params = {}) {
                 const page = parseInt(params.page) || 1;
                 const limit = parseInt(params.limit) || 20;
                 
-                const { data, count } = await q.order('date', { ascending: false }).range((page - 1) * limit, page * limit - 1);
+                const { data, count, error } = await q.order('date', { ascending: false }).range((page - 1) * limit, page * limit - 1);
+                if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
                 
@@ -641,8 +644,12 @@ async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon'); if (refIcon) refIcon.classList.add('ph-spin');
     try {
         let res = await apiGet("getPendingWorkload", { facility: currentUser.facility, role: currentUser.role, _t: new Date().getTime() }); 
+        if (res.status === "error") throw new Error(res.message);
         if (res && (res.pending || res.encoded)) { window.pendingData = res.pending || []; window.completedData = res.encoded || []; renderLists(); }
-    } catch(e) { console.error("Refresh Error:", e); } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
+    } catch(e) { 
+        console.error("Refresh Error:", e); 
+        showAppAlert("Database Error", "Pending Data Failed:\n" + (e.message || e), "error");
+    } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
 }
 
 function renderLists() {
@@ -771,6 +778,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
         const cQuery = forceCol !== null ? forceCol : ((document.getElementById('colFilter') && document.getElementById('colFilter').value !== "ALL") ? document.getElementById('colFilter').options[document.getElementById('colFilter').selectedIndex].text : "ALL"); 
 
         const res = await apiGet("getRegistryDataOptimized", { type: type, facility: currentUser.facility, role: currentUser.role, page: currentRegistryPage, limit: registryLimit, searchQuery: sQuery, monthFilter: mQuery, colFilter: cQuery });
+        if (res.status === "error") throw new Error(res.message);
         
         if (res && res.status === "success" && res.data) {
             const registryData = res.data;
@@ -802,7 +810,10 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             let paginationHtml = `<button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})" title="Previous Page"><i class="ph ph-caret-left"></i></button><div style="display:flex; align-items:center; gap:6px;"><span>Page</span><input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${currentPage}" style="width:45px; padding:2px; text-align:center; border:1px solid var(--pri); outline:none; border-radius:4px; height:26px; font-size:0.8rem; font-weight:bold; color:var(--pri);" onkeydown="if(event.key==='Enter'){ let p=parseInt(this.value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p); }"><span>of <strong>${totalPages}</strong> <span style="color:var(--text-muted); font-size:0.7rem;">(Total: ${registryData.totalRows})</span></span></div><button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})" title="Next Page"><i class="ph ph-caret-right"></i></button>`;
             cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = paginationHtml;
         } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
-    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
+    } catch (e) { 
+        cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger);"><b>SQL View Error:</b><br>${e.message}</div>`; 
+        if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; 
+    }
 }
 
 let registrySearchTimeout = null;
