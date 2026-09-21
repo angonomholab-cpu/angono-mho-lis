@@ -1179,8 +1179,57 @@ function processNtpResultsClient(p) {
 
 // 🟢 NEW BATCH PRINT / PDF ENGINE 🟢
 function mapSupabaseToPrintObject(d) {
-    let detailsObj = typeof d.details === 'string' ? JSON.parse(d.details) : d.details;
+    let detailsObj = typeof d.details === 'string' ? JSON.parse(d.details) : (d.details || {});
     let resultsArr = []; for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
+    return {
+        id: d.patientId || d.patient_id, 
+        name: d.name || d.patient_name || detailsObj.name || "", 
+        age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
+        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", 
+        address: detailsObj.address || detailsObj.Address || "", 
+        contact: detailsObj.contact || detailsObj.Contact || "",
+        dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
+        dateExamined: detailsObj.dateExamined || detailsObj.dateEncoded ? new Date(detailsObj.dateExamined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+        dateResult: new Date().toLocaleDateString(), // Laging current date and time sa print
+        testCode: d.id, 
+        testName: d.test || d.test_name, 
+        encoder: d.encoder || "System", 
+        verifier: "", 
+        results: resultsArr
+    };
+}
+
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName); showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
+    try {
+        if (!item) { 
+            const { data } = await sb.from('lab_tests').select('*').eq('id', id).single(); 
+            if(data) item = { id: data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
+        }
+        if (item) {
+            if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
+            let pObj = mapSupabaseToPrintObject(item);
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; let finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            showPrintModal(finalHtml);
+        } else showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
+}
+
+async function batchPrint() {
+    const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE')); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); }); // Fallback rowData[0] if test code not strictly named
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+    try {
+        if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData(); 
+        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; let printContent = [];
+        for(let r of requests) { 
+            const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).single(); 
+            if(data) printContent.push(mapSupabaseToPrintObject(data)); 
+        }
+        let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); showPrintModal(finalHtml);
+    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
+}
     return {
         id: d.patient_id, name: d.patient_name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
         facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
