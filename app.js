@@ -45,11 +45,10 @@ function showAppAlert(title, message, type = 'info') {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                // 🟢 FIX ISSUE 1: Bulletproof data fetching! Kahit ano pa ang name ng column mo sa table, kukunin niya.
                 const { data, error } = await sb.from('patients').select('*');
                 if (error) throw error;
                 return { status: "success", data: (data || []).map(p => ({
-                    id: p.id || p.ID, 
+                    id: p.id || p.ID || p.Patient_ID || p.patient_id, 
                     name: p.full_name || p.name || p.Name, 
                     age: p.age || p.Age, 
                     sex: p.sex || p.Sex, 
@@ -62,6 +61,8 @@ function showAppAlert(title, message, type = 'info') {
             }
             case "getPatientHistory": {
                 const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
+            case "getPatientHistory": {
+                const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
                 if (error) throw error;
                 let rows = data || [];
                 if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
@@ -70,12 +71,10 @@ function showAppAlert(title, message, type = 'info') {
                 }))};
             }
             case "getPendingWorkload": {
-                // 🟢 FIX ISSUE 2: PENDING lang dapat ang nasa left box.
                 let pendingQ = sb.from('lab_tests').select('*').eq('status', 'PENDING');
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending } = await pendingQ.order('date', { ascending: false });
                 
-                // 🟢 FIX ISSUE 2: Dito na inilipat ang FOR REPEAT para mapunta sa right box kasama ng completed.
                 let compQ = sb.from('lab_tests').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed } = await compQ.order('date_encoded', { ascending: false }).limit(200);
@@ -785,7 +784,15 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             if (registryData.error || (registryData.rows && registryData.rows.length > 0 && registryData.rows[0][0] && String(registryData.rows[0][0]).includes("RESTRICTED"))) { cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger); font-weight:bold;"><i class="ph ph-lock-key" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${registryData.rows ? registryData.rows[0][0] : "Access Restricted."}</div>`; return; }
 
             window.CURRENT_REGISTRY_HEADERS = registryData.headers || []; window.CURRENT_REGISTRY_TITLE = registryData.title || type;
-            const hMap = registryData.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
+            
+            const formatHeader = (str) => {
+                if(!str) return '';
+                if(str.toUpperCase() === 'ID') return 'ID';
+                return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            };
+            const displayHeaders = window.CURRENT_REGISTRY_HEADERS.map(formatHeader);
+
+            const hMap = displayHeaders.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: window.CURRENT_REGISTRY_HEADERS[i] }).filter(x=>x);
             const colFilter = document.getElementById('colFilter'); if(colFilter) { colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach((c, displayIndex) => colFilter.innerHTML += `<option value="${displayIndex}">${c.text}</option>`); }
 
             const rows = registryData.rows || [];
@@ -836,10 +843,12 @@ function printRegistryLogbook() {
         const upperH = h.toUpperCase();
         if (excludeCols.some(ex => upperH === ex)) return; 
         if (h.includes("{") || h.includes("}")) return; 
-        printHeaders.push(h.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
+        
+        let prettyH = h.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        printHeaders.push(prettyH.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
     });
     if (window.CURRENT_TEST_TYPE === 'SERO') {
-        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
+        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY" || h.toUpperCase() === "KAP_CATEGORY");
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
     
