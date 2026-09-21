@@ -220,12 +220,22 @@ async function apiGet(action, params = {}) {
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
                 if (params.monthFilter && data) {
+                    let fVal = String(params.monthFilter).toLowerCase().trim();
                     data = data.filter(row => {
                         let rDate = row.date || row.date_received || row.Date || row["Date Received"] || row.date_examined || row.created_at;
                         const d = parseAnyDate(rDate);
                         if (!d) return false;
-                        let rowYearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                        return rowYearMonth === params.monthFilter;
+                        
+                        let mNum = d.getMonth() + 1;
+                        let mName = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"][mNum - 1];
+                        let sName = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"][mNum - 1];
+                        let yNum = String(d.getFullYear());
+
+                        return fVal === String(mNum) || 
+                               fVal === String(mNum).padStart(2, '0') || 
+                               fVal === mName || 
+                               fVal === sName || 
+                               fVal === `${yNum}-${String(mNum).padStart(2, '0')}`;
                     });
                 }
 
@@ -1295,10 +1305,22 @@ function isDateInPeriod(dStr, type, val, year) {
     if(!d) return false; 
     if (String(d.getFullYear()) !== String(year)) return false; 
     if (type === 'annual') return true; 
-    let m = String(d.getMonth() + 1).padStart(2, '0'); 
-    if (type === 'monthly') return m === String(val).padStart(2, '0'); 
+
+    let monthNum = d.getMonth() + 1; // 1 to 12
+    let monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    let shortNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+    let valStr = String(val).toLowerCase().trim();
+
+    if (type === 'monthly') {
+        // Kung ang value ay pangalan (hal. "january" o "jan") o numero (hal. "9" o "09")
+        if (valStr === String(monthNum) || valStr === String(monthNum).padStart(2, '0')) return true;
+        if (valStr === monthNames[monthNum - 1] || valStr === shortNames[monthNum - 1]) return true;
+        if (valStr === `${d.getFullYear()}-${String(monthNum).padStart(2, '0')}`) return true;
+        return false;
+    } 
+    
     if (type === 'quarterly') { 
-        let monthNum = parseInt(m, 10);
         if (val == 1) return (monthNum >= 1 && monthNum <= 3); 
         if (val == 2) return (monthNum >= 4 && monthNum <= 6); 
         if (val == 3) return (monthNum >= 7 && monthNum <= 9); 
@@ -1647,8 +1669,12 @@ function showPrintModal(htmlContent) {
         document.body.appendChild(modal);
     }
     modal.style.display = 'flex';
+
+    // Siguraduhing napapalitan ang window.close() ng parent function para gumana ang close button sa loob ng iframe
+    let safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
+    
     const iframe = document.getElementById('print-iframe');
-    iframe.srcdoc = htmlContent;
+    iframe.srcdoc = safeHtml;
 }
 
 window.closePrintModal = function() {
