@@ -77,7 +77,7 @@ async function apiGet(action, params = {}) {
                 
                 let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed, error: err2 } = await compQ.order('date_encoded', { ascending: false }).limit(200);
+                const { data: completed, error: err2 } = await compQ.order('date_examined', { ascending: false }).limit(200);
                 if (err2) throw new Error("Table 'lab_tests' (Completed): " + err2.message);
                 
                 const toFrontend = r => ({ id: r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
@@ -146,7 +146,7 @@ async function apiPost(action, payload) {
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_encoded: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
@@ -669,7 +669,7 @@ function renderLists() {
 
     const fComp = window.completedData.filter(i => {
         let encodedDateStr = TODAY_STR; 
-        try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.dateEncoded) { encodedDateStr = new Date(d.dateEncoded).toLocaleDateString(); } else if (i.date) { encodedDateStr = new Date(i.date).toLocaleDateString(); } } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
+        try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.dateExamined) { encodedDateStr = new Date(d.dateExamined).toLocaleDateString(); } else if (i.date) { encodedDateStr = new Date(i.date).toLocaleDateString(); } } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
         return filterFn(i) && (encodedDateStr === TODAY_STR);
     });
 
@@ -1114,7 +1114,7 @@ async function batchSaveResults(isPrint) {
         let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
         let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
         if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, dateEncoded: new Date().toISOString() };
+        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, dateExamined: new Date().toISOString() };
         try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: 'COMPLETED' }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
     }
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
@@ -1159,8 +1159,8 @@ function mapSupabaseToPrintObject(d) {
         id: d.patient_id, name: d.patient_name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
         facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
         dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
-        dateExamined: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-        dateResult: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+        dateExamined: detailsObj.dateExamined ? new Date(detailsObj.dateExamined).toLocaleDateString() : TODAY_STR, 
+        dateResult: new Date().toLocaleDateString(), 
         testCode: d.id, testName: d.test_name, encoder: d.encoder || "System", verifier: "", results: resultsArr
     };
 }
