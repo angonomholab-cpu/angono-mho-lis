@@ -1,9 +1,5 @@
 // 🟢 PURE SUPABASE ARCHITECTURE 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
-const supabaseUrl = 'https://mtohvtmupjfdabrrpnii.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b2h2dG11cGpmZGFicnJwbmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njg2MzQsImV4cCI6MjEwNTU0NDYzNH0.lh5n2LY4x9_kyPcgUOdtDUxEpiBClTMDCKNSzQTTH64';
-
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -49,46 +45,46 @@ function customConfirm(message, callback) { document.getElementById('custom-conf
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
 window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
-// 🟢 BAGO: PURE SUPABASE WRAPPERS (PAPALIT SA GOOGLE SCRIPT) 🟢
+// 🟢 BAGO: PURE SUPABASE WRAPPERS 🟢
 async function apiGet(action, params = {}) {
     try {
         switch (action) {
             case "loginUser": {
-                const { data, error } = await supabase.from('app_users').select('*').eq('username', params.username).eq('password', params.password).maybeSingle();
+                const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).eq('password', params.password).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL" };
                 if (data.status === "PENDING") return { status: "PENDING" };
-                if (data.status !== "ACTIVE") return { status: "FAIL" };
+                if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
                 return { status: "SUCCESS", username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username };
             }
             case "patientLogin": {
-                const { data, error } = await supabase.from('patients').select('*').eq('email', params.email).eq('password', params.password).maybeSingle();
+                const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).eq('password', params.password).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL" };
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                const { data, error } = await supabase.from('patients').select('*');
+                const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
                 if (error) throw error;
                 return { status: "success", data: (data || []).map(p => ({
                     id: p.id, name: p.full_name, age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
                 }))};
             }
             case "getPatientHistory": {
-                const { data, error } = await supabase.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
+                const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
                 if (error) throw error;
                 let rows = data || [];
                 if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
                 return { status: "success", data: rows.map(r => ({
-                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Done"), fullData: { ...r.details, "Test Code": r.id }
+                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.id }
                 }))};
             }
             case "getPendingWorkload": {
-                let pendingQ = supabase.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
+                let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending } = await pendingQ.order('date', { ascending: false });
                 
-                let compQ = supabase.from('lab_tests').select('*').eq('status', 'COMPLETED');
+                let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed } = await compQ.order('date_encoded', { ascending: false }).limit(200);
                 
@@ -96,25 +92,39 @@ async function apiGet(action, params = {}) {
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
             }
             case "getFacilityList": {
-                const { data } = await supabase.from('facilities').select('name');
+                const { data } = await sb.from('facilities').select('name');
                 return { status: "success", data: data || [] };
             }
             case "getRegistryDataOptimized": {
-                // 🟢 FIX: Dynamic na pupunta sa mga 'export_' tables mo para makuha ang old data!
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
-                const tName = exportTables[params.type];
-                if (!tName) return { status: "error", message: "Table not mapped" };
+                const tName = exportTables[params.type] || 'lab_tests';
                 
-                const { data, count } = await supabase.from(tName).select('*', { count: 'exact' }).limit(params.limit || 50);
+                let q = sb.from(tName).select('*', { count: 'exact' });
+                
+                if (tName === 'lab_tests') {
+                     const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
+                     q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['COMPLETED', 'ENCODED', 'FOR REPEAT']);
+                }
+
+                if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
+                    if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                }
+                
+                if (params.searchQuery) {
+                    if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
+                    else q = q.ilike('Name', `%${params.searchQuery}%`); 
+                }
+
+                const page = parseInt(params.page) || 1;
+                const limit = parseInt(params.limit) || 20;
+                
+                const { data, count } = await q.order('date', { ascending: false }).range((page - 1) * limit, page * limit - 1);
+                
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
                 
-                const headers = Object.keys(data[0]);
+                const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
                 const rows = data.map(row => headers.map(h => row[h]));
-                return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: count || 0 } };
-            }
-            case "getReportData": {
-                // Pansamantalang babalik ng empty format para hindi mag-crash ang DOH Reports mo.
-                return { status: "success", data: { tb: { exam: {}, pos: {}, rr: {}, t: {}, ti: {}, n: {}, tt: {}, invalid: {}, initial: {}, cartridges: 0, dssm: 0 }, hiv: { tested: {m:{},f:{},kap:{}}, reactive: {m:{},f:{},kap:{}} }, sti: { hiv: {}, syph: {}, hbsag: {} }, dengue: { pos: 0, neg: 0, total: 0 }, workload: {} } };
+                return { status: "success", data: { headers, rows, totalPages: Math.max(1, Math.ceil((count || 0) / limit)), currentPage: page, totalRows: count || 0 } };
             }
             default: return { status: "error", message: "GET action not implemented: " + action };
         }
@@ -129,7 +139,7 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                await supabase.from('patients').upsert({
+                await sb.from('patients').upsert({
                     id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, password: f.patientPassword || null, facility: f.facility
                 }, { onConflict: 'id' });
 
@@ -138,27 +148,27 @@ async function apiPost(action, payload) {
                     patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.code,
                     details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
                 }));
-                await supabase.from('lab_tests').insert(rows);
+                await sb.from('lab_tests').insert(rows);
                 return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                await supabase.from('lab_tests').update({ details, status: 'COMPLETED', date_encoded: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_encoded: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
                 const details = JSON.parse(payload.newJsonDetails || "{}");
-                await supabase.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
-                await supabase.from('patients').update({ full_name: payload.newName, age: details.age, sex: details.sex, address: details.address, contact: details.contact, facility: details.facility, email: details.email || null, bday: details.bday || null }).eq('id', payload.patientId);
+                await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
+                await sb.from('patients').update({ full_name: payload.newName, age: details.age, sex: details.sex, address: details.address, contact: details.contact, facility: details.facility, email: details.email || null, bday: details.bday || null }).eq('id', payload.patientId);
                 return { status: "success", data: "Updated" };
             }
             case "deletePendingTestById": {
-                await supabase.from('lab_tests').delete().eq('id', payload.testId);
+                await sb.from('lab_tests').delete().eq('id', payload.testId);
                 return { status: "success" };
             }
             case "getSettingsData": {
                 const [{ data: staff }, { data: facilities }, { data: users }] = await Promise.all([
-                    supabase.from('staff').select('*'), supabase.from('facilities').select('*'), supabase.from('app_users').select('*')
+                    sb.from('staff').select('*'), sb.from('facilities').select('*'), sb.from('app_users').select('*')
                 ]);
                 return { status: "success", data: {
                     staff: (staff || []).map(s => ({ name: s.name, role: s.role, license: s.license, sigUrl: s.sig_url })),
@@ -167,41 +177,41 @@ async function apiPost(action, payload) {
                 }};
             }
             case "saveStaffData": {
-                await supabase.from('staff').delete().neq('name', '000'); 
+                await sb.from('staff').delete().not('id', 'is', null); 
                 const rows = (payload.staffArray || []).map(s => ({ name: s.name, role: s.role, license: s.license, sig_url: s.sigUrl }));
-                if (rows.length) await supabase.from('staff').insert(rows);
+                if (rows.length) await sb.from('staff').insert(rows);
                 return { status: "success" };
             }
             case "saveNewUser": {
                 const d = payload.data;
-                await supabase.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
+                await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
                 return { status: "success" };
             }
             case "registerUser": {
                 const d = payload.data;
-                await supabase.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
+                await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
                 return { status: "success" };
             }
             case "updateUserFull": {
                 const d = payload.updatedData;
                 const updateObj = { username: d.u, full_name: d.name, role: d.role, facility: d.fac, status: d.status };
                 if (d.p) updateObj.password = d.p;
-                await supabase.from('app_users').update(updateObj).eq('username', payload.oldUsername);
+                await sb.from('app_users').update(updateObj).eq('username', payload.oldUsername);
                 return { status: "success" };
             }
             case "deleteUser": {
-                await supabase.from('app_users').delete().eq('username', payload.targetUsername);
+                await sb.from('app_users').delete().eq('username', payload.targetUsername);
                 return { status: "success" };
             }
             case "approveUser": {
                 const status = payload.userAction === 'APPROVE' ? 'ACTIVE' : 'REJECTED';
-                await supabase.from('app_users').update({ status }).eq('username', payload.targetUsername);
+                await sb.from('app_users').update({ status }).eq('username', payload.targetUsername);
                 return { status: "success" };
             }
             case "editRegistryRecord": {
-                const { data: row } = await supabase.from('lab_tests').select('details').eq('patient_id', payload.patientId).eq('test_name', payload.testType).maybeSingle();
+                const { data: row } = await sb.from('lab_tests').select('details').eq('patient_id', payload.patientId).eq('test_name', payload.testType).maybeSingle();
                 const merged = { ...(row?.details || {}), ...payload.updates };
-                await supabase.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
+                await sb.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
                 return { status: "success" };
             }
             default: return { status: "error", message: "POST action not implemented: " + action };
@@ -224,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.getElementById('login-overlay').style.display = 'none';
             
-            // Safety checks para hindi mag-crash
             const dName = document.getElementById('display-full-name');
             if(dName) dName.innerText = currentUser.fullName || currentUser.username;
             
@@ -244,7 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
             else if(r === 'NTP_CHECKER' || r === 'DOH_TB' || r === 'VIEWER') showPage('registry'); 
             else showPage('workspace');
         } else {
-            // 🟢 ITO ANG DAHILAN KUNG BAKIT STUCK SA LOADING (Nilagyan natin ng ELSE) 🟢
             document.getElementById('login-overlay').style.display = 'flex';
         }
     } catch (e) { 
@@ -254,9 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('app-loader').style.display = 'none'; 
     }
 });
-
-function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
-// ... existing code ...
 
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 function applyLimitedMode(isLimited) {
@@ -279,14 +284,9 @@ async function attemptLogin() {
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     
     try {
-        const { data, error } = await supabase.from('user_accounts').select('*').ilike('username', u).eq('password', p).maybeSingle();
-        if (error || !data) { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
-        else if (data.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } 
-        else if (data.status === "REJECTED" || data.status === "BANNED") { err.style.display = 'block'; err.innerHTML = "Account Blocked."; }
-        else {
-            currentUser = { username: data.username, facility: data.facility, role: data.role, fullName: data.full_name }; 
-            localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); 
-        }
+        const res = await apiGet("loginUser", { username: u, password: p });
+        if (res.status === "SUCCESS") { currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
+        else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
     } catch (e) { showAppAlert("Error", "Server Error.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
@@ -297,11 +297,9 @@ async function attemptPatientLogin() {
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     
     try {
-        const { data, error } = await supabase.from('patient_masterlist').select('*').ilike('email', e).eq('password', p).maybeSingle();
-        if (data && !error) { 
-            currentUser = { username: data.id, facility: "PATIENT", role: "PATIENT", fullName: data.name }; 
-            localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); 
-        } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials."; }
+        const res = await apiGet("patientLogin", { email: e, password: p });
+        if (res.status === "SUCCESS") { currentUser = { username: res.patientId, facility: "PATIENT", role: "PATIENT", fullName: res.name }; localStorage.setItem('labUser', JSON.stringify(currentUser)); window.location.reload(); } 
+        else { err.style.display = 'block'; err.innerHTML = "Invalid credentials."; }
     } catch (err) { err.style.display = 'block'; err.innerHTML = "Server Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
 }
 
@@ -316,18 +314,13 @@ async function resendPatientPassword() {
     const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true; 
     
     try { 
-        const { data, error } = await supabase.from('patient_masterlist').select('*').ilike('email', email).maybeSingle();
+        const { data, error } = await sb.from('patients').select('*').ilike('email', email).maybeSingle();
         if (data) {
             let pass = data.password;
-            if(!pass) {
-                pass = Math.random().toString(36).slice(-8).toUpperCase();
-                await supabase.from('patient_masterlist').update({password: pass}).eq('id', data.id);
-            }
+            if(!pass) { pass = Math.random().toString(36).slice(-8).toUpperCase(); await sb.from('patients').update({password: pass}).eq('id', data.id); }
             showAppAlert("Success", "Account Verified! Please save your login credentials:\n\nEmail: " + email + "\nPassword: " + pass + "\n\n(In the future, this will be emailed directly to you).", "success"); 
             backToLoginFromPatient(); 
-        } else { 
-            showAppAlert("Notice", "Email is not recorded. Please contact Angono MHO Laboratory on Facebook Messenger to request access.", "error"); 
-        } 
+        } else { showAppAlert("Notice", "Email is not recorded. Please contact Angono MHO Laboratory on Facebook Messenger to request access.", "error"); } 
     } catch(e) { showAppAlert("Error", "Unable to connect to the server.", "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
 }
 
@@ -422,10 +415,8 @@ function generateSmartID() { if(isExistingPatient) return; const bday = document
 
 async function loadPatientCache() {
     try {
-        const { data, error } = await supabase.from('patient_masterlist').select('id, name, bday, age, sex, facility, address, contact, email');
-        if (!error && data) {
-            cachedPatients = data;
-        }
+        const res = await apiGet("getAllPatientsLight");
+        if (res.status === "success") cachedPatients = res.data;
     } catch(e) { console.error("Failed to load patient cache"); }
 }
 
@@ -498,52 +489,35 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
     if(sectionId) document.getElementById(sectionId).style.display = 'block';
     const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
     try {
-        const { data, error } = await supabase.from('registry').select('*').eq('patient_id', id).order('id', { ascending: false });
-        if (error) throw error;
-        
-        let filteredData = data;
-        if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
-            filteredData = data.filter(r => !String(r.test).toUpperCase().includes('VIRAL'));
-        }
-
-        if (filteredData && filteredData.length > 0) {
-            list.innerHTML = filteredData.map((h, i) => {
-                let parsedDetails = {}; try { parsedDetails = typeof h.details === 'string' ? JSON.parse(h.details) : h.details; } catch(e){}
-                let resCode = parsedDetails.ResultCode || parsedDetails.Diagnosis || parsedDetails.Result || parsedDetails.VL_Choice || parsedDetails.Dengue_Result || "Recorded";
-                if(h.status === 'PENDING') resCode = "PENDING";
-                
+        const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
+        if (res.status === 'success' && res.data.length > 0) {
+            list.innerHTML = res.data.map((h, i) => {
                 const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
                 let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
-                let testCodeForPrint = h.id; 
+                let testCodeForPrint = id; 
 
-                for (const [key, value] of Object.entries(parsedDetails)) {
-                    if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
-                       summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
-                       editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
+                if(h.fullData) {
+                    testCodeForPrint = h.fullData["Test Code"] || h.fullData["Sample ID"] || h.fullData["Lab Serial Number"] || id;
+                    for (const [key, value] of Object.entries(h.fullData)) {
+                        if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
+                           summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
+                           editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
+                        }
                     }
                 }
                 summaryHtml += '</div>'; editInputsHtml += '</div>';
                 let editBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>` : '';
                 let printBtnHtml = (isQuickSearch || isPatientPortal) ? `<button class="btn-icon" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${testCodeForPrint}', '${h.test}')" title="Download PDF" style="color:var(--pri); margin-left: 5px;"><i class="ph ph-download-simple"></i></button>` : '';
-                let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${h.id}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
+                let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
                 
-                return `<div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;"><div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details"><div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${resCode}</span>${printBtnHtml}<i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i></div></div><div id="${uniqueId}" class="h-expanded-details"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;"><span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>${editBtnHtml}</div><div id="summary-view-${uniqueId}">${summaryHtml}</div><div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);"><div>${editInputsHtml}</div><div style="margin-top:10px; display:flex; gap:10px;"><button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>${updateBtnHtml}</div></div></div></div>`;
+                return `<div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;"><div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details"><div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>${printBtnHtml}<i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i></div></div><div id="${uniqueId}" class="h-expanded-details"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;"><span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>${editBtnHtml}</div><div id="summary-view-${uniqueId}">${summaryHtml}</div><div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);"><div>${editInputsHtml}</div><div style="margin-top:10px; display:flex; gap:10px;"><button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>${updateBtnHtml}</div></div></div></div>`;
             }).join('');
         } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
     } catch(e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
 }
 
 function toggleHistoryEdit(id) { const sum = document.getElementById('summary-view-'+id); const edt = document.getElementById('edit-view-'+id); if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; } }
-async function saveHistoryEdit(supabaseId, uniqueId) { 
-    const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {}; inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value); 
-    try { 
-        const { data: oldRow } = await supabase.from('registry').select('details').eq('id', supabaseId).single();
-        let oldJson = {}; if(oldRow) { try { oldJson = typeof oldRow.details === 'string' ? JSON.parse(oldRow.details) : oldRow.details; } catch(e){} }
-        let newJson = { ...oldJson, ...updates };
-        const { error } = await supabase.from('registry').update({ details: newJson }).eq('id', supabaseId);
-        if (error) throw error; showAppAlert("Success", "Record updated successfully!", "success"); toggleHistoryEdit(uniqueId); 
-    } catch(e) { showAppAlert("Error", "Error updating past record.", "error"); } 
-}
+async function saveHistoryEdit(patientId, testType, uniqueId) { const inputs = document.querySelectorAll(`.edit-hist-${uniqueId}`); let updates = {}; inputs.forEach(inp => updates[inp.getAttribute('data-key')] = inp.value); try { const res = await apiPost("editRegistryRecord", { patientId: patientId, testType: testType, updates: updates }); if (res.status === "success") { showAppAlert("Success", "Record updated successfully!", "success"); toggleHistoryEdit(uniqueId); } } catch(e) { showAppAlert("Error", "Error updating past record.", "error"); } }
 
 function clearForm() {
     document.getElementById('regForm').reset(); labOrders = {}; document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary(); document.getElementById('finalPatientId').value = ""; isExistingPatient = false; 
@@ -561,63 +535,38 @@ async function finalSubmit() {
   const pEmailEl = document.getElementById('p_email'); const pEmail = pEmailEl ? pEmailEl.value.trim().toLowerCase() : "";
   const generatedPassword = pEmail ? Math.random().toString(36).slice(-8).toUpperCase() : "";
 
-  const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; 
-  const pFacility = document.getElementById('p_facility').value || ""; const pName = document.getElementById('p_name').value;
-  const pBday = document.getElementById('p_bday').value; const pContact = document.getElementById('p_contact').value; const pAddress = document.getElementById('p_address').value;
-  const patientIdVal = document.getElementById('finalPatientId').value;
+  let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
+  Object.keys(labOrders).forEach(key => { const entry = { name: availableTests[key].testName, code: availableTests[key].testCode, details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } }; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) { entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); } finalTestsArray.push(entry); });
+
+  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
   try {
-      const { error: pErr } = await supabase.from('patient_masterlist').upsert({ id: patientIdVal, name: pName, bday: pBday, sex: pSex, age: pAge, address: pAddress, contact: pContact, email: pEmail, facility: pFacility, password: generatedPassword }, { onConflict: 'id' });
-      if (pErr) throw pErr;
-
-      const dateStart = new Date(); dateStart.setHours(0,0,0,0);
-      let insertArray = [];
-
-      for (const key of Object.keys(labOrders)) { 
-          let details = { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: pAddress, contact: pContact, bday: pBday }; 
-          if(labOrders[key].subTests && labOrders[key].subTests.length > 0) details["Requested Tests"] = labOrders[key].subTests.join(', '); 
-          
-          let tName = availableTests[key].testName;
-          const prefix = `${availableTests[key].testCode}-${new Date().toISOString().slice(0,10).replace(/-/g,"")}`;
-          const { count } = await supabase.from('registry').select('*', { count: 'exact', head: true }).eq('test', tName).gte('date', dateStart.toISOString());
-          const nextNum = (count || 0) + 1 + insertArray.length;
-          details['Lab Serial Number'] = `${prefix}-${String(nextNum).padStart(3, '0')}`;
-
-          insertArray.push({ patient_id: patientIdVal, name: pName, test: tName, details: details, encoder: currentUser.username, status: 'PENDING', facility: pFacility, date: new Date().toISOString() });
-      }
-
-      const { error: tErr } = await supabase.from('registry').insert(insertArray);
-      if (tErr) throw tErr;
-
-      btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
-      clearForm(); await loadPendingData(); 
-      showAppAlert("Record Saved", `Successfully saved to Supabase!${pEmail ? '\n\nPatient Password: ' + generatedPassword + '\n(Please provide this directly to the patient since Javascript email is disabled)' : ''}`, "success");
-      setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
-  } catch (err) { showAppAlert("Error", String(err.message), "error"); btn.disabled = false; btn.innerHTML = originalText; }
+      const res = await apiPost("submitForm", { formObject: formData });
+      if (res.status === "success") { 
+          btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; clearForm(); await loadPendingData(); 
+          const savedPass = res.data?.generatedPassword || generatedPassword;
+          showAppAlert("Record Saved", `Successfully saved to Supabase!${pEmail ? '\n\nPatient Password: ' + savedPass + '\n(Please provide this directly to the patient since Javascript email is disabled)' : ''}`, "success");
+          setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
+      } else { throw new Error("Server rejected the save."); }
+  } catch (err) { showAppAlert("Error", String(err), "error"); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
     editingPendingId = item.id; isExistingPatient = true; 
-    
-    document.getElementById('col-entry').classList.add('edit-mode-pane'); 
-    const header = document.getElementById('entry-main-header');
+    document.getElementById('col-entry').classList.add('edit-mode-pane'); const header = document.getElementById('entry-main-header');
     if (header) { header.classList.add('edit-mode-header'); header.innerHTML = `<h2><i class="ph ph-pencil-simple"></i> Editing Pending Record</h2><button class="btn-icon" onclick="cancelEditPending()" style="color:white;"><i class="ph ph-x"></i></button>`; }
     
     const pIdEl = document.getElementById('finalPatientId'); if (pIdEl) pIdEl.value = item.patientId || "";
     const pNameEl = document.getElementById('p_name'); if (pNameEl) pNameEl.value = item.name || "";
-    
     let d = {}; try { d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; } catch(e){}
     
     const pAgeEl = document.getElementById('p_age'); if(pAgeEl) pAgeEl.value = d.age || d.Age || ""; 
     const pAddressEl = document.getElementById('p_address'); if(pAddressEl) pAddressEl.value = d.address || d.Address || ""; 
     const pContactEl = document.getElementById('p_contact'); if(pContactEl) pContactEl.value = d.contact || d.Contact || "";
     const pEmailEl = document.getElementById('p_email'); if(pEmailEl) pEmailEl.value = d.email || d.Email || "";
-    
     if (typeof setSelectValue === 'function') { setSelectValue('p_sex', d.sex || d.Sex); setSelectValue('p_facility', d.facility || d.Facility); }
-    
-    const bdayVal = d.bday || d.Bday;
-    if(bdayVal) { try { const bd = new Date(bdayVal); if (!isNaN(bd.getTime())) { const pBdayEl = document.getElementById('p_bday'); if (pBdayEl) pBdayEl.value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; } } catch(e){} }
+    const bdayVal = d.bday || d.Bday; if(bdayVal) { try { const bd = new Date(bdayVal); if (!isNaN(bd.getTime())) { const pBdayEl = document.getElementById('p_bday'); if (pBdayEl) pBdayEl.value = `${bd.getFullYear()}-${String(bd.getMonth()+1).padStart(2,'0')}-${String(bd.getDate()).padStart(2,'0')}`; } } catch(e){} }
     
     const newEntryH = document.getElementById('new-entry-header'); if(newEntryH) newEntryH.style.display = 'none'; 
     const profileH = document.getElementById('profile-header'); if(profileH) profileH.style.display = 'flex';
@@ -632,67 +581,53 @@ function editPendingFull(id) {
         area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> Updating Details for ${item.test}</div><div id="temp-form-data" class="form-grid">${dynamicHtml}</div><div style="margin-top:12px; display:flex; gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="cancelEditPending()">Cancel Edit</button></div>`;
         setTimeout(() => { document.querySelectorAll('#test-details-area [data-key]').forEach(el => { let val = d[el.getAttribute('data-key')]; if(val) el.value = val; }); }, 100);
     }
-    
-    const saveBtn = document.getElementById('save-btn-action'); 
-    if (saveBtn) { saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record'; saveBtn.onclick = submitPendingUpdate; saveBtn.style.background = 'var(--warning)'; saveBtn.style.color = 'white'; }
+    const saveBtn = document.getElementById('save-btn-action'); if (saveBtn) { saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record'; saveBtn.onclick = submitPendingUpdate; saveBtn.style.background = 'var(--warning)'; saveBtn.style.color = 'white'; }
 }
+
 function cancelEditPending() { clearForm(); } 
 async function submitPendingUpdate() {
     if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim()); if(!item) return;
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn ? btn.innerHTML : 'Update'; if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true; }
-    
     try {
         let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
         const pEmailEl = document.getElementById('p_email');
         let demogUpdates = { age: document.getElementById('p_age') ? document.getElementById('p_age').value : "", sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : "" };
         const pBdayEl = document.getElementById('p_bday'); if(pBdayEl && pBdayEl.value) demogUpdates.bday = pBdayEl.value;
 
-        let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = {...oldD, ...newDetails, ...demogUpdates}; const pNameEl = document.getElementById('p_name');
+        let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); const pNameEl = document.getElementById('p_name');
         
-        const { error: e1 } = await supabase.from('registry').update({ details: finalJsonStr, name: pNameEl ? pNameEl.value : item.name }).eq('id', editingPendingId);
-        if(e1) throw e1;
-        const { error: e2 } = await supabase.from('patient_masterlist').update(demogUpdates).eq('id', item.patientId);
-        if(e2) throw e2;
-        
+        const res = await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: pNameEl ? pNameEl.value : item.name, newTestType: item.test, newJsonDetails: finalJsonStr }); 
         cancelEditPending(); if (typeof loadPendingData === 'function') await loadPendingData(); showAppAlert("Success", "Record updated successfully!", "success");
-    } catch(e) { showAppAlert("Error", String(e.message), "error"); } finally { if (btn) { btn.innerHTML = oldTxt; btn.disabled = false; } }
+    } catch(e) { showAppAlert("Error", String(e), "error"); } finally { if (btn) { btn.innerHTML = oldTxt; btn.disabled = false; } }
 }
 
 async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon'); if (refIcon) refIcon.classList.add('ph-spin');
     try {
-        let q = supabase.from('registry').select('*').in('status', ['PENDING', 'COMPLETED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
-        if(currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
-        const { data, error } = await q;
-
-        if (data && !error) {
-            window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, patientId: d.patient_id, name: d.name, test: d.test, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
-            window.completedData = data.filter(d => d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, patientId: d.patient_id, name: d.name, test: d.test, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
-            renderLists();
-        }
+        let res = await apiGet("getPendingWorkload", { facility: currentUser.facility, role: currentUser.role, _t: new Date().getTime() }); 
+        if (res && (res.pending || res.encoded)) { window.pendingData = res.pending || []; window.completedData = res.encoded || []; renderLists(); }
     } catch(e) { console.error("Refresh Error:", e); } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
 }
 
 function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const rList = document.getElementById('list-repeat'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return; window.pendingData = window.pendingData || []; window.completedData = window.completedData || [];
-    
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_'); const isViewer = (role === 'VIEWER'); const isEncoder = (role === 'ENCODER'); const isLimited = localStorage.getItem('mho-limited-mode') === 'true'; const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
 
     const uniqueTests = [...new Set(window.pendingData.map(item => String(item.test || "").toUpperCase()))];
-    const currentVal = filterSelect ? filterSelect.value : 'ALL';
-    let dropHtml = '<option value="ALL">All Sections</option>';
+    const currentVal = filterSelect ? filterSelect.value : 'ALL'; let dropHtml = '<option value="ALL">All Sections</option>';
     uniqueTests.forEach(t => { let tCode = getTestCodeFromName(t); if(!isLimited || allowedTests.includes(tCode)) { dropHtml += `<option value="${t}">${t}</option>`; } });
     if(filterSelect) { filterSelect.innerHTML = dropHtml; filterSelect.value = currentVal; }
 
-    const filterFn = (item) => { let t = String(item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t); if(isLimited && !allowedTests.includes(tCode)) return false; return (filterVal === "ALL") || t.includes(filterVal); };
+    const filterFn = (item) => { let t = String(item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t); if(isLimited && !allowedTests.includes(tCode)) return false; let typeMatch = (filterVal === "ALL") || t.includes(filterVal); return typeMatch; };
+
     const fPending = window.pendingData.filter(i => filterFn(i)); 
-    fPending.sort((a, b) => { let dateA = new Date(a.date); dateA.setHours(0,0,0,0); let dateB = new Date(b.date); dateB.setHours(0,0,0,0); if (dateB.getTime() !== dateA.getTime()) return dateB.getTime() - dateA.getTime(); return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true }); });
+    fPending.sort((a, b) => { let dateA = new Date(a.date); dateA.setHours(0,0,0,0); let dateB = new Date(b.date); dateB.setHours(0,0,0,0); if (dateB.getTime() !== dateA.getTime()) { return dateB.getTime() - dateA.getTime(); } return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true }); });
 
     const fComp = window.completedData.filter(i => {
         let encodedDateStr = TODAY_STR; 
-        try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.dateEncoded) encodedDateStr = new Date(d.dateEncoded).toLocaleDateString(); else if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
-        return filterFn(i) && (encodedDateStr === TODAY_STR) && (i.status === 'COMPLETED');
+        try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.dateEncoded) { encodedDateStr = new Date(d.dateEncoded).toLocaleDateString(); } else if (i.date) { encodedDateStr = new Date(i.date).toLocaleDateString(); } } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
+        return filterFn(i) && (encodedDateStr === TODAY_STR);
     });
 
     const fRepeat = []; let latestCompleted = {};
@@ -701,11 +636,7 @@ function renderLists() {
         try {
             const status = String(item.status || "").toUpperCase(); let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"] || ""; let resCode = d.ResultCode || d.Diagnosis || d.Result || "";
             const isRepeatStatus = (status === "FOR REPEAT"); const isInitialInDetails = (String(rpt).toUpperCase() === 'INITIAL' || String(resCode).toUpperCase().includes("INITIAL"));
-            if (isRepeatStatus || isInitialInDetails) {
-                let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && String(p.test || "").toUpperCase() === String(item.test || "").toUpperCase());
-                let typeMatch = !filterSelect || filterSelect.value === "ALL" || String(item.test || "").toUpperCase().includes(filterSelect.value);
-                if(!isAlreadyPending && typeMatch) fRepeat.push(item); 
-            }
+            if (isRepeatStatus || isInitialInDetails) { let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && String(p.test || "").toUpperCase() === String(item.test || "").toUpperCase()); let typeMatch = !filterSelect || filterSelect.value === "ALL" || String(item.test || "").toUpperCase().includes(filterSelect.value); if(!isAlreadyPending && typeMatch) fRepeat.push(item); }
         } catch(e) {}
     });
 
@@ -714,13 +645,17 @@ function renderLists() {
     const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; let hasInitial = window.completedData.some(c => c.patientId === item.patientId && String(c.test || "").toUpperCase() === String(item.test || "").toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : (c.details || {}); return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL' || String(c.status).toUpperCase() === "FOR REPEAT"; })()); if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px;">REPEAT</span>`; } catch(e){}
+        
         let actionsHtml = ''; let checkboxHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="padding-top:2px;"><input type="checkbox" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);"></div>` : '';
+
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) { actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`; }
+
         let clickAttr = `style="flex-grow:1;"`; let expandAreaHtml = '';
         if (role === 'ADMIN' || role === 'STAFF') {
             clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         }
+        
         return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${item.id}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
     
@@ -743,42 +678,27 @@ function renderLists() {
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
 }
 
-async function saveResult(id, safeId, btn) {
-  const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
-  let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
-  if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-  detailsObj.dateEncoded = new Date().toISOString(); detailsObj["Performed By"] = currentUser.fullName || currentUser.username;
-  btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
-  try {
-      const { error } = await supabase.from('registry').update({ details: detailsObj, status: 'COMPLETED' }).eq('id', id);
-      if (error) throw error; btn.style.background = "var(--success)"; btn.innerHTML = 'Saved'; await loadPendingData(); 
-  } catch (err) { btn.disabled = false; btn.innerHTML = "Save Result"; }
-}
-
 async function saveAndPrintResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-    detailsObj.dateEncoded = new Date().toISOString(); detailsObj["Performed By"] = currentUser.fullName || currentUser.username;
-    const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
-        const { error } = await supabase.from('registry').update({ details: detailsObj, status: 'COMPLETED' }).eq('id', id);
-        if (error) throw error; btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
-        await loadPendingData(); printDirect(null, id, tCodePrint); 
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
     } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", "Failed to save and print.", "error"); }
 }
 
 async function moveToPendingRepeat(idStr) {
     const item = window.completedData.find(i => String(i.id) === String(idStr)); if(!item) return;
     const btn = document.getElementById('btn-repeat-' + item.id.replace(/[^a-zA-Z0-9]/g, "")); if(btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Moving...'; btn.disabled = true; }
-    try { 
-        const { error } = await supabase.from('registry').update({ status: 'PENDING' }).eq('id', item.id);
-        if (!error) await loadPendingData(); else throw error;
-    } catch (err) { showAppAlert("Error", "Error moving.", "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
+    let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let cleanDetails = { age: d.age || d.Age || "", sex: d.sex || d.Sex || "", facility: d.facility || d.Facility || "", address: d.address || d.Address || "", contact: d.contact || d.Contact || "", bday: d.bday || d.Bday || "", "History of Treatment": d["History of Treatment"] || "", "Source of Request": d["Source of Request"] || "", "X-Ray Result": d["X-Ray Result"] || "" };
+    let tCode = ""; try { tCode = getTestCodeFromName(item.test); } catch(e){} const testEntry = { name: item.test, code: tCode, details: cleanDetails }; const formData = { patientId: item.patientId, fullName: item.name, bday: cleanDetails.bday, sex: cleanDetails.sex, age: cleanDetails.age, address: cleanDetails.address, contact: cleanDetails.contact, email: "", facility: cleanDetails.facility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify([testEntry]) };
+    try { const res = await apiPost("submitForm", { formObject: formData }); if (res && res.status === "success") { await apiPost("deletePendingTestById", { testId: item.id }); await loadPendingData(); } else { showAppAlert("Error", res ? res.message : "Error", "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } } } catch (err) { showAppAlert("Error", "Error moving.", "error"); if(btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
 }
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
-async function deleteEntry(id) { try { await supabase.from('registry').delete().eq('id', id); loadPendingData(); } catch(e) {} }
+async function deleteEntry(id) { try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
@@ -787,7 +707,6 @@ function getResultTemplate(code, safeId, item) {
  const input = (key, lbl, keys=[]) => (req==="" || keys.length===0 || keys.some(k=>req.includes(k))) ? `<div class="field-group"><label class="field-label">${lbl}</label><input type="text" class="res-${safeId} form-input" data-key="${key}"></div>` : '';
  const select = (key, lbl, opts, keys=[]) => (req==="" || keys.length===0 || keys.some(k=>req.includes(k))) ? `<div class="field-group"><label class="field-label">${lbl}</label><select class="res-${safeId} form-select" data-key="${key}">${opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>` : '';
  const rem = `<div class="field-group full-width" style="margin-top:10px;"><label class="field-label">Remarks</label><input type="text" class="res-${safeId} form-input" data-key="Remarks"></div>`;
- 
  switch (code) {
       case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
      case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
@@ -807,104 +726,183 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
     window.CURRENT_TEST_TYPE = type; currentRegistryPage = page; 
     const titleEl = document.getElementById('regTitle'); if(titleEl) titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
     document.querySelectorAll('#registry-tabs .chip').forEach(c => c.classList.remove('active')); const activeBtn = document.querySelector(`#registry-tabs .chip[data-tab="${type}"]`); if(activeBtn) activeBtn.classList.add('active');
-
     const cont = document.getElementById('registry-table-content'); if(!cont) return;
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading registry data...</div>';
     
     try {
         const sQuery = forceSearch !== null ? forceSearch : (document.getElementById('regSearch') ? document.getElementById('regSearch').value.trim() : "");
         const mQuery = forceMonth !== null ? forceMonth : (document.getElementById('monthFilter') ? document.getElementById('monthFilter').value.trim() : "");
-        const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-        
-        let q = supabase.from('registry').select('*', { count: 'exact' }).eq('test', tMap[type] || type).in('status', ['COMPLETED', 'ENCODED', 'FOR REPEAT']);
-        if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.role !== 'NTP_CHECKER' && currentUser.role !== 'DOH_TB') {
-            if (currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
-        }
-        if (sQuery) q = q.ilike('name', `%${sQuery}%`);
-        
-        const { data, count, error } = await q.order('date', { ascending: false }).range((page - 1) * registryLimit, page * registryLimit - 1);
-        if (error) throw error;
-        
-        const headers = ["Date", "Patient ID", "Name", "Age", "Sex", "Facility", "Performed By"];
-        let testHeaders = [];
-        if (type === "GXP") testHeaders = ["History of Treatment", "Source of Request", "X-Ray Result", "ResultCode", "Appearance", "Grade", "Repeat", "Remarks"];
-        else if (type === "DSSM") testHeaders = ["TB Case Number", "Month of Treatment", "Smear1", "Smear2", "Diagnosis", "Remarks"];
-        else if (type === "HEMA") testHeaders = ["Requested Tests", "Hemoglobin", "Hematocrit", "WBC_Count", "RBC_Count", "Platelet", "Neutrophils", "Lymphocytes", "Monocytes", "Eosinophils", "Basophils", "ABO", "Rh", "Remarks"];
-        else if (type === "CHEM") testHeaders = ["Requested Tests", "FBS", "RBS", "HbA1c", "Cholesterol", "Triglycerides", "HDL", "LDL", "BUN", "Creatinine", "Uric Acid", "SGOT", "SGPT", "Remarks"];
-        else if (type === "UA") testHeaders = ["Color", "Transparency", "pH", "SG", "Protein", "Glucose", "RBC", "WBC", "Bacteria", "Epithelial", "Cast", "Crystals", "Amorphous", "Mucus", "Remarks"];
-        else if (type === "FA") testHeaders = ["Color", "Consistency", "parasite", "RBC", "WBC", "Remarks"];
-        else if (type === "DENGUE") testHeaders = ["Dengue_Result", "Dengue_IgG", "Dengue_IgM", "Remarks"];
-        else if (type === "SERO") testHeaders = ["Classification", "KAP Category", "HIV", "Syphilis", "HBsAg", "Remarks"];
-        else if (type === "GRAM") testHeaders = ["Source", "GP_Quantity", "GP_Morphology", "GP_Arrangement", "GN_Quantity", "GN_Morphology", "GN_Arrangement", "Remarks"];
-        else if (type === "GXVL") testHeaders = ["VL_Choice", "VL_Number", "Remarks"];
-        
-        const fullHeaders = headers.concat(testHeaders);
-        window.CURRENT_REGISTRY_HEADERS = fullHeaders; window.CURRENT_REGISTRY_TITLE = `${type} REGISTRY`;
+        const cQuery = forceCol !== null ? forceCol : ((document.getElementById('colFilter') && document.getElementById('colFilter').value !== "ALL") ? document.getElementById('colFilter').options[document.getElementById('colFilter').selectedIndex].text : "ALL"); 
 
-        let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
-        fullHeaders.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
+        const res = await apiGet("getRegistryDataOptimized", { type: type, facility: currentUser.facility, role: currentUser.role, page: currentRegistryPage, limit: registryLimit, searchQuery: sQuery, monthFilter: mQuery, colFilter: cQuery });
         
-        let displayedCount = 0;
-        data.forEach(d => {
-            let rowDate = new Date(d.date);
-            if (mQuery !== "" && (rowDate.getMonth() + 1) != parseInt(mQuery)) return;
+        if (res && res.status === "success" && res.data) {
+            const registryData = res.data;
+            if (registryData.error || (registryData.rows && registryData.rows.length > 0 && registryData.rows[0][0] && String(registryData.rows[0][0]).includes("RESTRICTED"))) { cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger); font-weight:bold;"><i class="ph ph-lock-key" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${registryData.rows ? registryData.rows[0][0] : "Access Restricted."}</div>`; return; }
+
+            window.CURRENT_REGISTRY_HEADERS = registryData.headers || []; window.CURRENT_REGISTRY_TITLE = registryData.title || type;
+            const hMap = registryData.headers.map((h, i) => h.includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: h }).filter(x=>x);
+            const colFilter = document.getElementById('colFilter'); if(colFilter) { colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach((c, displayIndex) => colFilter.innerHTML += `<option value="${displayIndex}">${c.text}</option>`); }
+
+            const rows = registryData.rows || [];
+            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
-            let det = d.details || {};
-            let isInitialRow = false;
-            let rowHtml = `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(d))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
-            
-            if (String(det.Repeat || det["Test Type"]).toUpperCase() === 'INITIAL') isInitialRow = true;
-
-            fullHeaders.forEach(h => {
-                let val = "";
-                if (h === 'Date') val = rowDate.toLocaleDateString();
-                else if (h === 'Patient ID') val = d.patient_id;
-                else if (h === 'Name') val = d.name;
-                else if (h === 'Age') val = det.age || det.Age || "";
-                else if (h === 'Sex') val = det.sex || det.Sex || "";
-                else if (h === 'Facility') val = d.facility;
-                else if (h === 'Performed By') val = d.encoder;
-                else val = det[h] || det[h.toLowerCase()] || det[h.toUpperCase()] || "";
-                
-                let hName = h.toUpperCase().trim();
-                let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
-                let isPerformedBy = hName === 'PERFORMED BY';
-                
-                if (type === 'SERO' && currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.role !== 'NTP_CHECKER' && isResCol) val = "CONFIDENTIAL";
-
-                if (isResCol && val !== "") {
-                    let vU = String(val).toUpperCase().trim(); let bg = "transparent", col = "inherit"; 
-                    if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } 
-                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } 
-                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } 
-                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } 
-                    else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } 
-                    else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } 
-                    else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
-                    rowHtml += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
-                } else if (isPerformedBy && val !== "") { rowHtml += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } 
-                else { rowHtml += `<td>${val}</td>`; }
+            rows.forEach((row) => {
+                html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                let isInitialRow = false; hMap.forEach(c => { let hName = c.original.toUpperCase().trim(); if (hName === 'REPEAT' || hName === 'TEST TYPE') { if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true; } });
+                hMap.forEach(c => {
+                    let val = row[c.index] || ''; let hName = c.original.toUpperCase().trim();
+                    let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED BY';
+                    if (isResCol && val !== "") {
+                        let vU = String(val).toUpperCase().trim(); let bg = "transparent", col = "inherit"; 
+                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
+                        html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
+                    } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
+                }); html += `</tr>`;
             });
-            rowHtml += `</tr>`; html += rowHtml; displayedCount++;
-        });
-        html += `</tbody></table>`;
-        
-        if (displayedCount === 0) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; document.getElementById('top-pagination-controls').innerHTML = ''; return; }
-        
-        const totalPages = Math.ceil((count||1) / registryLimit);
-        let paginationHtml = `<button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${page <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${page - 1})" title="Previous Page"><i class="ph ph-caret-left"></i></button><div style="display:flex; align-items:center; gap:6px;"><span>Page</span><input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${page}" style="width:45px; padding:2px; text-align:center; border:1px solid var(--pri); outline:none; border-radius:4px; height:26px; font-size:0.8rem; font-weight:bold; color:var(--pri);" onkeydown="if(event.key==='Enter'){ let p=parseInt(this.value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p); }"><span>of <strong>${totalPages}</strong> <span style="color:var(--text-muted); font-size:0.7rem;">(Total: ${count})</span></span></div><button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${page >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${page + 1})" title="Next Page"><i class="ph ph-caret-right"></i></button>`;
-        cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = paginationHtml;
-    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; }
+            html += `</tbody></table>`;
+            const totalPages = registryData.totalPages || 1; const currentPage = registryData.currentPage || 1;
+            let paginationHtml = `<button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})" title="Previous Page"><i class="ph ph-caret-left"></i></button><div style="display:flex; align-items:center; gap:6px;"><span>Page</span><input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${currentPage}" style="width:45px; padding:2px; text-align:center; border:1px solid var(--pri); outline:none; border-radius:4px; height:26px; font-size:0.8rem; font-weight:bold; color:var(--pri);" onkeydown="if(event.key==='Enter'){ let p=parseInt(this.value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p); }"><span>of <strong>${totalPages}</strong> <span style="color:var(--text-muted); font-size:0.7rem;">(Total: ${registryData.totalRows})</span></span></div><button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})" title="Next Page"><i class="ph ph-caret-right"></i></button>`;
+            cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = paginationHtml;
+        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
+    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
 }
 
 let registrySearchTimeout = null;
 function filterRegistryTable() {
     clearTimeout(registrySearchTimeout); const cont = document.getElementById('registry-table-content'); if (cont && document.getElementById('regSearch') === document.activeElement) cont.style.opacity = '0.5';
-    registrySearchTimeout = setTimeout(() => {
-        if(cont) cont.style.opacity = '1';
-        openRegistryTab(window.CURRENT_TEST_TYPE, 1, document.getElementById('regSearch') ? document.getElementById('regSearch').value.trim() : "", document.getElementById('monthFilter') ? document.getElementById('monthFilter').value.trim() : "");
-    }, 800); 
+    registrySearchTimeout = setTimeout(() => { if(cont) cont.style.opacity = '1'; const sQuery = document.getElementById('regSearch') ? document.getElementById('regSearch').value.trim() : ""; const mQuery = document.getElementById('monthFilter') ? document.getElementById('monthFilter').value.trim() : ""; const cQuery = (document.getElementById('colFilter') && document.getElementById('colFilter').value !== "ALL") ? document.getElementById('colFilter').options[document.getElementById('colFilter').selectedIndex].text : "ALL"; openRegistryTab(window.CURRENT_TEST_TYPE, 1, sQuery, mQuery, cQuery); }, 800); 
 }
+
+function printRegistryLogbook() {
+    const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
+    if (checkedBoxes.length === 0) { showAppAlert("Required", "Please select at least one record to print.", "error"); return; }
+    let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
+    
+    let excludeCols = ["PATIENT ID", "ID"]; 
+    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST"); 
+    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
+    
+    let printHeaders = []; let headerIndices = [];
+    window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
+        const upperH = h.toUpperCase();
+        if (excludeCols.some(ex => upperH === ex)) return; 
+        if (h.includes("{") || h.includes("}")) return; 
+        printHeaders.push(h.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
+    });
+    if (window.CURRENT_TEST_TYPE === 'SERO') {
+        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
+        if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
+    }
+    
+    const is10Rows = (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'DSSM');
+    const chunk = is10Rows ? 10 : 20; let fontSize = is10Rows ? "11px" : "8px"; let tdPadding = is10Rows ? "6px" : "3px"; 
+    if(window.CURRENT_TEST_TYPE === 'GXP') { fontSize = "9px"; tdPadding = "4px"; }
+
+    let html = `<html><head><title>Registry Logbook</title><style>body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: ${fontSize}; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff;} .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} .page:last-child { page-break-after: auto; } .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} table { width: 100%; border-collapse: collapse; table-layout: auto; flex-grow: 1; } th, td { border: 1px solid #000; padding: ${tdPadding}; text-align: center; word-wrap: break-word; font-size: ${fontSize};} tr { height: auto; } th { background-color: #e2e8f0 !important; font-weight: bold; } .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} .footer-col { flex: 1; }</style></head><body>`;
+    
+    for (let i = 0; i < rowsData.length; i += chunk) {
+        const pageRows = rowsData.slice(i, i + chunk);
+        html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
+        printHeaders.forEach(h => { let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP') ? 'style="width: 15%; max-width: 100px;"' : ''; html += `<th ${widthStyle}>${h}</th>` }); 
+        html += `</tr></thead><tbody>`;
+        
+        pageRows.forEach(row => { 
+            html += `<tr>`; let isInitialRow = false;
+            headerIndices.forEach((idx, i) => { let hName = printHeaders[i].toUpperCase().trim(); if (hName === 'REPEAT' || hName === 'TEST TYPE') { if (String(row[idx]).toUpperCase().trim() === 'INITIAL') isInitialRow = true; } });
+
+            headerIndices.forEach((idx, i) => { 
+                let val = row[idx] || ''; let hName = printHeaders[i].toUpperCase().trim();
+                let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED BY'; let isXrayCol = (hName === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP');
+                if (hName === 'HIV' && String(val).toUpperCase().includes('REACTIVE') && !String(val).toUpperCase().includes('NON')) val = ""; 
+
+                let bgStyle = ""; let textWeight = "normal"; let fontStyle = "";
+                if (isResCol && val !== "") {
+                    let vU = String(val).toUpperCase().trim(); textWeight = "bold";
+                    if (vU === "CONFIDENTIAL" || isInitialRow) bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; 
+                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; 
+                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; 
+                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; 
+                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; 
+                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; 
+                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;"; 
+                } else if (isPerformedBy && val !== "") { const pfSize = is10Rows ? "7px" : "6px"; fontStyle = `font-size: ${pfSize}; color: #555;`; }
+                if (isXrayCol) { fontStyle += `font-size: 7px; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`; }
+                html += `<td style="${bgStyle} font-weight: ${textWeight}; ${fontStyle}">${val}</td>`; 
+            }); 
+            html += `</tr>`; 
+        });
+        html += `</tbody></table><div class="footer"><div class="footer-col"><strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br><strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</div><div class="footer-col"><strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br><strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</div></div></div>`;
+    }
+    html += `</body></html>`;
+    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); setTimeout(() => { printWin.print(); printWin.close(); }, 800);
+}
+
+async function loadSettingsData() { 
+    try {
+        const res = await apiPost("getSettingsData", {}); 
+        if (res.status === "success") {
+            const data = res.data; globalStaffList = data.staff || []; globalFacilityList = data.facilities || [];
+            renderFacilityList(); renderStaffList(); renderSettings(data.users); 
+            const dropdowns = [document.getElementById('u_facility'), document.getElementById('edit_u_fac')];
+            dropdowns.forEach(drop => { if(drop) { drop.innerHTML = '<option value="ALL">ALL / MAIN</option>'; globalFacilityList.forEach(f => { drop.innerHTML += `<option value="${f.name}">${f.name}</option>`; }); } });
+        } else { showAppAlert("Error", "Failed to load settings. Please try again.", "error"); }
+    } catch(e) { console.log("Settings Load Error: ", e); } 
+}
+
+function renderSettings(users) { 
+    const uList = document.getElementById('list-users'); if (!uList) return; 
+    if (!users || users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } 
+    const isAdmin = (String(currentUser.role || "").toUpperCase() === 'ADMIN'); 
+    uList.innerHTML = users.map(u => { 
+        const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; 
+        if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${status}</span></div>`; } 
+        let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.fullname}', '${u.role}', '${u.status}', '${u.facility}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; 
+        return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; 
+    }).join(''); 
+}
+
+let currentEditTarget = ""; 
+function openEditUser(username, name, role, status, fac) { currentEditTarget = username; document.getElementById('edit_u_user').value = username; document.getElementById('edit_u_name').value = name; document.getElementById('edit_u_role').value = role; document.getElementById('edit_u_status').value = status; document.getElementById('edit_u_fac').value = fac; document.getElementById('edit_u_pass').value = ""; document.getElementById('edit-user-modal').style.display = 'flex'; } 
+function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } 
+
+async function saveUserChangesFull() { 
+    const updatedData = { u: document.getElementById('edit_u_user').value, name: document.getElementById('edit_u_name').value, p: document.getElementById('edit_u_pass').value, role: document.getElementById('edit_u_role').value, status: document.getElementById('edit_u_status').value, fac: document.getElementById('edit_u_fac').value };
+    if(!updatedData.u || !updatedData.name) { showAppAlert("Required", "Username and Name cannot be blank.", "error"); return; }
+    const btn = document.getElementById('btn-save-user-full'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; 
+    try { await apiPost("updateUserFull", { oldUsername: currentEditTarget, updatedData: updatedData, adminRole: currentUser.role }); showAppAlert("Updated", "User details saved.", "success"); closeEditModal(); loadSettingsData(); } catch(e) { showAppAlert("Error", String(e), "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
+} 
+
+async function deleteUserRecord() { customConfirm(`Are you sure you want to permanently delete @${currentEditTarget}?`, async () => { try { await apiPost("deleteUser", { targetUsername: currentEditTarget, adminRole: currentUser.role }); showAppAlert("Deleted", "User has been removed.", "success"); closeEditModal(); loadSettingsData(); } catch(e) { showAppAlert("Error", String(e), "error"); } }); }
+async function decideUser(username, action) { customConfirm(action + " access for " + username + "?", async () => { try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch(e) {} }); } 
+
+async function saveUser() { 
+    const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_fullname').value }; 
+    if(!user.u || !user.p || !user.role || !user.name) { showAppAlert("Required", "Please fill all fields.", "error"); return; } 
+    const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; 
+    try { await apiPost("saveNewUser", { data: { username: user.u, password: user.p, facility: user.fac, role: user.role, fullName: user.name, roleCheck: currentUser.role }}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; document.getElementById('u_fullname').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } 
+}
+
+let globalFacilityList = []; 
+function renderFacilityList() { const container = document.getElementById('list-facilities'); if(!container) return; container.innerHTML = globalFacilityList.map((f, index) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove facility?', () => deleteFacility(${index}))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } 
+let editingFacilityIndex = -1; 
+async function handleSaveFacility() { const name = document.getElementById('f_name').value; if (!name) return; const newItem = { name: name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value }; if (editingFacilityIndex >= 0) { globalFacilityList[editingFacilityIndex] = newItem; editingFacilityIndex = -1; } else { globalFacilityList.push(newItem); } renderFacilityList(); clearFacilityForm(); toggleForm('fac-form'); } 
+function editFacility(index) { const f = globalFacilityList[index]; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityIndex = index; document.getElementById('fac-form').style.display = 'block'; } 
+function deleteFacility(index) { globalFacilityList.splice(index, 1); renderFacilityList(); } 
+function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
+
+let globalStaffList = []; let editingStaffIndex = -1; 
+function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove staff?', () => deleteStaff(${index}))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); } 
+function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; } 
+async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } 
+function editStaff(index) { const s = globalStaffList[index]; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sigUrl || ""; editingStaffIndex = index; document.getElementById('staff-form').style.display = 'block'; } 
+async function deleteStaff(index) { globalStaffList.splice(index, 1); renderStaffList(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); } catch(e) {} } 
+function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffIndex = -1; } 
+function toggleForm(id) { const el = document.getElementById(id); if(el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
+
+function switchTab(id) { document.querySelectorAll('.tab-view').forEach(el => el.style.display = 'none'); document.querySelectorAll('.chip').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + id).style.display = 'block'; const btn = document.getElementById('tab-btn-' + id); if(btn) btn.classList.add('active'); }
+function togglePeriod() { const type = document.querySelector('input[name="rep_type"]:checked').value; document.getElementById('rep_month').style.display = (type === 'monthly') ? 'inline-block' : 'none'; document.getElementById('rep_quarter').style.display = (type === 'quarterly') ? 'inline-block' : 'none'; }
 
 async function generateReport() { 
     const type = document.querySelector('input[name="rep_type"]:checked').value; const year = document.getElementById('rep_year').value; let targetFacility = "ALL"; let userRole = "VIEWER"; 
@@ -913,7 +911,10 @@ async function generateReport() {
     const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; 
     
     try { 
-        const { data, error } = await supabase.from('registry').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
+        // 🟢 PURE SUPABASE REPORTS: Nagbabasa diretso sa database at compute sa frontend
+        let q = sb.from('lab_tests').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
+        if(targetFacility !== "ALL") q = q.eq('facility', targetFacility);
+        const { data, error } = await q;
         if (data) { 
             const d = buildReportData(data, type, val, year, targetFacility);
             renderTB(d.tb); renderHIV(d.hiv); renderSTI(d.sti); renderDengue(d.dengue); renderWorkload(d.workload); renderFHSIS(d.fhsis_maternal); 
@@ -922,12 +923,7 @@ async function generateReport() {
 }
 
 function buildReportData(data, type, val, year, targetFacility) {
-    let report = {
-        tb: { exam: {new:0, ret:0}, pos: {new:0, ret:0}, rr: {new:0, ret:0}, t: {new:0, ret:0}, ti: {new:0, ret:0}, n: {new:0, ret:0}, tt: {new:0, ret:0}, invalid: {new:0, ret:0}, initial: {new:0, ret:0}, cartridges: 0, dssm: 0 },
-        hiv: { tested: createHivGrid(), reactive: createHivGrid() },
-        sti: { hiv: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, syph: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, hbsag: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0} },
-        dengue: { pos:0, neg:0, total:0 }, fhsis_maternal: {}, workload: {}
-    };
+    let report = { tb: { exam: {new:0, ret:0}, pos: {new:0, ret:0}, rr: {new:0, ret:0}, t: {new:0, ret:0}, ti: {new:0, ret:0}, n: {new:0, ret:0}, tt: {new:0, ret:0}, invalid: {new:0, ret:0}, initial: {new:0, ret:0}, cartridges: 0, dssm: 0 }, hiv: { tested: createHivGrid(), reactive: createHivGrid() }, sti: { hiv: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, syph: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, hbsag: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0} }, dengue: { pos:0, neg:0, total:0 }, fhsis_maternal: {}, workload: {} };
     const FACILITIES = ["SAN ISIDRO", "SAN VICENTE", "KALAYAAN", "STO. NIÑO", "SAN ROQUE", "MAHABANG PARANG", "POB. ITAAS", "POB. IBABA", "BAGUMBAYAN", "SAN PEDRO", "ANGONO RHU I"];
     FACILITIES.forEach(f => report.fhsis_maternal[f] = { syp_s_t:0, syp_s_10:0, syp_s_15:0, syp_s_20:0, syp_p_t:0, syp_p_10:0, syp_p_15:0, syp_p_20:0, hiv_s_t:0, hiv_s_10:0, hiv_s_15:0, hiv_s_20:0, hiv_r_t:0, hiv_r_10:0, hiv_r_15:0, hiv_r_20:0, hbs_s_t:0, hbs_s_10:0, hbs_s_15:0, hbs_s_20:0, hbs_r_t:0, hbs_r_10:0, hbs_r_15:0, hbs_r_20:0 });
 
@@ -937,7 +933,7 @@ function buildReportData(data, type, val, year, targetFacility) {
         if (!isDateInPeriod(row.date, type, val, year)) return;
         let rowFac = String(row.facility || "").toUpperCase().trim(); if (filterFac !== "" && rowFac !== filterFac) return;
 
-        let tName = String(row.test || "").toUpperCase(); report.workload[tName] = (report.workload[tName] || 0) + 1;
+        let tName = String(row.test_name || "").toUpperCase(); report.workload[tName] = (report.workload[tName] || 0) + 1;
         let details = row.details || {};
 
         if (tName.includes('GENEXPERT') || tName.includes('GXP')) {
@@ -1011,222 +1007,40 @@ function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
 function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entries(w)) { html += `<tr><td style="text-align:left; text-transform:uppercase; font-weight:600;">${key.replace('Registry - ','')}</td><td class="text-center" style="font-weight:700;">${val}</td></tr>`; } document.getElementById('workload-body').innerHTML = html; }
 
-async function loadSettingsData() { 
-    try {
-        const [{data: users}, {data: staff}, {data: facs}] = await Promise.all([
-            supabase.from('user_accounts').select('*'),
-            supabase.from('settings_staff').select('*'),
-            supabase.from('settings_facilities').select('*')
-        ]);
-        globalStaffList = staff || []; globalFacilityList = facs || [];
-        renderFacilityList(); renderStaffList(); renderSettings(users || []); 
-        const dropdowns = [document.getElementById('u_facility'), document.getElementById('edit_u_fac'), document.getElementById('reg_fac'), document.getElementById('p_facility')];
-        dropdowns.forEach(drop => {
-            if(drop) {
-                drop.innerHTML = '<option value="ALL">ALL / MAIN</option>';
-                globalFacilityList.forEach(f => { drop.innerHTML += `<option value="${f.name}">${f.name}</option>`; });
-            }
-        });
-    } catch(e) { console.log("Settings Load Error: ", e); } 
+function printReport() {
+    let activeTab = ""; document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
+    const headerHtml = `<table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;"><tr><td style="width: 70px; text-align: left; vertical-align: middle;"><img src="./icon-192.png" style="width: 50px; height: 50px;"></td><td style="text-align: center; vertical-align: middle;"><h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1><h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3><p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></td><td style="width: 70px; text-align: right; vertical-align: middle;"><img src="./icon-512.png" style="width: 50px; height: 50px;"></td></tr></table>`;
+    const footerHtml = document.querySelector('.rep-footer').outerHTML;
+    const htmlContent = `<html><head><title>Print Report</title><link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display"><style>@page { size: A4 landscape; margin: 10mm; } body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;} table.main-layout { width: 100%; border-collapse: collapse; } .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; } .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; } .data-table th { background-color: #f0f0f0 !important; } .text-center { text-align: center; } .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; } .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; } thead { display: table-header-group; } tfoot { display: table-footer-group; } .controls-area, .chip-group, button { display: none !important; }</style></head><body><table class="main-layout"><thead><tr><td>${headerHtml}</td></tr></thead><tbody><tr><td>${activeTab}</td></tr></tbody><tfoot><tr><td>${footerHtml}</td></tr></tfoot></table><script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 800); };</script></body></html>`;
+    const win = window.open('', '_blank'); win.document.write(htmlContent); win.document.close();
 }
 
-function renderSettings(users) { 
-    const uList = document.getElementById('list-users'); if (!uList) return; 
-    if (!users || users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; } 
-    const isAdmin = (String(currentUser.role || "").toUpperCase() === 'ADMIN'); 
-    uList.innerHTML = users.map(u => { 
-        const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);'; 
-        if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } 
-        else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${status}</span></div>`; } 
-        let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.full_name}', '${u.role}', '${u.status}', '${u.facility}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : ''; 
-        return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.full_name}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`; 
-    }).join(''); 
-}
-
-let currentEditTarget = ""; 
-function openEditUser(username, name, role, status, fac) { currentEditTarget = username; document.getElementById('edit_u_user').value = username; document.getElementById('edit_u_name').value = name; document.getElementById('edit_u_role').value = role; document.getElementById('edit_u_status').value = status; document.getElementById('edit_u_fac').value = fac; document.getElementById('edit_u_pass').value = ""; document.getElementById('edit-user-modal').style.display = 'flex'; } 
-function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; } 
-async function saveUserChangesFull() { 
-    const u = document.getElementById('edit_u_user').value; const name = document.getElementById('edit_u_name').value; const p = document.getElementById('edit_u_pass').value; const role = document.getElementById('edit_u_role').value; const status = document.getElementById('edit_u_status').value; const fac = document.getElementById('edit_u_fac').value;
-    if(!u || !name) { showAppAlert("Required", "Username and Name cannot be blank.", "error"); return; }
-    const btn = document.getElementById('btn-save-user-full'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; 
-    try { let updates = {username: u, full_name: name, role: role, status: status, facility: fac}; if(p) updates.password = p; await supabase.from('user_accounts').update(updates).eq('username', currentEditTarget); showAppAlert("Updated", "User details saved.", "success"); closeEditModal(); loadSettingsData(); } catch(e) { showAppAlert("Error", String(e), "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
-} 
-async function deleteUserRecord() { customConfirm(`Are you sure you want to permanently delete @${currentEditTarget}?`, async () => { try { await supabase.from('user_accounts').delete().eq('username', currentEditTarget); showAppAlert("Deleted", "User has been removed.", "success"); closeEditModal(); loadSettingsData(); } catch(e) { showAppAlert("Error", String(e), "error"); } }); }
-async function decideUser(username, action) { customConfirm(action + " access for " + username + "?", async () => { try { await supabase.from('user_accounts').update({status: action === 'APPROVE' ? 'ACTIVE' : 'REJECTED'}).eq('username', username); loadSettingsData(); } catch(e) {} }); } 
-async function saveUser() { 
-    const user = { u: document.getElementById('u_user').value, p: document.getElementById('u_pass').value, role: document.getElementById('u_role').value, fac: document.getElementById('u_facility').value, name: document.getElementById('u_fullname').value }; 
-    if(!user.u || !user.p || !user.role || !user.name) { showAppAlert("Required", "Please fill all fields.", "error"); return; } 
-    const btn = document.querySelector('#user-form button'); const oldText = btn.innerText; btn.innerHTML = "SAVING..."; btn.disabled = true; 
-    try { await supabase.from('user_accounts').insert({username: user.u, password: user.p, facility: user.fac, role: user.role, full_name: user.name, status: 'ACTIVE'}); toggleForm('user-form'); document.getElementById('u_user').value = ""; document.getElementById('u_pass').value = ""; document.getElementById('u_fullname').value = ""; loadSettingsData(); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } 
-}
-
-let globalFacilityList = []; 
-function renderFacilityList() { const container = document.getElementById('list-facilities'); if(!container) return; container.innerHTML = globalFacilityList.map((f) => `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--warning); flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${f.name}</div><div class="pc-meta" style="margin-top:2px;">${f.address || ""}</div>${ f.person ? `<div class="pc-meta" style="margin-top:2px; color:var(--pri);">${f.person} (${f.number})</div>` : '' }</div><div style="display:flex; gap:4px;"><button onclick="editFacility('${f.id}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove facility?', () => deleteFacility('${f.id}'))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`).join(''); } 
-let editingFacilityId = null; 
-async function handleSaveFacility() { 
-    const name = document.getElementById('f_name').value; if (!name) return; 
-    try { if (editingFacilityId) { await supabase.from('settings_facilities').update({name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value}).eq('id', editingFacilityId); } else { await supabase.from('settings_facilities').insert({name, address: document.getElementById('f_address').value, person: document.getElementById('f_person').value, number: document.getElementById('f_number').value}); } loadSettingsData(); clearFacilityForm(); toggleForm('fac-form'); } catch(e){}
-} 
-function editFacility(id) { const f = globalFacilityList.find(x => String(x.id) === String(id)); if(!f) return; document.getElementById('f_name').value = f.name; document.getElementById('f_address').value = f.address; document.getElementById('f_person').value = f.person; document.getElementById('f_number').value = f.number; editingFacilityId = id; document.getElementById('fac-form').style.display = 'block'; } 
-async function deleteFacility(id) { await supabase.from('settings_facilities').delete().eq('id', id); loadSettingsData(); } 
-function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityId = null; }
-
-let globalStaffList = []; let editingStaffId = null; 
-function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s) => { let previewUrl = cleanDriveLink(s.sig_url); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff('${s.id}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove staff?', () => deleteStaff('${s.id}'))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); } 
-function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; } 
-async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; try { if (editingStaffId) { await supabase.from('settings_staff').update({name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sig_url: cleanDriveLink(document.getElementById('staffSigUrl').value)}).eq('id', editingStaffId); } else { await supabase.from('settings_staff').insert({name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sig_url: cleanDriveLink(document.getElementById('staffSigUrl').value)}); } loadSettingsData(); clearStaffForm(); toggleForm('staff-form'); } catch(e) {} finally { btn.innerText = oldText; btn.disabled = false; } } 
-function editStaff(id) { const s = globalStaffList.find(x => String(x.id) === String(id)); if(!s) return; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sig_url || ""; editingStaffId = id; document.getElementById('staff-form').style.display = 'block'; } 
-async function deleteStaff(id) { await supabase.from('settings_staff').delete().eq('id', id); loadSettingsData(); } 
-function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffId = null; } 
-function toggleForm(id) { const el = document.getElementById(id); if(el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
-
-function switchTab(id) { document.querySelectorAll('.tab-view').forEach(el => el.style.display = 'none'); document.querySelectorAll('.chip').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + id).style.display = 'block'; const btn = document.getElementById('tab-btn-' + id); if(btn) btn.classList.add('active'); }
-function togglePeriod() { const type = document.querySelector('input[name="rep_type"]:checked').value; document.getElementById('rep_month').style.display = (type === 'monthly') ? 'inline-block' : 'none'; document.getElementById('rep_quarter').style.display = (type === 'quarterly') ? 'inline-block' : 'none'; }
-function printRegistryLogbook() {
-    const checkedBoxes = document.querySelectorAll('.chk-reg:checked');
-    if (checkedBoxes.length === 0) { showAppAlert("Required", "Please select at least one record to print.", "error"); return; }
-    let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
-    
-    let excludeCols = ["PATIENT ID", "ID"]; 
-    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST"); 
-    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
-    
-    let printHeaders = []; let headerIndices = [];
-    window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
-        const upperH = h.toUpperCase();
-        if (excludeCols.some(ex => upperH === ex)) return; 
-        if (h.includes("{") || h.includes("}")) return; 
-        printHeaders.push(h.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
-    });
-    if (window.CURRENT_TEST_TYPE === 'SERO') {
-        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY");
-        if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
-    }
-    
-    const is10Rows = (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'DSSM');
-    const chunk = is10Rows ? 10 : 20; let fontSize = is10Rows ? "11px" : "8px"; let tdPadding = is10Rows ? "6px" : "3px"; 
-    if(window.CURRENT_TEST_TYPE === 'GXP') { fontSize = "9px"; tdPadding = "4px"; }
-
-    let html = `<html><head><title>Registry Logbook</title><style>body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: ${fontSize}; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff;} .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} .page:last-child { page-break-after: auto; } .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} table { width: 100%; border-collapse: collapse; table-layout: auto; flex-grow: 1; } th, td { border: 1px solid #000; padding: ${tdPadding}; text-align: center; word-wrap: break-word; font-size: ${fontSize};} tr { height: auto; } th { background-color: #e2e8f0 !important; font-weight: bold; } .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} .footer-col { flex: 1; }</style></head><body>`;
-    
-    for (let i = 0; i < rowsData.length; i += chunk) {
-        const pageRows = rowsData.slice(i, i + chunk);
-        html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
-        printHeaders.forEach(h => { let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP') ? 'style="width: 15%; max-width: 100px;"' : ''; html += `<th ${widthStyle}>${h}</th>` }); 
-        html += `</tr></thead><tbody>`;
-        
-        pageRows.forEach(row => { 
-            html += `<tr>`; let isInitialRow = false;
-            let det = typeof row.details === 'string' ? JSON.parse(row.details) : row.details;
-            if (String(det.Repeat || det["Test Type"]).toUpperCase() === 'INITIAL') isInitialRow = true;
-
-            printHeaders.forEach((hName, idx) => { 
-                let hUpper = hName.toUpperCase().trim();
-                let val = "";
-                if (hUpper === 'DATE') val = new Date(row.date).toLocaleDateString();
-                else if (hUpper === 'PATIENT ID') val = row.patient_id;
-                else if (hUpper === 'NAME') val = row.name;
-                else if (hUpper === 'AGE') val = det.age || det.Age || "";
-                else if (hUpper === 'SEX') val = det.sex || det.Sex || "";
-                else if (hUpper === 'FACILITY') val = row.facility;
-                else if (hUpper === 'PERFORMED BY') val = row.encoder;
-                else val = det[hName] || det[hName.toLowerCase()] || det[hName.toUpperCase()] || "";
-
-                let isResCol = hUpper.includes('RESULT') || hUpper.includes('DIAGNOSIS') || hUpper === 'HIV' || hUpper === 'SYPHILIS' || hUpper === 'HBSAG';
-                let isPerformedBy = hUpper === 'PERFORMED BY'; let isXrayCol = (hUpper === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP');
-                
-                if (hUpper === 'HIV' && String(val).toUpperCase().includes('REACTIVE') && !String(val).toUpperCase().includes('NON')) val = ""; 
-
-                let bgStyle = ""; let textWeight = "normal"; let fontStyle = "";
-                
-                if (isResCol && val !== "") {
-                    let vU = String(val).toUpperCase().trim(); textWeight = "bold";
-                    if (vU === "CONFIDENTIAL" || isInitialRow) bgStyle = "background-color: #f1f5f9 !important; color: #64748b !important;"; 
-                    else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) bgStyle = "background-color: #000000 !important; color: #ffffff !important;"; 
-                    else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") bgStyle = "background-color: #fee2e2 !important; color: #b91c1c !important;"; 
-                    else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") bgStyle = "background-color: #dcfce7 !important; color: #15803d !important;"; 
-                    else if (vU === "RR" || vU.includes("RESISTANT")) bgStyle = "background-color: #991b1b !important; color: #ffffff !important;"; 
-                    else if (vU === "TI") bgStyle = "background-color: #ffedd5 !important; color: #c2410c !important;"; 
-                    else if (vU === "TT") bgStyle = "background-color: #fef9c3 !important; color: #b45309 !important;"; 
-                } else if (isPerformedBy && val !== "") { const pfSize = is10Rows ? "7px" : "6px"; fontStyle = `font-size: ${pfSize}; color: #555;`; }
-                if (isXrayCol) { fontStyle += `font-size: 7px; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`; }
-                html += `<td style="${bgStyle} font-weight: ${textWeight}; ${fontStyle}">${val}</td>`; 
-            }); 
-            html += `</tr>`; 
-        });
-        html += `</tbody></table><div class="footer"><div class="footer-col"><strong>System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.<br><strong>Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</div><div class="footer-col"><strong>Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.<br><strong>Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</div></div></div>`;
-    }
-    html += `</body></html>`;
-    const printWin = window.open('', '_blank'); printWin.document.write(html); printWin.document.close(); 
-    setTimeout(() => { printWin.print(); printWin.close(); }, 800);
-}
-
-// 🟢 NEW BATCH PRINT / PDF ENGINE
-function mapSupabaseToPrintObject(d) {
-    let detailsObj = typeof d.details === 'string' ? JSON.parse(d.details) : d.details;
-    let resultsArr = []; for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
-    return {
-        id: d.patient_id, name: d.name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
-        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
-        dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
-        dateExamined: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-        dateResult: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-        testCode: d.id, testName: d.test, encoder: d.encoder || "System", verifier: "", results: resultsArr
-    };
-}
-
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName); showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
-    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
-    try {
-        if (!item) { const { data } = await supabase.from('registry').select('*').eq('id', id).single(); item = data; }
-        if (item) {
-            if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
-            let pObj = mapSupabaseToPrintObject(item);
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; let finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
-            showPrintModal(finalHtml);
-        } else showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
-    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
-}
-
-async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE')); requests.push({ testCode: rowData[codeCol], testName: window.CURRENT_TEST_TYPE }); });
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-    try {
-        if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData(); 
-        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; let printContent = [];
-        for(let r of requests) { const { data } = await supabase.from('registry').select('*').eq('id', r.testCode).single(); if(data) printContent.push(mapSupabaseToPrintObject(data)); }
-        let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); showPrintModal(finalHtml);
-    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
-}
-
-async function downloadDirect(e, id, testName) { if(e) e.stopPropagation(); showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info"); printDirect(e, id, testName); }
-async function batchDownload() { const checked = document.querySelectorAll('.chk-reg:checked'); if(checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; } showAppAlert("PDF Download", "Wait for the preview to load all logos, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF' as your destination.", "info"); batchPrint(); }
+async function downloadReport() { showAppAlert("PDF Download", "Wait for the preview to load, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF'.", "info"); printReport(); }
 
 function showStaffRegister() {
     document.getElementById('login-card').style.display = 'none'; document.getElementById('staff-register-card').style.display = 'block';
     const sel = document.getElementById('reg_fac'); sel.innerHTML = '<option value="ALL">ALL / MAIN</option>';
     globalFacilityList.forEach(f => sel.innerHTML += `<option value="${f.name}">${f.name}</option>`);
 }
+
 function startAutoSync() {
     setInterval(async () => {
         const pendingSection = document.getElementById('col-pending'); const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
         if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
             try {
-                let q = supabase.from('registry').select('*').in('status', ['PENDING', 'COMPLETED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
+                let q = sb.from('lab_tests').select('*').in('status', ['PENDING', 'COMPLETED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
                 if(currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
                 const { data } = await q;
                 if (data) {
-                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, patientId: d.patient_id, name: d.name, test: d.test, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
-                    window.completedData = data.filter(d => d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, patientId: d.patient_id, name: d.name, test: d.test, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.completedData = data.filter(d => d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
                     renderLists();
                 }
             } catch (e) {}
         }
     }, 60000);
 }
+
 function backToLoginFromRegister() { document.getElementById('staff-register-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
 
 async function submitStaffRegister() {
@@ -1235,7 +1049,7 @@ async function submitStaffRegister() {
     if(pass1 !== pass2) { document.getElementById('reg_pass2').value = ''; return showAppAlert("Mismatch", "Passwords do not match! Please try again.", "error"); }
     const btn = document.querySelector('#staff-register-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Submitting...'; btn.disabled = true;
     try {
-        const { error } = await supabase.from('user_accounts').insert({ username: user, password: pass1, facility: fac, role: role, full_name: name, status: 'PENDING' });
+        const { error } = await sb.from('app_users').insert({ username: user, password: pass1, facility: fac, role: role, full_name: name, status: 'PENDING' });
         if(error) throw error;
         showAppAlert("Success", "Account requested successfully! Please wait for the Admin to approve your account before logging in.", "success");
         document.getElementById('reg_name').value = ''; document.getElementById('reg_user').value = ''; document.getElementById('reg_pass').value = ''; document.getElementById('reg_pass2').value = ''; document.getElementById('reg_role').value = ''; backToLoginFromRegister();
@@ -1255,7 +1069,7 @@ async function batchSaveResults(isPrint) {
         let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
         if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
         let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, dateEncoded: new Date().toISOString() };
-        try { const { error } = await supabase.from('registry').update({ details: finalStr, status: 'COMPLETED' }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
+        try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: 'COMPLETED' }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
     }
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
     if (isPrint && printRequests.length > 0) {
@@ -1264,7 +1078,7 @@ async function batchSaveResults(isPrint) {
             const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
             let printContent = [];
             for(let r of printRequests) {
-                const { data } = await supabase.from('registry').select('*').eq('id', r.testCode).single();
+                const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).single();
                 if(data) printContent.push(mapSupabaseToPrintObject(data));
             }
             let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent);
@@ -1291,6 +1105,21 @@ function processNtpResultsClient(p) {
     });}
 }
 
+// 🟢 NEW BATCH PRINT / PDF ENGINE 🟢
+function mapSupabaseToPrintObject(d) {
+    let detailsObj = typeof d.details === 'string' ? JSON.parse(d.details) : d.details;
+    let resultsArr = []; for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
+    return {
+        id: d.patient_id, name: d.patient_name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
+        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
+        dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
+        dateExamined: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+        dateResult: detailsObj.dateEncoded ? new Date(detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+        testCode: d.id, testName: d.test_name, encoder: d.encoder || "System", verifier: "", results: resultsArr
+    };
+}
+
+// 🟢 ADDED PRINT LOGIC 🟢
 function localGenerateNTPHtml(patientsArray) {
     const logos = { left: "./icon-512.png", lab: "./icon-192.png", right: "./icon-512.png" };
     const getStaff = (name) => { if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
@@ -1303,3 +1132,172 @@ function localGenerateNTPHtml(patientsArray) {
 
     return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title><style>@page { size: portrait; margin: 5mm; } body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; } body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; } .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; } .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; } .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-left: auto; margin-right: auto; } .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; } .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; } .logo-lab { width: 35px; height: 35px; background: #fff; border-radius: 50%; border: 1px solid #ddd; margin-bottom: 2px; } .header-center { flex-grow: 1; text-align: center; } .header h1 { font-size: 15pt; margin: 0; } .header h2 { font-size: 11pt; margin: 0; } .header h3 { font-size: 9pt; margin: 0; } .header p { font-size: 8px; margin: 2px 0 0 0; font-weight: bold; color: #000; } .form-title { text-align: center; font-weight: bold; font-size: 11px; margin: 8px 0 4px 0; } .main-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 2px; } .main-table td { padding: 3px 5px; border: 1px solid #000; } .line { border-bottom: 1px solid #000; display: inline-block; padding-left: 5px; font-weight: bold; min-height: 13px; } .chk-item { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 9px; } input[type="checkbox"] { margin: 0; width: 11px; height: 11px; } .res-table-inner { width: 100%; border-collapse: collapse; } .res-table-inner th, .res-table-inner td { border: 1px solid #000; text-align: center; padding: 4px; font-size: 9px; } .section-bar { background: #d9d9d9; font-size: 9px; text-align: center; border: 1px solid #000; padding: 3px; font-weight: bold; } .res-n { background-color: #C8E6C9 !important; color: #1B5E20 !important; } .res-t { background-color: #FFCDD2 !important; color: #B71C1C !important; } .res-rr { background-color: #B71C1C !important; color: white !important; } .res-ti { background-color: #FFE0B2 !important; color: #E65100 !important; } .res-tt { background-color: #FFF9C4 !important; color: #827717 !important; } .res-i { background-color: #000000 !important; color: white !important; } .res-init { background-color: #EEEEEE !important; color: #757575 !important; } .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; } .content-spacer { flex-grow: 1; } .sig-container { display: flex; justify-content: space-between; margin-top: 5px; } .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 90px; } .sig-label { font-size: 9px; margin-bottom: 2px; text-align: left; } .sig-visual-area { position: relative; width: 100%; height: 40px; display: flex; align-items: flex-end; } .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; } .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; } .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; } .no-print { position: fixed; top: 0; left: 0; width: 100%; background: #1e293b; padding: 12px; text-align: center; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); } .no-print button { padding: 10px 20px; margin: 0 5px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif; font-size: 14px; } .btn-print { background: #10b981; color: white; } .btn-close { background: #ef4444; color: white; } .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; } @media print { .no-print { display: none !important; } body { background: white; padding-top: 0 !important; display: block; margin: 0; } @page { size: auto; margin: 5mm; } .page-container { width: 200mm !important; min-height: 275mm !important; margin: 0 auto !important; padding: 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; zoom: 0.96 !important; } .page-break { display: none !important; } } @media print and (max-width: 160mm) { .page-container { zoom: 0.65 !important; } } </style></head><body><div class="no-print"><span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing</span><button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button><button class="btn-close" onclick="window.close()">❌ CLOSE</button></div>${combinedHtml}</body></html>`;
 }
+
+function localGenerateA5Html(patientsArray) {
+    const logos = { left: "./icon-512.png", lab: "./icon-192.png", right: "./icon-512.png" };
+    let combinedHtml = "";
+    
+    const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
+    const getNormal = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "M:140-170 F:120-150"; if (n.includes("HEMATOCRIT")) return "M:0.40-0.54 F:0.37-0.47"; if (n.includes("WBC")) return "4.5 - 11.0"; if (n.includes("RBC")) return "4.0 - 6.0"; if (n.includes("PLATELET")) return "150 - 450"; if (n.includes("NEUTROPHIL")) return "0.50 - 0.70"; if (n.includes("LYMPHOCYTE")) return "0.20 - 0.40"; if (n.includes("MONOCYTE")) return "0.02 - 0.08"; if (n.includes("EOSINOPHIL")) return "0.01 - 0.04"; if (n.includes("BASOPHIL")) return "0.00 - 0.01"; if (n.includes("HBA1C")) return "4.0 - 6.0"; if (n.includes("RBS")) return "< 7.8"; if (n.includes("OG0") || n.includes("FASTING")) return "< 5.1"; if (n.includes("OG1") || n.includes("1 HR")) return "< 10.0"; if (n.includes("OG2") || n.includes("2 HR")) return "< 8.5"; if (n.includes("GLUCOSE") || n.includes("FBS")) return "3.89 - 6.11"; if (n.includes("CHOLESTEROL")) return "< 5.17"; if (n.includes("TRIGLYCERIDE")) return "< 2.2"; if (n.includes("HDL")) return "> 0.9"; if (n.includes("LDL")) return "< 3.3"; if (n.includes("CREATININE")) return "M:62-106 F:44-80"; if (n.includes("URIC") || n.includes("BUA")) return "M:0.21-0.42 F:0.16-0.36"; if (n.includes("BUN")) return "2.5 - 7.1"; if (n.includes("SGPT") || n.includes("ALT")) return "M:<41 F:<31"; if (n.includes("SGOT") || n.includes("AST")) return "M:<40 F:<32"; return ""; };
+
+    const getStaff = (name) => { if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
+
+    patientsArray.forEach((p, index) => {
+        let verifier = getStaff(p.verifier); let performer = getStaff(p.encoder);
+        const tName = (p.testName || "").toUpperCase(); 
+        const isDengue = tName.includes("DENGUE") || tName.includes("NS1"); 
+        const isGram = tName.includes("GRAM"); 
+        const isViral = tName.includes("VIRAL") || tName.includes("HIV-1") || tName.includes("GXVL"); 
+        const isFecal = tName.includes("FECAL"); 
+        const isUrine = tName.includes("URIN") || tName.includes("UA"); 
+        const isSero = tName.includes("SERO") || tName.includes("HIV") || tName.includes("SYPHILIS") || tName.includes("HBSAG"); 
+        const isChem = tName.includes("CHEM"); 
+        const isHema = tName.includes("HEMA") || tName.includes("CBC");
+        
+        const cachedP = cachedPatients.find(cp => cp.id === p.id) || {};
+        p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || "");
+        p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
+
+        if (!p.remarks && p.results) { let remarkObj = p.results.find(r => r.param === "Remarks" || r.param === "REMARKS"); if (remarkObj) { p.remarks = remarkObj.res; } }
+        if (p.results) { p.results = p.results.filter(r => { const P = String(r.param).toUpperCase(); if (P === "REMARKS" || P.includes("REMARK")) return false; if (P.includes("REQUEST")) return false; if (isSero && (P.includes("KAP") || P.includes("CLASSIFICATION"))) return false; if (isUrine && (P.includes("KETONES") || P.includes("BLOOD") || P.includes("BILIRUBIN") || P.includes("NITRITE"))) return false; return true; }); }
+
+        let mainContent = "";
+        
+        if (isViral) { let choiceObj = p.results.find(r => r.param.toUpperCase().includes("CHOIC") || r.param.toUpperCase().includes("RESULT")); let numObj = p.results.find(r => r.param.toUpperCase().includes("NUMB") || r.param.toUpperCase().includes("COPIES")); let resultVal = choiceObj ? choiceObj.res : "N/A"; let copiesVal = numObj ? numObj.res : ""; let logVal = "N/A"; let cleanNum = String(copiesVal).replace(/[^0-9.]/g, ''); if (cleanNum && !isNaN(cleanNum)) { logVal = Math.log10(parseFloat(cleanNum)).toFixed(2); } else if (String(copiesVal).includes("<")) { logVal = "< 1.60"; } mainContent = `<div style="width:90%; margin-top:10px; border:2px solid #000; padding:15px;"><div style="font-weight:bold; font-size:12px; text-decoration:underline; margin-bottom:15px; text-align:center;">HIV-1 VIRAL LOAD QUANTIFICATION</div><table style="width:100%; border:none;"><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">HIV-1 QUALITATIVE RESULT:</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${resultVal}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">RESULT (Copies/mL):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${copiesVal || "N/A"}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">LOG VALUE (log10):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${logVal}</td></tr></table><div style="font-size:8px; font-style:italic; margin-top:15px; text-align:center;">Test Method: Real-Time PCR (GeneXpert). Linear Range: 40 to 10,000,000 copies/mL.</div></div>`; }
+        else if (isGram) { const findRes = (keyPart) => { let found = p.results.find(r => r.param.toUpperCase().includes(keyPart)); return (found && found.res && found.res.trim() !== "") ? found.res : "NONE SEEN"; }; let posQuant = findRes("GP_QUANT"); let posMorph = findRes("GP_MORPH"); let posArr = findRes("GP_ARRANG"); let negQuant = findRes("GN_QUANT"); let negMorph = findRes("GN_MORPH"); let negArr = findRes("GN_ARRANG"); mainContent = `<table class="res-table" style="width: 100%; margin-top: 10px;"><thead><tr><th width="20%">TEST</th><th width="20%">QUANTITY</th><th width="30%">MORPHOLOGY</th><th width="30%">ARRANGEMENT</th></tr></thead><tbody><tr><td style="font-weight:bold; padding:8px;">Gram Positive</td><td style="text-align:center;">${posQuant}</td><td style="text-align:center;">${posMorph}</td><td style="text-align:center;">${posArr}</td></tr><tr><td style="font-weight:bold; padding:8px;">Gram Negative</td><td style="text-align:center;">${negQuant}</td><td style="text-align:center;">${negMorph}</td><td style="text-align:center;">${negArr}</td></tr></tbody></table>`; }
+        else if (isDengue) { 
+            let resObj = p.results.find(r => r.param.toUpperCase() === "DENGUE_RESULT" || r.param.toUpperCase().includes("ANTIGEN")); let resVal = resObj ? resObj.res : ""; let igg = p.results.find(r => r.param.toUpperCase().includes("IGG")); let igm = p.results.find(r => r.param.toUpperCase().includes("IGM")); let color = (String(resVal).toUpperCase().includes("POS") || String(resVal).toUpperCase().includes("REACTIVE")) ? "red" : "black"; 
+            let rows = `<tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE NS1 ANTIGEN</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${color};">${resVal}</td></tr>`;
+            if (igg && igg.res) { let iggColor = String(igg.res).toUpperCase().includes("POS") ? "red" : "black"; rows += `<tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE IgG</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${iggColor};">${igg.res}</td></tr>`; }
+            if (igm && igm.res) { let igmColor = String(igm.res).toUpperCase().includes("POS") ? "red" : "black"; rows += `<tr><td style="padding:15px; font-weight:bold; font-size:12px;">DENGUE IgM</td><td style="padding:15px; text-align:center; font-weight:bold; font-size:14px; color:${igmColor};">${igm.res}</td></tr>`; }
+            mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 90%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody>${rows}</tbody></table></div>`; 
+        }
+        else if (isSero) {
+            let hivRes = p.results.find(r => r.param.toUpperCase().includes("HIV"))?.res; let syphRes = p.results.find(r => r.param.toUpperCase().includes("SYPHILIS"))?.res; let hbsagRes = p.results.find(r => r.param.toUpperCase().includes("HBSAG"))?.res; let rowsHtml = "";
+            if (hivRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HIV 1/2 SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hivRes}</td></tr>`;
+            if (syphRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">SYPHILIS SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${syphRes}</td></tr>`;
+            if (hbsagRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HBsAg SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hbsagRes}</td></tr>`;
+            mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 85%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+        }
+        else if (isHema || isChem || isUrine) { const mid = Math.ceil(p.results.length / 2); const left = p.results.slice(0, mid); const right = p.results.slice(mid); let rowsHtml = ""; const hasUnits = isHema || isChem; for(let i=0; i < mid; i++) { const l = left[i]; const r = right[i]; let leftHtml = ""; if (l) { if (hasUnits) { leftHtml = `<td style="font-weight:bold; padding-left:5px;">${l.param}</td><td style="text-align:center; font-weight:bold;">${l.res||""}</td><td style="text-align:center; font-size:8px;">${getUnit(l.param)}</td><td style="text-align:center; font-size:8px;">${getNormal(l.param)}</td>`; } else { leftHtml = `<td style="font-weight:bold; padding-left:5px;">${l.param}</td><td style="text-align:center; font-weight:bold;">${l.res||""}</td>`; } } else { leftHtml = hasUnits ? `<td colspan="4"></td>` : `<td colspan="2"></td>`; } let rightHtml = ""; if (r) { if (hasUnits) { rightHtml = `<td style="font-weight:bold; padding-left:5px;">${r.param}</td><td style="text-align:center; font-weight:bold;">${r.res||""}</td><td style="text-align:center; font-size:8px;">${getUnit(r.param)}</td><td style="text-align:center; font-size:8px;">${getNormal(r.param)}</td>`; } else { rightHtml = `<td style="font-weight:bold; padding-left:5px;">${r.param}</td><td style="text-align:center; font-weight:bold;">${r.res||""}</td>`; } } else { rightHtml = hasUnits ? `<td colspan="4"></td>` : `<td colspan="2"></td>`; } rowsHtml += `<tr>${leftHtml}${rightHtml}</tr>`; } let headerHtml = hasUnits ? `<tr><th width="20%">TEST</th><th width="10%">RESULT</th><th width="10%">UNIT</th><th width="10%">NORMAL</th><th width="20%">TEST</th><th width="10%">RESULT</th><th width="10%">UNIT</th><th width="10%">NORMAL</th></tr>` : `<tr><th width="30%">TEST</th><th width="20%">RESULT</th><th width="30%">TEST</th><th width="20%">RESULT</th></tr>`; mainContent = `<table class="res-table" style="width: 100%; margin-top: 5px; font-size: 9px;"><thead>${headerHtml}</thead><tbody>${rowsHtml}</tbody></table>`; }
+        else { let rowsHtml = ""; const tableStyle = isFecal ? "width: 75%; margin: 10px auto;" : "width: 100%; margin-top: 10px;"; const padStyle = "padding:4px;"; p.results.forEach(r => { const val = (r.res === "" || r.res === undefined || r.res === null) ? "&nbsp;" : r.res; rowsHtml += `<tr><td style="text-align:left; padding-left:10px; font-weight:bold; ${padStyle} width:40%;">${r.param}</td><td style="font-weight:bold; text-align:center; ${padStyle} width:60%;">${val}</td></tr>`; }); mainContent = `<div style="flex-grow:1; display:flex; justify-content:center; width:100%;"><table class="res-table" style="${tableStyle}"><thead><tr><th width="40%">TEST / PARAMETER</th><th width="60%">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`; }
+
+        const pageHtml = `
+        <div class="page-container">
+            <div class="header">
+                <img src="${logos.left}" class="logo-side">
+                <div class="header-center">
+                    <img src="${logos.lab}" class="logo-lab">
+                    <h3>Republic of the Philippines<br>Province of Rizal<br>Municipality of Angono</h3>
+                    <h1>Municipal Health Office</h1>
+                    <h3>P. Tolentino St. Brgy. San Isidro, Angono, Rizal</h3>
+                </div>
+                <img src="${logos.right}" class="logo-side">
+            </div>
+            <div class="form-title">${p.testName}</div>
+            <table class="info-table">
+                <tr><td width="12%" class="label">Name:</td><td width="48%" class="data"><strong>${p.name}</strong></td><td width="15%" class="label">Age/Sex:</td><td width="25%" class="data">${p.age} / ${p.sex}</td></tr>
+                <tr><td class="label">Patient ID:</td><td class="data">${p.id} <span style="font-size:8px; color:#555; margin-left:8px;">(${p.testCode || ""})</span></td><td class="label">Date Recv:</td><td class="data">${p.dateRequest || ""}</td></tr>
+                <tr><td class="label">Facility:</td><td class="data">${p.facility}</td><td class="label">Date Rel:</td><td class="data">${p.dateResult || p.dateRequest || ""}</td></tr>
+            </table>
+            <div style="flex-grow:1; display:flex; flex-direction:column; width:100%;">
+                ${mainContent}
+            </div>
+            <div class="remarks-box"><strong>Remarks:</strong> ${p.remarks || ""}</div>
+            <div class="footer-section">
+              <div class="sig-container">
+                    <div class="sig-block" style="text-align:left;">
+                        <div class="sig-label">Performed By:</div>
+                        <div class="sig-visual-area" style="justify-content: flex-start;">
+                            ${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}
+                            <div class="sig-name" style="text-align:left;">${p.encoder}</div>
+                        </div>
+                        <div class="sig-info">${performer.role}<br>Lic No. ${performer.license}</div>
+                    </div>
+                    <div class="sig-block" style="text-align:right;">
+                        <div class="sig-label" style="text-align:right;">Noted By:</div>
+                        <div class="sig-visual-area" style="justify-content: flex-end;">
+                            <div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div>
+                        </div>
+                        <div class="sig-info">Municipal Health Officer</div>
+                    </div>
+                </div>
+                <div class="system-footer">This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.</div>
+                <div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div>
+            </div>
+        </div>`;
+
+        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : '';
+        combinedHtml += pageHtml + breakTag;
+    });
+
+    return `<!DOCTYPE html><html><head><title>Batch Print</title>
+    <style>
+        @page { size: A5 landscape; margin: 0; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
+        .page-container { width: 210mm; height: 148mm; background: white; padding: 5mm 10mm; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; break-after: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;}
+        .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 5px; height: 90px; display: flex; align-items: center; justify-content: space-between; -webkit-print-color-adjust: exact; flex-shrink: 0; }
+        .header-center { text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .header h3 { font-size: 9px; margin: 0; font-weight: normal; line-height: 1.0; }
+        .header h1 { font-size: 11px; margin: 2px 0; font-weight: bold; line-height: 1.0; }
+        .header p { font-size: 9px; margin: 2px 0 0 0; font-weight: bold; line-height: 1.0; }
+        .logo-side { width: 65px; height: 65px; background: #fff; border-radius: 50%; object-fit: contain; }
+        .logo-lab { width: 40px; height: 40px; background: #fff; border-radius: 50%; margin-bottom: 2px; align-self: center; margin-top: 10px; }
+        .form-title { text-align: center; font-weight: bold; font-size: 14px; margin: 5px 0; text-transform: uppercase; border: 1px solid black; background: #eee; -webkit-print-color-adjust: exact; flex-shrink: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .info-table td { border: 1px solid black; padding: 2px 5px; }
+        .label { background: #f0f0f0; font-weight: bold; -webkit-print-color-adjust: exact; width: 15%; }
+        .res-table { border: 2px solid black; }
+        .res-table th { background: #ddd; border: 1px solid black; padding: 4px; font-size: 10px; -webkit-print-color-adjust: exact; }
+        .res-table td { border: 1px solid black; padding: 2px; font-size: 10px; }
+        .remarks-box { border: 1px solid black; padding: 2px 5px; margin-top: 5px; font-size: 10px; min-height: 20px; flex-shrink: 0; }
+        .footer-section { margin-top: auto; padding-bottom: 5px; flex-shrink: 0; }
+        .sig-container { display: flex; justify-content: space-between; }
+        .sig-block { width: 32%; text-align: center; }
+        .sig-visual-area { height: 40px; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+        .esig-img { position: absolute; bottom: 5px; height: 45px; mix-blend-mode: multiply; }
+        .sig-name { font-weight: bold; font-size: 10px; border-top: 1px solid black; width: 100%; padding-top: 2px; }
+        .sig-info { font-size: 9px; }
+        .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
+        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
+        
+        .no-print { position: fixed; top: 0; left: 0; width: 100%; background: #1e293b; padding: 12px; text-align: center; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); } 
+        .no-print button { padding: 10px 20px; margin: 0 5px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: sans-serif; font-size: 14px; } 
+        .btn-print { background: #10b981; color: white; } 
+        .btn-close { background: #ef4444; color: white; } 
+        .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
+        
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
+            @page { size: 210mm 148mm; margin: 0; } 
+            .page-container { width: 210mm !important; max-width: 210mm !important; height: 148mm !important; max-height: 148mm !important; margin: 0 auto !important; padding: 4mm 10mm !important; border: none !important; box-shadow: none !important; zoom: 1.05 !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; } 
+            .page-break { display: none !important; } 
+        }
+    </style>
+    </head><body>
+    <div class="no-print">
+        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
+        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
+        <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
+    </div>
+    ${combinedHtml}</body></html>`;
+}
+
+function showPrintModal(htmlContent) {
+    let modal = document.getElementById('print-modal-overlay');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'print-modal-overlay';
+        modal.style.position = 'fixed'; modal.style.top = '0'; modal.style.left = '0'; modal.style.width = '100vw'; modal.style.height = '100vh'; modal.style.backgroundColor = 'rgba(0,0,0,0.6)'; modal.style.zIndex = '999999'; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';  
+        const iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe'; iframe.style.width = '90%'; iframe.style.maxWidth = '1100px'; iframe.style.height = '90%'; iframe.style.maxHeight = '850px'; iframe.style.border = 'none'; iframe.style.borderRadius = '12px'; iframe.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; iframe.style.backgroundColor = '#e2e8f0';
+        modal.appendChild(iframe); document.body.appendChild(modal);
+    }
+    modal.style.display = 'flex';
+    const safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
+    const iframe = document.getElementById('print-iframe');
+    iframe.contentWindow.document.open(); iframe.contentWindow.document.write(safeHtml); iframe.contentWindow.document.close();
+}
+
+window.closePrintModal = function() { const modal = document.getElementById('print-modal-overlay'); if (modal) { modal.style.display = 'none'; } };
