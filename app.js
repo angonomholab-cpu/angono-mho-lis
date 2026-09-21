@@ -1436,15 +1436,34 @@ function processNtpResultsClient(p) {
 }
 
 function mapSupabaseToPrintObject(d) {
-    let detailsObj = typeof d.details === 'string' ? JSON.parse(d.details) : (d.details || {});
-    let resultsArr = []; for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
+    let detailsObj = {};
+    try {
+        detailsObj = typeof d.details === 'string' ? JSON.parse(d.details || "{}") : (d.details || {});
+    } catch(e) {
+        detailsObj = {};
+    }
+    
+    let resultsArr = []; 
+    for (let key in detailsObj) { 
+        resultsArr.push({ param: key, res: detailsObj[key] }); 
+    }
+    
     return {
-        id: d.patient_id || d.patientId, name: d.patient_name || d.name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
-        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
+        id: d.patient_id || d.patientId || "N/A", 
+        name: d.patient_name || d.name || detailsObj.name || "Unnamed Patient", 
+        age: detailsObj.age || detailsObj.Age || "", 
+        sex: detailsObj.sex || detailsObj.Sex || "",
+        facility: detailsObj.facility || detailsObj.Facility || d.facility || "Main Health Center", 
+        address: detailsObj.address || detailsObj.Address || "", 
+        contact: detailsObj.contact || detailsObj.Contact || "",
         dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
         dateExamined: detailsObj.date_examined || detailsObj.dateEncoded ? new Date(detailsObj.date_examined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
         dateResult: new Date().toLocaleDateString(), 
-        testCode: d.test_code || d.id, testName: d.test_name || d.test, encoder: d.encoder || "System", verifier: "", results: resultsArr
+        testCode: d.test_code || d.id || "", 
+        testName: d.test_name || d.test || "Laboratory Test", 
+        encoder: d.encoder || currentUser.fullName || "System", 
+        verifier: "", 
+        results: resultsArr
     };
 }
 
