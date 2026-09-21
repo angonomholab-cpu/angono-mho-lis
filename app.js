@@ -1,10 +1,5 @@
-// 🟢 PURE SUPABASE ARCHITECTURE 🟢
+// 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
-
-// Fallback just in case hindi kumagat ang index.html setup
-if (!window.sb && window.supabase) {
-    window.sb = window.supabase.createClient('https://mtohvtmupjfdabrrpnii.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b2h2dG11cGpmZGFicnJwbmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njg2MzQsImV4cCI6MjEwNTU0NDYzNH0.lh5n2LY4x9_kyPcgUOdtDUxEpiBClTMDCKNSzQTTH64');
-}
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -19,6 +14,7 @@ let currentQuickPatient = null;
 let searchTimeout; 
 let confirmActionCallback = null; 
 window.CURRENT_TEST_TYPE = ""; 
+window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
@@ -38,23 +34,30 @@ const availableTests = {
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
-    if (modal) {
-        const t = document.getElementById('alert-title'); if(t) t.innerText = title;
-        const m = document.getElementById('alert-msg'); if(m) m.innerText = message;
-        const i = document.getElementById('alert-icon');
-        if(i) {
-            i.className = 'ph ' + (type === 'error' ? 'ph-warning-circle' : (type === 'success' ? 'ph-check-circle' : 'ph-info'));
-            i.style.color = type === 'error' ? 'var(--danger)' : (type === 'success' ? 'var(--success)' : 'var(--pri)');
-        }
-        modal.style.display = 'flex';
-    } else {
-        console.log(title, message);
-    }
+    if(!modal) return console.log(title, message);
+    document.getElementById('custom-alert-title').innerText = title;
+    document.getElementById('custom-alert-msg').innerText = message;
+    const iconEl = document.getElementById('custom-alert-icon');
+    if(type === 'success') { iconEl.className = 'ph ph-check-circle'; iconEl.style.color = 'var(--success)'; } 
+    else if(type === 'error') { iconEl.className = 'ph ph-warning-circle'; iconEl.style.color = 'var(--danger)'; } 
+    else { iconEl.className = 'ph ph-info'; iconEl.style.color = 'var(--pri)'; }
+    modal.style.display = 'flex';
 }
+function customConfirm(message, callback) { document.getElementById('custom-confirm-msg').innerText = message; document.getElementById('custom-confirm').style.display = 'flex'; confirmActionCallback = callback; }
+function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
+window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
 async function apiGet(action, params = {}) {
     try {
         switch (action) {
+            case "loginUser": {
+                const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).eq('password', params.password).maybeSingle();
+                if (error) throw error;
+                if (!data) return { status: "FAIL" };
+                if (data.status === "PENDING") return { status: "PENDING" };
+                if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
+                return { status: "SUCCESS", username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username };
+            }
             case "patientLogin": {
                 const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).eq('password', params.password).maybeSingle();
                 if (error) throw error;
@@ -62,18 +65,10 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                const { data, error } = await sb.from('patients').select('*');
+                const { data, error } = await sb.from('patients').select('id, full_name, age, sex, facility, address, contact, email, bday');
                 if (error) throw error;
                 return { status: "success", data: (data || []).map(p => ({
-                    id: p.id || p.ID || p.Patient_ID || p.patient_id, 
-                    name: p.full_name || p.name || p.Name, 
-                    age: p.age || p.Age, 
-                    sex: p.sex || p.Sex, 
-                    facility: p.facility || p.Facility, 
-                    address: p.address || p.Address, 
-                    contact: p.contact || p.Contact, 
-                    email: p.email || p.Email, 
-                    bday: p.bday || p.Birthday
+                    id: p.id, name: p.full_name, age: p.age, sex: p.sex, facility: p.facility, address: p.address, contact: p.contact, email: p.email, bday: p.bday
                 }))};
             }
             case "getPatientHistory": {
@@ -86,13 +81,13 @@ async function apiGet(action, params = {}) {
                 }))};
             }
             case "getPendingWorkload": {
-                let pendingQ = sb.from('lab_tests').select('*').eq('status', 'PENDING');
+                let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending } = await pendingQ.order('date', { ascending: false });
                 
-                let compQ = sb.from('lab_tests').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
+                let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed } = await compQ.order('date_encoded', { ascending: false }).limit(200);
+                const { data: completed } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 
                 const toFrontend = r => ({ id: r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
@@ -101,15 +96,19 @@ async function apiGet(action, params = {}) {
                 const { data } = await sb.from('facilities').select('name');
                 return { status: "success", data: data || [] };
             }
+            case "getAuditLogs": {
+                const { data } = await sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+                return { status: "success", data: data || [] };
+            }
             case "getRegistryDataOptimized": {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
                 
-                let q = sb.from(tName).select('*', { count: 'exact' });
+                let q = sb.from(tName).select('*'); 
                 
                 if (tName === 'lab_tests') {
                      const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                     q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['COMPLETED', 'ENCODED', 'FOR REPEAT']);
+                     q = q.eq('test_name', tMap[params.type] || params.type).eq('status', 'COMPLETED'); // COMPLETED ONLY!
                 }
 
                 if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
@@ -118,20 +117,23 @@ async function apiGet(action, params = {}) {
                 
                 if (params.searchQuery) {
                     if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
-                    else q = q.ilike('Name', `%${params.searchQuery}%`); 
+                    else q = q.ilike('name', `%${params.searchQuery}%`); 
                 }
 
-                const page = parseInt(params.page) || 1;
-                const limit = parseInt(params.limit) || 20;
+                if (params.monthFilter) {
+                    q = q.like('date', `${params.monthFilter}%`); // MONTH FILTER ENABLED
+                }
                 
-                const { data, count, error } = await q.order('date', { ascending: false }).range((page - 1) * limit, page * limit - 1);
+                // Sorting ascending / descending
+                const isAsc = params.sortOrder === 'ASC';
+                const { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
                 
                 const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
                 const rows = data.map(row => headers.map(h => row[h]));
-                return { status: "success", data: { headers, rows, totalPages: Math.max(1, Math.ceil((count || 0) / limit)), currentPage: page, totalRows: count || 0 } };
+                return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: data.length } };
             }
             default: return { status: "error", message: "GET action not implemented: " + action };
         }
@@ -141,6 +143,10 @@ async function apiGet(action, params = {}) {
 async function apiPost(action, payload) {
     try {
         switch (action) {
+            case "logAudit": {
+                await sb.from('audit_logs').insert({ username: payload.username, action: payload.action, details: payload.details });
+                return { status: "success" };
+            }
             case "submitForm": {
                 const f = payload.formObject;
                 const tests = JSON.parse(f.testsData || "[]");
@@ -151,7 +157,7 @@ async function apiPost(action, payload) {
                 }, { onConflict: 'id' });
 
                 const rows = tests.map(t => ({
-                    id: `${patientId}-${t.code}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    id: t.id,
                     patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.code,
                     details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, encoder_full_name: f.encoderFullName, date: new Date().toISOString()
                 }));
@@ -226,11 +232,13 @@ async function apiPost(action, payload) {
     } catch (err) { return { status: "error", message: String(err) }; }
 }
 
-function initializeAppUI() {
-    try {
-        const loader = document.getElementById('app-loader');
-        if (loader) loader.style.display = 'none'; // Force hide loader immediately
+window.addEventListener('error', function(e) {
+    const loader = document.getElementById('app-loader');
+    if(loader) loader.style.display = 'none';
+});
 
+document.addEventListener('DOMContentLoaded', () => {
+    try {
         if (localStorage.getItem('mho-theme') === 'dark') document.body.classList.add('dark-mode');
         const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
         const toggleLimit = document.getElementById('toggle-limited-mode');
@@ -240,7 +248,7 @@ function initializeAppUI() {
         const savedUser = localStorage.getItem('labUser');
         if (savedUser) {
             currentUser = JSON.parse(savedUser);
-            if (!currentUser.username) throw new Error("Invalid User");
+            if (!currentUser.username) throw new Error("Invalid User format");
             
             document.getElementById('login-overlay').style.display = 'none';
             
@@ -266,19 +274,16 @@ function initializeAppUI() {
             document.getElementById('login-overlay').style.display = 'flex';
         }
     } catch (e) { 
-        console.error("Init Error:", e);
         localStorage.removeItem('labUser'); 
         document.getElementById('login-overlay').style.display = 'flex'; 
+    } finally { 
+        // FAILSAFE: Always remove loader after 1 second
+        setTimeout(() => {
+            const loader = document.getElementById('app-loader');
+            if(loader) loader.style.display = 'none';
+        }, 1000);
     }
-}
-
-// 🟢 GUARANTEED EXECUTION: Siguradong tatanggalin ang loader 🟢
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeAppUI);
-} else {
-    initializeAppUI();
-}
-
+});
 
 function toggleLimitedMode() { const isChecked = document.getElementById('toggle-limited-mode').checked; localStorage.setItem('mho-limited-mode', isChecked); applyLimitedMode(isChecked); }
 function applyLimitedMode(isLimited) {
@@ -295,44 +300,21 @@ function switchLoginTab(type) {
 }
 
 async function attemptLogin() {
-    const u = document.getElementById('login_user').value.trim(); 
-    const p = document.getElementById('login_pass').value.trim();
-    const btn = document.getElementById('btn-login'); 
-    const err = document.getElementById('login-error');
-    
+    const u = document.getElementById('login_user').value.trim(); const p = document.getElementById('login_pass').value.trim();
+    const btn = document.getElementById('btn-login'); const err = document.getElementById('login-error');
     if (!u || !p) { err.style.display = 'block'; err.innerText = "Enter credentials."; return; }
-    
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     
     try {
-        // DIRECT SUPABASE CALL PARA MAKITA ANG EKSAKTONG ERROR
-        const { data, error } = await sb.from('app_users').select('*').ilike('username', u).eq('password', p).maybeSingle();
-        
-        if (error) {
-            // IPAPALABAS ANG SUPABASE ERROR MESSAGE
-            showAppAlert("Database Error", "Supabase says: " + error.message + "\n\nCheck if your column names match exactly: username, password, status, role, facility, full_name (all lowercase).", "error");
-            err.style.display = 'block'; err.innerHTML = "DB Error. Please check popup.";
-        } 
-        else if (!data) {
-            err.style.display = 'block'; err.innerHTML = "Invalid username or password.";
-        } 
-        else if (data.status === "PENDING") { 
-            err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; 
-        } 
-        else if (data.status === "REJECTED" || data.status === "BANNED") { 
-            err.style.display = 'block'; err.innerHTML = "Account Blocked."; 
-        } 
-        else { 
-            currentUser = { username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username }; 
+        const res = await apiGet("loginUser", { username: u, password: p });
+        if (res.status === "SUCCESS") { 
+            currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName }; 
             localStorage.setItem('labUser', JSON.stringify(currentUser)); 
+            await apiPost("logAudit", { username: currentUser.username, action: "LOGIN", details: "Staff member logged in successfully" });
             window.location.reload(); 
-        }
-    } catch (e) { 
-        showAppAlert("Critical Error", String(e), "error"); 
-        err.style.display = 'block'; err.innerHTML = "System Error.";
-    } finally { 
-        btn.innerHTML = 'Log In'; btn.disabled = false; 
-    }
+        } 
+        else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
+    } catch (e) { showAppAlert("Error", "Server Error.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
 async function attemptPatientLogin() {
@@ -342,18 +324,15 @@ async function attemptPatientLogin() {
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
     
     try {
-        const { data, error } = await sb.from('patients').select('*').ilike('email', e).eq('password', p).maybeSingle();
-        if (error) {
-            showAppAlert("Database Error", "Supabase says: " + error.message, "error");
-            err.style.display = 'block'; err.innerHTML = "DB Error.";
-        } else if (!data) {
-            err.style.display = 'block'; err.innerHTML = "Invalid credentials.";
-        } else {
-            currentUser = { username: data.id, facility: "PATIENT", role: "PATIENT", fullName: data.full_name }; 
+        const res = await apiGet("patientLogin", { email: e, password: p });
+        if (res.status === "SUCCESS") { 
+            currentUser = { username: res.patientId, facility: "PATIENT", role: "PATIENT", fullName: res.name }; 
             localStorage.setItem('labUser', JSON.stringify(currentUser)); 
+            await apiPost("logAudit", { username: currentUser.fullName, action: "PATIENT LOGIN", details: "Patient portal accessed" });
             window.location.reload(); 
-        }
-    } catch (errObj) { err.style.display = 'block'; err.innerHTML = "System Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
+        } 
+        else { err.style.display = 'block'; err.innerHTML = "Invalid credentials."; }
+    } catch (err) { err.style.display = 'block'; err.innerHTML = "Server Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
 }
 
 function showPatientResend() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-resend-card').style.display = 'block'; }
@@ -379,7 +358,11 @@ async function resendPatientPassword() {
 
 function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const menu = document.getElementById('fab-menu'); if (menu && menu.classList.contains('show')) toggleFab(); }
 function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
-function confirmLogout() { localStorage.removeItem('labUser'); window.location.reload(); }
+function confirmLogout() { 
+    apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "LOGOUT", details: "User logged out" });
+    localStorage.removeItem('labUser'); 
+    window.location.reload(); 
+}
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
 function showPage(targetId) {
@@ -409,6 +392,20 @@ function applyPermissions() {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex'; if(navRep) navRep.style.display = 'flex';
         if(role === 'ADMIN' && navSet) navSet.style.display = 'flex'; 
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
+        
+        // 🟢 INJECT AUDIT LOG BELL ICON FOR ADMIN
+        if (role === 'ADMIN') {
+            let bell = document.getElementById('notif-bell');
+            if (!bell) {
+                bell = document.createElement('div');
+                bell.id = 'notif-bell';
+                bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span style="position:absolute; top:-5px; right:-5px; background:var(--danger); width:8px; height:8px; border-radius:50%;"></span>';
+                bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;';
+                bell.onclick = showAuditLogs;
+                document.body.appendChild(bell);
+            }
+        }
+
     } else if (role === 'ENCODER') {
         if(navWork) navWork.style.display = 'flex'; if(navReg) navReg.style.display = 'flex';
         if(colEntry) colEntry.style.display = 'flex'; if(colPending) colPending.style.display = 'flex'; if(colCompleted) colCompleted.style.display = 'flex'; if(colRepeat) colRepeat.style.display = 'flex';
@@ -430,6 +427,34 @@ function applyPermissions() {
         const btnViral = document.getElementById('btn-viral'); if(btnViral) btnViral.style.display = 'none';
     }
     if (role !== 'ADMIN' && role !== 'STAFF') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
+}
+
+async function showAuditLogs() {
+    showAppAlert("Loading", "Fetching activity logs...", "info");
+    const res = await apiGet("getAuditLogs", {});
+    if (res.status === 'success') {
+        closeCustomAlert();
+        let html = '<div style="max-height: 400px; overflow-y: auto; text-align: left; font-size: 0.85rem; font-family: sans-serif;">';
+        if (res.data.length === 0) html += '<p style="text-align:center;">No activity logs yet.</p>';
+        res.data.forEach(log => {
+            html += `<div style="border-bottom: 1px solid #eee; padding: 8px 0;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <strong><i class="ph ph-user"></i> ${log.username}</strong>
+                            <span style="font-size:0.7rem; color:#888;">${new Date(log.created_at).toLocaleString()}</span>
+                        </div>
+                        <span style="color:white; background:var(--pri); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">${log.action}</span>
+                        <span style="color:#444; margin-left:8px;">${log.details}</span>
+                     </div>`;
+        });
+        html += '</div>';
+        showPrintModal(`<div style="padding: 20px; background: white; border-radius: 12px; width: 90%; max-width: 500px; margin: 50px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid var(--pri); padding-bottom:10px;">
+                <h2 style="margin:0; color:var(--pri); font-family:sans-serif;"><i class="ph ph-clock-counter-clockwise"></i> Audit Logs</h2>
+                <i class="ph ph-x" style="font-size:1.5rem; cursor:pointer;" onclick="window.parent.closePrintModal()"></i>
+            </div>
+            ${html}
+        </div>`);
+    }
 }
 
 function openTestDetails(id) { 
@@ -589,7 +614,24 @@ async function finalSubmit() {
   const generatedPassword = pEmail ? Math.random().toString(36).slice(-8).toUpperCase() : "";
 
   let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
-  Object.keys(labOrders).forEach(key => { const entry = { name: availableTests[key].testName, code: availableTests[key].testCode, details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } }; if(labOrders[key].subTests && labOrders[key].subTests.length > 0) { entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); } finalTestsArray.push(entry); });
+  
+  // 🟢 TEST CODE GENERATOR FIX (e.g. GXP-20260921-123)
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+
+  Object.keys(labOrders).forEach(key => { 
+      const randNum = String(Math.floor(Math.random() * 900) + 100);
+      const generatedTestCode = `${availableTests[key].testCode}-${dateStr}-${randNum}`;
+
+      const entry = { 
+          id: generatedTestCode, // <-- DITO PAPASOK ANG SERIAL CODE
+          name: availableTests[key].testName, 
+          code: availableTests[key].testCode, 
+          details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } 
+      }; 
+      if(labOrders[key].subTests && labOrders[key].subTests.length > 0) { entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); } 
+      finalTestsArray.push(entry); 
+  });
 
   const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
@@ -658,13 +700,33 @@ async function loadPendingData() {
     const refIcon = document.getElementById('refresh-icon'); if (refIcon) refIcon.classList.add('ph-spin');
     try {
         let res = await apiGet("getPendingWorkload", { facility: currentUser.facility, role: currentUser.role, _t: new Date().getTime() }); 
-        if (res.status === "error") throw new Error(res.message);
         if (res && (res.pending || res.encoded)) { window.pendingData = res.pending || []; window.completedData = res.encoded || []; renderLists(); }
-    } catch(e) { 
-        console.error("Refresh Error:", e); 
-        showAppAlert("Database Error", "Pending Data Failed:\n" + (e.message || e), "error");
-    } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
+    } catch(e) { console.error("Refresh Error:", e); } finally { if (refIcon) refIcon.classList.remove('ph-spin'); }
 }
+
+window.undoResult = function(id) {
+    customConfirm("Are you sure you want to UNDO this result? It will go back to Pending.", async () => {
+        const btn = document.getElementById('btn-undo-'+id);
+        if(btn) btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
+        try {
+            const { data } = await sb.from('lab_tests').select('*').eq('id', id).single();
+            if (!data) throw new Error("Record not found");
+            
+            let d = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
+            delete d.date_examined;
+            delete d.dateEncoded;
+            
+            await sb.from('lab_tests').update({ status: 'PENDING', details: d }).eq('id', id);
+            await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "UNDO RESULT", details: `Undid result for Test ID: ${id}` });
+            
+            showAppAlert("Success", "Record reverted to Pending.", "success");
+            loadPendingData();
+        } catch (e) {
+            showAppAlert("Error", "Could not undo record: " + e.message, "error");
+            if(btn) btn.innerHTML = '<i class="ph ph-arrow-u-up-left"></i>';
+        }
+    });
+};
 
 function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const rList = document.getElementById('list-repeat'); const filterSelect = document.getElementById('test-filter');
@@ -678,30 +740,24 @@ function renderLists() {
 
     const filterFn = (item) => { let t = String(item.test || "").toUpperCase(); let filterVal = filterSelect ? filterSelect.value : "ALL"; let tCode = getTestCodeFromName(t); if(isLimited && !allowedTests.includes(tCode)) return false; let typeMatch = (filterVal === "ALL") || t.includes(filterVal); return typeMatch; };
 
-    const fPending = window.pendingData.filter(i => filterFn(i)); 
+    // 🟢 TULUYANG HINIWALAY ANG FOR REPEAT SA PENDING
+    const fPending = window.pendingData.filter(i => filterFn(i) && String(i.status).toUpperCase() !== 'FOR REPEAT'); 
+    const fRepeat = window.pendingData.filter(i => filterFn(i) && String(i.status).toUpperCase() === 'FOR REPEAT');
+
     fPending.sort((a, b) => { let dateA = new Date(a.date); dateA.setHours(0,0,0,0); let dateB = new Date(b.date); dateB.setHours(0,0,0,0); if (dateB.getTime() !== dateA.getTime()) { return dateB.getTime() - dateA.getTime(); } return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true }); });
 
+    // 🟢 STRICT TODAY'S COMPLETED
     const fComp = window.completedData.filter(i => {
         let encodedDateStr = TODAY_STR; 
-        try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.dateExamined) { encodedDateStr = new Date(d.dateExamined).toLocaleDateString(); } else if (i.date) { encodedDateStr = new Date(i.date).toLocaleDateString(); } } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
+        try { let d = typeof i.details === 'string' ? JSON.parse(i.details) : (i.details || {}); if (d.date_examined) { encodedDateStr = new Date(d.date_examined).toLocaleDateString(); } else if (i.date) { encodedDateStr = new Date(i.date).toLocaleDateString(); } } catch(e) { if (i.date) encodedDateStr = new Date(i.date).toLocaleDateString(); }
         return filterFn(i) && (encodedDateStr === TODAY_STR);
-    });
-
-    const fRepeat = []; let latestCompleted = {};
-    window.completedData.forEach(item => { let key = item.patientId + "_" + String(item.test || "").toUpperCase(); if(!latestCompleted[key]) latestCompleted[key] = item; });
-    Object.values(latestCompleted).forEach(item => {
-        try {
-            const status = String(item.status || "").toUpperCase(); let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"] || ""; let resCode = d.ResultCode || d.Diagnosis || d.Result || "";
-            const isRepeatStatus = (status === "FOR REPEAT"); const isInitialInDetails = (String(rpt).toUpperCase() === 'INITIAL' || String(resCode).toUpperCase().includes("INITIAL"));
-            if (isRepeatStatus || isInitialInDetails) { let isAlreadyPending = window.pendingData.some(p => p.patientId === item.patientId && String(p.test || "").toUpperCase() === String(item.test || "").toUpperCase()); let typeMatch = !filterSelect || filterSelect.value === "ALL" || String(item.test || "").toUpperCase().includes(filterSelect.value); if(!isAlreadyPending && typeMatch) fRepeat.push(item); }
-        } catch(e) {}
     });
 
     let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border: 1px dashed var(--border-color);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button><button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button></div></div>` : '';
 
     const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = ""; 
-        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; let hasInitial = window.completedData.some(c => c.patientId === item.patientId && String(c.test || "").toUpperCase() === String(item.test || "").toUpperCase() && (() => { let cd = typeof c.details === 'string' ? JSON.parse(c.details) : (c.details || {}); return String(cd.Repeat || cd["Test Type"]).toUpperCase() === 'INITIAL' || String(c.status).toUpperCase() === "FOR REPEAT"; })()); if(hasInitial) repeatBadge = `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:0.6rem; font-weight:bold; margin-left:6px;">REPEAT</span>`; } catch(e){}
+        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch(e){}
         
         let actionsHtml = ''; let checkboxHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="padding-top:2px;"><input type="checkbox" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);"></div>` : '';
 
@@ -729,7 +785,8 @@ function renderLists() {
     cList.innerHTML = fComp.map(item => {
         let tCodePrint = getTestCodeFromName(item.test); let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
-        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
+        // 🟢 IDINAGDAG ANG UNDO BUTTON DITO
+        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${item.id}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
@@ -755,7 +812,13 @@ async function moveToPendingRepeat(idStr) {
 }
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
-async function deleteEntry(id) { try { await apiPost("deletePendingTestById", { testId: id }); loadPendingData(); } catch(e) {} }
+async function deleteEntry(id) { 
+    try { 
+        await apiPost("deletePendingTestById", { testId: id }); 
+        await apiPost("logAudit", { username: currentUser.username, action: "DELETE", details: `Deleted test entry ${id}` });
+        loadPendingData(); 
+    } catch(e) {} 
+}
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
@@ -781,7 +844,12 @@ function getResultTemplate(code, safeId, item) {
 
 async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = null, forceCol = null) {
     window.CURRENT_TEST_TYPE = type; currentRegistryPage = page; 
-    const titleEl = document.getElementById('regTitle'); if(titleEl) titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type}`;
+    const titleEl = document.getElementById('regTitle'); 
+    if(titleEl) {
+        // 🟢 INJECT TOGGLE SORT BUTTON 🟢
+        titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type} <button onclick="window.REGISTRY_SORT_ORDER = window.REGISTRY_SORT_ORDER === 'ASC' ? 'DESC' : 'ASC'; openRegistryTab('${type}');" class="btn btn-secondary text-xs" style="margin-left:15px; padding:4px 8px;"><i class="ph ph-sort-ascending"></i> Toggle Sort (${window.REGISTRY_SORT_ORDER})</button>`;
+    }
+    
     document.querySelectorAll('#registry-tabs .chip').forEach(c => c.classList.remove('active')); const activeBtn = document.querySelector(`#registry-tabs .chip[data-tab="${type}"]`); if(activeBtn) activeBtn.classList.add('active');
     const cont = document.getElementById('registry-table-content'); if(!cont) return;
     cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:2rem;"></i> Loading registry data...</div>';
@@ -791,7 +859,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
         const mQuery = forceMonth !== null ? forceMonth : (document.getElementById('monthFilter') ? document.getElementById('monthFilter').value.trim() : "");
         const cQuery = forceCol !== null ? forceCol : ((document.getElementById('colFilter') && document.getElementById('colFilter').value !== "ALL") ? document.getElementById('colFilter').options[document.getElementById('colFilter').selectedIndex].text : "ALL"); 
 
-        const res = await apiGet("getRegistryDataOptimized", { type: type, facility: currentUser.facility, role: currentUser.role, page: currentRegistryPage, limit: registryLimit, searchQuery: sQuery, monthFilter: mQuery, colFilter: cQuery });
+        const res = await apiGet("getRegistryDataOptimized", { type: type, facility: currentUser.facility, role: currentUser.role, page: currentRegistryPage, limit: registryLimit, searchQuery: sQuery, monthFilter: mQuery, colFilter: cQuery, sortOrder: window.REGISTRY_SORT_ORDER });
         
         if (res && res.status === "success" && res.data) {
             const registryData = res.data;
@@ -799,12 +867,10 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
             window.CURRENT_REGISTRY_HEADERS = registryData.headers || []; window.CURRENT_REGISTRY_TITLE = registryData.title || type;
             
+            // 🟢 BEAUTIFY HEADERS FOR UI
             const formatHeader = (str) => {
                 if(!str) return '';
                 if(str.toUpperCase() === 'ID') return 'ID';
-                if(str.toLowerCase() === 'date_examined') return 'Date Examined';
-                if(str.toLowerCase() === 'date_encoded') return 'Date Examined';
-                if(str.toLowerCase() === 'date') return 'Date';
                 return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             };
             const displayHeaders = window.CURRENT_REGISTRY_HEADERS.map(formatHeader);
@@ -821,7 +887,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 let isInitialRow = false; hMap.forEach(c => { let hName = c.original.toUpperCase().trim(); if (hName === 'REPEAT' || hName === 'TEST TYPE') { if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true; } });
                 hMap.forEach(c => {
                     let val = row[c.index] || ''; let hName = c.original.toUpperCase().trim();
-                    let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED BY';
+                    let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED_BY';
                     if (isResCol && val !== "") {
                         let vU = String(val).toUpperCase().trim(); let bg = "transparent", col = "inherit"; 
                         if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
@@ -830,14 +896,10 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 }); html += `</tr>`;
             });
             html += `</tbody></table>`;
-            const totalPages = registryData.totalPages || 1; const currentPage = registryData.currentPage || 1;
-            let paginationHtml = `<button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage <= 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage - 1})" title="Previous Page"><i class="ph ph-caret-left"></i></button><div style="display:flex; align-items:center; gap:6px;"><span>Page</span><input type="number" id="jumpPageInput" min="1" max="${totalPages}" value="${currentPage}" style="width:45px; padding:2px; text-align:center; border:1px solid var(--pri); outline:none; border-radius:4px; height:26px; font-size:0.8rem; font-weight:bold; color:var(--pri);" onkeydown="if(event.key==='Enter'){ let p=parseInt(this.value)||1; p=Math.max(1, Math.min(${totalPages}, p)); openRegistryTab('${type}', p); }"><span>of <strong>${totalPages}</strong> <span style="color:var(--text-muted); font-size:0.7rem;">(Total: ${registryData.totalRows})</span></span></div><button type="button" class="btn-icon" style="width:26px; height:26px; border:1px solid var(--border-color); background:var(--bg-surface);" ${currentPage >= totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="openRegistryTab('${type}', ${currentPage + 1})" title="Next Page"><i class="ph ph-caret-right"></i></button>`;
-            cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = paginationHtml;
+            // Remove pagination UI since we are loading all up to 1000 rows
+            cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing Top ${registryData.totalRows} Records</span>`;
         } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
-    } catch (e) { 
-        cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger);"><b>SQL View Error:</b><br>${e.message}</div>`; 
-        if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; 
-    }
+    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
 }
 
 let registrySearchTimeout = null;
@@ -851,9 +913,9 @@ function printRegistryLogbook() {
     if (checkedBoxes.length === 0) { showAppAlert("Required", "Please select at least one record to print.", "error"); return; }
     let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
     
-    let excludeCols = ["PATIENT ID", "ID"]; 
-    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE OF REQUEST"); 
-    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED BY");
+    let excludeCols = ["PATIENT_ID", "ID"]; 
+    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE_OF_REQUEST"); 
+    else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED_BY");
     
     let printHeaders = []; let headerIndices = [];
     window.CURRENT_REGISTRY_HEADERS.forEach((h, idx) => {
@@ -865,7 +927,7 @@ function printRegistryLogbook() {
         printHeaders.push(prettyH.replace("Date ", "").replace("Patient ", "")); headerIndices.push(idx);
     });
     if (window.CURRENT_TEST_TYPE === 'SERO') {
-        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP CATEGORY" || h.toUpperCase() === "KAP_CATEGORY");
+        const kapIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase() === "KAP_CATEGORY");
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
     
@@ -984,7 +1046,7 @@ async function generateReport() {
     const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; 
     
     try { 
-        let q = sb.from('lab_tests').select('*').in('status', ['COMPLETED', 'FOR REPEAT']);
+        let q = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
         if(targetFacility !== "ALL") q = q.eq('facility', targetFacility);
         const { data, error } = await q;
         if (data) { 
@@ -1140,9 +1202,10 @@ async function batchSaveResults(isPrint) {
         let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
         let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
         if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, dateExamined: new Date().toISOString() };
+        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, date_examined: new Date().toISOString() };
         try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: 'COMPLETED' }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
     }
+    await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH SAVE", details: `Batch processed ${successCount} records.` });
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
     if (isPrint && printRequests.length > 0) {
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
@@ -1150,7 +1213,7 @@ async function batchSaveResults(isPrint) {
             const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
             let printContent = [];
             for(let r of printRequests) {
-                const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).single();
+                const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle();
                 if(data) printContent.push(mapSupabaseToPrintObject(data));
             }
             let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent);
@@ -1177,70 +1240,61 @@ function processNtpResultsClient(p) {
     });}
 }
 
-// 🟢 NEW BATCH PRINT / PDF ENGINE 🟢
 function mapSupabaseToPrintObject(d) {
     let detailsObj = typeof d.details === 'string' ? JSON.parse(d.details) : (d.details || {});
     let resultsArr = []; for (let key in detailsObj) { resultsArr.push({ param: key, res: detailsObj[key] }); }
     return {
-        id: d.patientId || d.patient_id, 
-        name: d.name || d.patient_name || detailsObj.name || "", 
-        age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
-        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", 
-        address: detailsObj.address || detailsObj.Address || "", 
-        contact: detailsObj.contact || detailsObj.Contact || "",
+        id: d.patient_id || d.patientId, name: d.patient_name || d.name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
+        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
         dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
-        dateExamined: detailsObj.dateExamined || detailsObj.dateEncoded ? new Date(detailsObj.dateExamined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-        dateResult: new Date().toLocaleDateString(), // Laging current date and time sa print
-        testCode: d.id, 
-        testName: d.test || d.test_name, 
-        encoder: d.encoder || "System", 
-        verifier: "", 
-        results: resultsArr
+        dateExamined: detailsObj.date_examined || detailsObj.dateEncoded ? new Date(detailsObj.date_examined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
+        dateResult: new Date().toLocaleDateString(), 
+        testCode: d.id, testName: d.test_name || d.test, encoder: d.encoder || "System", verifier: "", results: resultsArr
     };
 }
 
 async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); const correctCode = getTestCodeFromName(testName); showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName); 
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    
     let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
     try {
         if (!item) { 
-            const { data } = await sb.from('lab_tests').select('*').eq('id', id).single(); 
+            const { data, error } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle(); 
             if(data) item = { id: data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
         }
         if (item) {
             if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
             let pObj = mapSupabaseToPrintObject(item);
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; let finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; 
+            let finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            
+            await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "PRINT", details: `Printed result for Test ID: ${id}` });
             showPrintModal(finalHtml);
-        } else showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+        } else {
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+        }
     } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
 }
 
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE')); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); }); // Fallback rowData[0] if test code not strictly named
+    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE') || h.toUpperCase() === 'ID'); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); });
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
     try {
         if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData(); 
         const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; let printContent = [];
         for(let r of requests) { 
-            const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).single(); 
+            const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle(); 
             if(data) printContent.push(mapSupabaseToPrintObject(data)); 
         }
+        
+        await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH PRINT", details: `Batch printed ${requests.length} records.` });
         let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); showPrintModal(finalHtml);
     } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
 }
-    return {
-        id: d.patient_id, name: d.patient_name || detailsObj.name || "", age: detailsObj.age || detailsObj.Age || "", sex: detailsObj.sex || detailsObj.Sex || "",
-        facility: detailsObj.facility || detailsObj.Facility || d.facility || "", address: detailsObj.address || detailsObj.Address || "", contact: detailsObj.contact || detailsObj.Contact || "",
-        dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
-        dateExamined: detailsObj.dateExamined ? new Date(detailsObj.dateExamined).toLocaleDateString() : TODAY_STR, 
-        dateResult: new Date().toLocaleDateString(), 
-        testCode: d.id, testName: d.test_name, encoder: d.encoder || "System", verifier: "", results: resultsArr
-    };
-}
 
-// 🟢 ADDED PRINT LOGIC 🟢
 function localGenerateNTPHtml(patientsArray) {
     const logos = { left: "./icon-512.png", lab: "./icon-192.png", right: "./icon-512.png" };
     const getStaff = (name) => { if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
