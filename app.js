@@ -401,7 +401,7 @@ function applyPermissions() {
                 bell.id = 'notif-bell';
                 bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span style="position:absolute; top:-5px; right:-5px; background:var(--danger); width:8px; height:8px; border-radius:50%;"></span>';
                 bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;';
-                bell.onclick = showAuditLogs;
+                bell.onclick = toggleAuditLogs;
                 document.body.appendChild(bell);
             }
         }
@@ -429,31 +429,60 @@ function applyPermissions() {
     if (role !== 'ADMIN' && role !== 'STAFF') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
 }
 
+async function toggleAuditLogs() {
+    let dropdown = document.getElementById('audit-dropdown');
+    if (dropdown && dropdown.style.display === 'block') {
+        dropdown.style.display = 'none'; // Sinasara kapag kinlick ulit
+    } else {
+        await showAuditLogs();
+    }
+}
+
 async function showAuditLogs() {
-    showAppAlert("Loading", "Fetching activity logs...", "info");
+    let dropdown = document.getElementById('audit-dropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.id = 'audit-dropdown';
+        // Maliit at malinis na dropdown sa upper right
+        dropdown.style.cssText = 'position:fixed; top:65px; right:20px; width:300px; max-height:400px; background:var(--bg-surface); box-shadow:0 10px 25px rgba(0,0,0,0.2); border-radius:8px; z-index:99999; overflow-y:auto; display:none; flex-direction:column; border:1px solid var(--border-color);';
+        document.body.appendChild(dropdown);
+    }
+
+    dropdown.innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-muted); font-size:0.85rem;"><i class="ph ph-spinner ph-spin"></i> Loading logs...</div>';
+    dropdown.style.display = 'block';
+
     const res = await apiGet("getAuditLogs", {});
     if (res.status === 'success') {
-        closeCustomAlert();
-        let html = '<div style="max-height: 400px; overflow-y: auto; text-align: left; font-size: 0.85rem; font-family: sans-serif;">';
-        if (res.data.length === 0) html += '<p style="text-align:center;">No activity logs yet.</p>';
+        let html = '<div style="padding:10px 15px; border-bottom:1px solid var(--border-color); font-weight:bold; color:var(--pri); display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; background:var(--bg-surface); z-index:2; font-size:0.9rem;"><span><i class="ph ph-bell"></i> Notifications</span><i class="ph ph-x" style="cursor:pointer; color:var(--text-muted);" onclick="document.getElementById(\'audit-dropdown\').style.display=\'none\'"></i></div>';
+        
+        if (res.data.length === 0) html += '<div style="padding:15px; text-align:center; font-size:0.8rem; color:var(--text-muted);">No activity logs yet.</div>';
+        
         res.data.forEach(log => {
-            html += `<div style="border-bottom: 1px solid #eee; padding: 8px 0;">
+            html += `<div class="notif-item" style="padding:12px 15px; border-bottom:1px solid var(--bg-subtle); cursor:pointer; font-size:0.8rem; transition:background 0.2s;" onmouseover="this.style.background='var(--bg-subtle)'" onmouseout="this.style.background='transparent'" onclick="handleNotifClick('${log.action}')">
                         <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                            <strong><i class="ph ph-user"></i> ${log.username}</strong>
-                            <span style="font-size:0.7rem; color:#888;">${new Date(log.created_at).toLocaleString()}</span>
+                            <strong style="color:var(--text-main);"><i class="ph ph-user"></i> ${log.username}</strong>
+                            <span style="font-size:0.65rem; color:var(--text-muted);">${new Date(log.created_at).toLocaleString()}</span>
                         </div>
-                        <span style="color:white; background:var(--pri); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">${log.action}</span>
-                        <span style="color:#444; margin-left:8px;">${log.details}</span>
+                        <div style="margin-top:4px;"><span style="color:white; background:var(--pri); padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:bold; display:inline-block; margin-bottom:4px;">${log.action}</span></div>
+                        <div style="color:var(--text-muted); line-height:1.3; font-size:0.75rem;">${log.details}</div>
                      </div>`;
         });
-        html += '</div>';
-        showPrintModal(`<div style="padding: 20px; background: white; border-radius: 12px; width: 90%; max-width: 500px; margin: 50px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid var(--pri); padding-bottom:10px;">
-                <h2 style="margin:0; color:var(--pri); font-family:sans-serif;"><i class="ph ph-clock-counter-clockwise"></i> Audit Logs</h2>
-                <i class="ph ph-x" style="font-size:1.5rem; cursor:pointer;" onclick="window.parent.closePrintModal()"></i>
-            </div>
-            ${html}
-        </div>`);
+        dropdown.innerHTML = html;
+    } else {
+        dropdown.innerHTML = '<div style="padding:15px; text-align:center; color:var(--danger); font-size:0.85rem;">Failed to load logs.</div>';
+    }
+}
+
+// Logic para dalhin ka sa tamang page kapag kinlick ang Notification
+function handleNotifClick(action) {
+    document.getElementById('audit-dropdown').style.display = 'none';
+    const a = String(action).toUpperCase();
+    if (a.includes('UNDO') || a.includes('SAVE') || a.includes('DELETE') || a.includes('BATCH SAVE')) {
+        showPage('workspace');
+    } else if (a.includes('PRINT') || a.includes('EDIT')) {
+        showPage('registry');
+    } else if (a.includes('LOGIN') || a.includes('LOGOUT')) {
+        showPage('settings'); // Para makita sa Users List
     }
 }
 
@@ -883,7 +912,8 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
             
             rows.forEach((row) => {
-                html += `<tr onclick="this.classList.toggle('expanded-row')"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                // 🟢 HOVER EFFECT PARA SA REGISTRY ROWS
+                html += `<tr onclick="this.classList.toggle('expanded-row')" style="cursor:pointer; transition: background 0.1s ease;" onmouseover="this.style.background='var(--bg-subtle)';" onmouseout="this.style.background='transparent';"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
                 let isInitialRow = false; hMap.forEach(c => { let hName = c.original.toUpperCase().trim(); if (hName === 'REPEAT' || hName === 'TEST TYPE') { if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true; } });
                 hMap.forEach(c => {
                     let val = row[c.index] || ''; let hName = c.original.toUpperCase().trim();
