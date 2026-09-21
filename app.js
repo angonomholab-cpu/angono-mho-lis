@@ -219,14 +219,13 @@ async function apiGet(action, params = {}) {
                 let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
-                // BULLETPROOF JAVASCRIPT MONTH FILTER
                 if (params.monthFilter && data) {
-                    const [fY, fM] = params.monthFilter.split('-');
                     data = data.filter(row => {
                         let rDate = row.date || row.date_received || row.Date || row["Date Received"] || row.date_examined || row.created_at;
                         const d = parseAnyDate(rDate);
                         if (!d) return false;
-                        return String(d.getFullYear()) === fY && parseInt(d.getMonth() + 1, 10) === parseInt(fM, 10);
+                        let rowYearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                        return rowYearMonth === params.monthFilter;
                     });
                 }
 
@@ -1296,13 +1295,14 @@ function isDateInPeriod(dStr, type, val, year) {
     if(!d) return false; 
     if (String(d.getFullYear()) !== String(year)) return false; 
     if (type === 'annual') return true; 
-    let m = d.getMonth() + 1; 
-    if (type === 'monthly') return parseInt(m, 10) === parseInt(val, 10); // Binago sa parseInt para sakop ang "9" at "09"
+    let m = String(d.getMonth() + 1).padStart(2, '0'); 
+    if (type === 'monthly') return m === String(val).padStart(2, '0'); 
     if (type === 'quarterly') { 
-        if (val == 1) return (m >= 1 && m <= 3); 
-        if (val == 2) return (m >= 4 && m <= 6); 
-        if (val == 3) return (m >= 7 && m <= 9); 
-        if (val == 4) return (m >= 10 && m <= 12); 
+        let monthNum = parseInt(m, 10);
+        if (val == 1) return (monthNum >= 1 && monthNum <= 3); 
+        if (val == 2) return (monthNum >= 4 && monthNum <= 6); 
+        if (val == 3) return (monthNum >= 7 && monthNum <= 9); 
+        if (val == 4) return (monthNum >= 10 && monthNum <= 12); 
     } 
     return false; 
 }
@@ -1639,9 +1639,10 @@ function showPrintModal(htmlContent) {
         modal = document.createElement('div');
         modal.id = 'print-modal-overlay';
         modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.6); z-index:999999; display:flex; align-items:center; justify-content:center;';
+        
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
-        iframe.style.cssText = 'width:90%; max-width:1100px; height:90%; max-height:850px; border:none; border-radius:12px; background-color:#e2e8f0;';
+        iframe.style.cssText = 'width:90%; max-width:1100px; height:90%; max-height:850px; border:none; border-radius:12px; background-color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
         modal.appendChild(iframe);
         document.body.appendChild(modal);
     }
@@ -1652,5 +1653,7 @@ function showPrintModal(htmlContent) {
 
 window.closePrintModal = function() {
     const modal = document.getElementById('print-modal-overlay');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+    }
 };
