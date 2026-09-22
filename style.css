@@ -2483,54 +2483,77 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 0.72rem;
-    table-layout: auto;
+    font-size: 0.68rem;
+    table-layout: fixed !important;
 }
 
 .data-table th,
 .data-table td {
     white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .data-table th {
     background: var(--bg-subtle);
     color: var(--text-main);
-    padding: 6px 8px;
+    padding: 5px 3px !important;
     text-align: left;
     font-weight: 800;
-    font-size: 0.72rem;
+    font-size: 0.66rem !important;
     letter-spacing: -0.01em;
     border-bottom: 2px solid var(--border-color);
     position: sticky;
     top: 0;
     z-index: 5;
-    white-space: nowrap !important;
+    text-transform: uppercase;
 }
 
 .data-table td {
-    padding: 6px 8px;
+    padding: 5px 3px !important;
     border-bottom: 1px solid var(--border-color);
-    font-size: 0.72rem;
+    font-size: 0.68rem !important;
     cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-/* 🟢 Landscape Column Optimization: compact secondary columns so all fit on screen 🟢 */
+/* 🟢 Landscape Column Optimization: 100% fit on screen without horizontal scroll 🟢 */
+.reg-col-chk {
+    width: 28px !important;
+    max-width: 28px !important;
+    text-align: center;
+    padding: 4px 2px !important;
+}
+
+.reg-col-edit {
+    width: 32px !important;
+    max-width: 34px !important;
+    text-align: center;
+    padding: 4px 2px !important;
+}
+
 .reg-col-code {
     font-family: monospace;
     font-weight: 700;
-    max-width: 110px;
+    width: 78px !important;
+    max-width: 82px !important;
     white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .reg-col-date {
-    max-width: 78px;
+    width: 66px !important;
+    max-width: 70px !important;
     white-space: nowrap !important;
-    font-size: 0.70rem;
+    font-size: 0.65rem !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .reg-col-name {
-    max-width: 140px;
+    min-width: 90px;
+    max-width: 135px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap !important;
@@ -2539,14 +2562,17 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 }
 
 .reg-col-tight {
-    padding: 6px 4px !important;
+    padding: 5px 2px !important;
     text-align: center;
-    max-width: 50px;
+    width: 34px !important;
+    max-width: 38px !important;
     white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .reg-col-fac {
-    max-width: 95px;
+    max-width: 78px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap !important;
@@ -2555,11 +2581,14 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 .reg-col-res {
     text-align: center;
     white-space: nowrap !important;
-    min-width: 80px;
+    width: 76px !important;
+    max-width: 88px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .reg-col-compact {
-    max-width: 85px;
+    max-width: 65px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap !important;
@@ -2567,12 +2596,18 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 }
 
 .data-table tbody tr.reg-data-row:hover td {
-    background: rgba(13, 148, 136, 0.09) !important;
+    background: rgba(13, 148, 136, 0.08) !important;
 }
 
 .data-table tbody tr.reg-data-row.active-row td {
-    background: rgba(13, 148, 136, 0.16) !important;
+    background: rgba(13, 148, 136, 0.14) !important;
     border-bottom-color: transparent;
+}
+
+.data-table tbody tr.reg-data-row.pinned-open td {
+    background: rgba(13, 148, 136, 0.18) !important;
+    border-bottom-color: transparent;
+    font-weight: 600;
 }
 
 /* 🟢 Row Detail Expansion Drawer (Lahat ng laman nung row kapag clinick) 🟢 */
