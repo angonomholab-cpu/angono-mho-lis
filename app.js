@@ -280,32 +280,53 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                // Inalis na ang 'password' sa insert upang iwasan ang 400 error
-                await sb.from('patients').upsert({
-                    id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, facility: f.facility
-                }, { onConflict: 'id' });
+                // Sanitize empty strings into null to avoid 400 Bad Request (Type Mismatch)
+                let safeAge = f.age ? parseInt(f.age) : null;
+                if (isNaN(safeAge)) safeAge = null;
+                let safeBday = f.bday ? f.bday : null;
+                let safeEmail = f.email ? f.email : null;
 
-                // Inalis ang 'encoder_full_name' sa insert
+                const { error: pErr } = await sb.from('patients').upsert({
+                    id: patientId, full_name: f.fullName, bday: safeBday, sex: f.sex, age: safeAge, address: f.address, contact: f.contact, email: safeEmail, facility: f.facility
+                }, { onConflict: 'id' });
+                
+                // Throw explicit error para hindi umabot sa lab_tests kung sablay ang patient info
+                if (pErr) throw new Error("Patients DB Error: " + pErr.message);
+
                 const rows = tests.map(t => ({
                     patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
                     details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, date: new Date().toISOString()
                 }));
-                await sb.from('lab_tests').insert(rows);
+                
+                const { error: tErr } = await sb.from('lab_tests').insert(rows);
+                if (tErr) throw new Error("Lab Tests DB Error: " + tErr.message);
+                
                 return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                await sb.from('lab_tests').update({ details, status: 'COMPLETED', encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                const { error } = await sb.from('lab_tests').update({ details, status: 'COMPLETED', encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
                 const details = JSON.parse(payload.newJsonDetails || "{}");
-                await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
-                await sb.from('patients').update({ full_name: payload.newName, age: details.age, sex: details.sex, address: details.address, contact: details.contact, facility: details.facility, email: details.email || null, bday: details.bday || null }).eq('id', payload.patientId);
+                const { error: e1 } = await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
+                if (e1) throw new Error("Test update failed: " + e1.message);
+                
+                let safeAge = details.age ? parseInt(details.age) : null;
+                if (isNaN(safeAge)) safeAge = null;
+
+                const { error: e2 } = await sb.from('patients').update({ 
+                    full_name: payload.newName, age: safeAge, sex: details.sex, address: details.address, contact: details.contact, facility: details.facility, email: details.email || null, bday: details.bday || null 
+                }).eq('id', payload.patientId);
+                if (e2) throw new Error("Patient update failed: " + e2.message);
+                
                 return { status: "success", data: "Updated" };
             }
             case "deletePendingTestById": {
-                await sb.from('lab_tests').delete().eq('id', payload.testId);
+                const { error } = await sb.from('lab_tests').delete().eq('id', payload.testId);
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "getSettingsData": {
@@ -319,41 +340,52 @@ async function apiPost(action, payload) {
                 }};
             }
             case "saveStaffData": {
-                await sb.from('staff').delete().not('id', 'is', null); 
+                const { error: e1 } = await sb.from('staff').delete().not('id', 'is', null); 
+                if (e1) throw new Error(e1.message);
+                
                 const rows = (payload.staffArray || []).map(s => ({ name: s.name, role: s.role, license: s.license, sig_url: s.sigUrl }));
-                if (rows.length) await sb.from('staff').insert(rows);
+                if (rows.length) {
+                    const { error: e2 } = await sb.from('staff').insert(rows);
+                    if (e2) throw new Error(e2.message);
+                }
                 return { status: "success" };
             }
             case "saveNewUser": {
                 const d = payload.data;
-                await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
+                const { error } = await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "registerUser": {
                 const d = payload.data;
-                await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
+                const { error } = await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "updateUserFull": {
                 const d = payload.updatedData;
                 const updateObj = { username: d.u, full_name: d.name, role: d.role, facility: d.fac, status: d.status };
                 if (d.p) updateObj.password = d.p;
-                await sb.from('app_users').update(updateObj).eq('username', payload.oldUsername);
+                const { error } = await sb.from('app_users').update(updateObj).eq('username', payload.oldUsername);
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "deleteUser": {
-                await sb.from('app_users').delete().eq('username', payload.targetUsername);
+                const { error } = await sb.from('app_users').delete().eq('username', payload.targetUsername);
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "approveUser": {
                 const status = payload.userAction === 'APPROVE' ? 'ACTIVE' : 'REJECTED';
-                await sb.from('app_users').update({ status }).eq('username', payload.targetUsername);
+                const { error } = await sb.from('app_users').update({ status }).eq('username', payload.targetUsername);
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             case "editRegistryRecord": {
                 const { data: row } = await sb.from('lab_tests').select('details').eq('patient_id', payload.patientId).eq('test_name', payload.testType).maybeSingle();
                 const merged = { ...(row?.details || {}), ...payload.updates };
-                await sb.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
+                const { error } = await sb.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
+                if (error) throw new Error(error.message);
                 return { status: "success" };
             }
             default: return { status: "error", message: "POST action not implemented: " + action };
