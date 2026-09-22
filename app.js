@@ -225,25 +225,42 @@ async function apiGet(action, params = {}) {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
                 
-                let q = sb.from(tName).select('*'); 
+                // 🔴 FIX PARA MABASA KAHIT HIGIT SA 1000 RECORDS (LOOPING FETCH)
+                let allData = [];
+                let hasMore = true;
+                let from = 0;
+                let fetchLimit = 1000;
                 
-                if (tName === 'lab_tests') {
-                     const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                     // 🟢 FIX: Ngayon kukunin na niya both ENCODED at COMPLETED records sa Registry!
-                     q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
-                }
+                while(hasMore) {
+                    let q = sb.from(tName).select('*'); 
+                    
+                    if (tName === 'lab_tests') {
+                         const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
+                         q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
+                    }
 
-                if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
-                    if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                    if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
+                        if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                    }
+                    
+                    if (params.searchQuery) {
+                        q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
+                    }
+
+                    // Kumukuha ng chunks per 1000 records
+                    let { data: chunk, error } = await q.range(from, from + fetchLimit - 1); 
+                    if (error) throw new Error(`View/Table '${tName}': ` + error.message);
+                    
+                    allData = allData.concat(chunk || []);
+                    
+                    if (!chunk || chunk.length < fetchLimit) {
+                        hasMore = false; // Tigil na kung kulang na sa 1000 ang kinuha
+                    } else {
+                        from += fetchLimit; // Next batch
+                    }
                 }
                 
-                if (params.searchQuery) {
-                    q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
-                }
-
-                const isAsc = params.sortOrder === 'ASC';
-                let { data, error } = await q.limit(1000); 
-                if (error) throw new Error(`View/Table '${tName}': ` + error.message);
+                let data = allData;
                 
                 if (params.monthFilter && data) {
                     let fVal = String(params.monthFilter).toLowerCase().trim();
@@ -271,7 +288,7 @@ async function apiGet(action, params = {}) {
                 const rows = data.map(row => headers.map(h => {
                     let val = row[h];
                     
-                    // 🔴 MASKING SA REGISTRY: Hihingiin ang role ng nagv-view. Kapag Encoder o Viewer, 'CONFIDENTIAL' ang ipapakita sa HIV column.
+                    // 🔴 MASKING SA REGISTRY: Kapag Encoder o Viewer, 'CONFIDENTIAL' ang ipapakita sa HIV column.
                     if (params.type === 'SERO' && String(h).toUpperCase() === 'HIV') {
                         let roleCheck = String(params.role).toUpperCase();
                         if (roleCheck === 'ENCODER' || roleCheck === 'VIEWER') {
