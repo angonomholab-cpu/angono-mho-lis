@@ -226,24 +226,49 @@ async function apiGet(action, params = {}) {
                     if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                     data = data.concat(chunk || []);
                     if (!chunk || chunk.length < 1000) break;
-                }
-
-                if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
-
-                const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
-                const SERO_MASK_COLS = ['HIV', 'SYPHILIS'];
-                const SERO_PRIVILEGED = ['ADMIN', 'STAFF', 'NTP_CHECKER'];
-                const roleCheck = String(params.role).toUpperCase();
-                const rows = data.map(row => headers.map(h => {
-                    let val = row[h];
-                    if (params.type === 'SERO' && SERO_MASK_COLS.includes(String(h).toUpperCase()) && !SERO_PRIVILEGED.includes(roleCheck)) {
-                        if (val && String(val).trim() !== '' && String(val).trim() !== '-') return 'CONFIDENTIAL';
-                    }
-                    return val;
-                }));
-                return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: data.length } };
             }
-            default: return { status: "error", message: "GET action not implemented: " + action };
+
+            if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+
+            const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
+            
+            // 🟢 LATEST FIX: Monthly Filter date handling para masakop ang lahat ng formats ("Date Examined", "Date Received", etc.)
+            let filteredData = data;
+            if (params.monthFilter) {
+                let fVal = String(params.monthFilter).toLowerCase().trim();
+                filteredData = data.filter(row => {
+                    let rDate = row["Date Examined"] || row["Date Received"] || row["Date Released"] || row.Date || row.date_examined || row.date_received || row.date || row.created_at;
+                    const d = parseAnyDate(rDate);
+                    if (!d) return false;
+                    
+                    let mNum = d.getMonth() + 1;
+                    let mName = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"][mNum - 1];
+                    let sName = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"][mNum - 1];
+                    let yNum = String(d.getFullYear());
+
+                    return fVal === String(mNum) || 
+                           fVal === String(mNum).padStart(2, '0') || 
+                           fVal === mName || 
+                           fVal === sName || 
+                           fVal === `${yNum}-${String(mNum).padStart(2, '0')}`;
+                });
+            }
+
+            if (filteredData.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records matched the filter"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+
+            const SERO_MASK_COLS = ['HIV', 'SYPHILIS', 'HBSAG'];
+            const SERO_PRIVILEGED = ['ADMIN', 'STAFF', 'NTP_CHECKER'];
+            const roleCheck = String(params.role).toUpperCase();
+            const rows = filteredData.map(row => headers.map(h => {
+                let val = row[h];
+                if (params.type === 'SERO' && SERO_MASK_COLS.includes(String(h).toUpperCase()) && !SERO_PRIVILEGED.includes(roleCheck)) {
+                    if (val && String(val).trim() !== '' && String(val).trim() !== '-') return 'CONFIDENTIAL';
+                }
+                return val;
+            }));
+            return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: filteredData.length } };
+        }
+        default: return { status: "error", message: "GET action not implemented: " + action };
         }
     } catch (err) { return { status: "error", message: String(err) }; }
 }
@@ -1660,39 +1685,50 @@ function mapSupabaseToPrintObject(d) {
     };
 }
 
+// 🟢 LATEST FIX: Inayos ang UUID Crash kapag nagpi-print gamit ang Test Code
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); 
     const correctCode = getTestCodeFromName(testName); 
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
     
-    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
+    let item = window.completedData.find(d => String(d.id) === String(id).trim() || String(d.testCode) === String(id).trim()) || 
+               window.pendingData.find(d => String(d.id) === String(id).trim() || String(d.testCode) === String(id).trim());
     try {
         if (!item) { 
-            // 🔴 FIX: Dinagdag ang test_code bilang alternative fallback kapag ID ang nawala
-            const { data, error } = await sb.from('lab_tests').select('*').or(`id.eq.${id},test_code.eq.${id}`).maybeSingle(); 
+            let { data } = await sb.from('lab_tests').select('*').eq('test_code', id).maybeSingle(); 
+            if (!data) {
+                const { data: d2 } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle();
+                data = d2;
+            }
             if(data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
         }
         if (item) {
             if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
             let pObj = mapSupabaseToPrintObject(item);
-            
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; 
-            let finalHtml = "";
-            try {
-                finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
-            } catch (genErr) {
-                console.error("Template Generation Error:", genErr);
-                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p></body></html>`;
+        if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; } if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; } if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
+    });}
+}
+
+// 🟢 LATEST FIX: Batch Print UUID Crash Resolution
+async function batchPrint() {
+    const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
+    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE') || h.toUpperCase() === 'ID'); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); });
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+    try {
+        if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData(); 
+        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; let printContent = [];
+        for(let r of requests) { 
+            let { data } = await sb.from('lab_tests').select('*').eq('test_code', r.testCode).maybeSingle(); 
+            if (!data) {
+                const { data: d2 } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle();
+                data = d2;
             }
-            
-            showPrintModal(finalHtml);
-        } else {
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found.</h2>'); 
+            if(data) printContent.push(mapSupabaseToPrintObject(data)); 
         }
-    } catch (err) {
-        console.error("Print Generation Error:", err); 
-        showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
-    }
+        
+        await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH PRINT", details: `Batch printed ${requests.length} records.` });
+        let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); showPrintModal(finalHtml);
+    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
 }
 
 function localGenerateNTPHtml(patientsArray) {
