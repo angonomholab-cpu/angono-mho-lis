@@ -304,12 +304,12 @@
         <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
             <!-- 🌟 MOBILE WORKSPACE SEGMENTED TAB SWITCHER (Visible only on screens <= 900px) -->
             <div class="mobile-workspace-nav" id="mobile-workspace-nav">
-                <button class="mwn-tab active" id="mwn-btn-pending" onclick="switchMobileWorkspaceTab('pending')">
+                <button class="mwn-tab active" id="mwn-btn-entry" onclick="switchMobileWorkspaceTab('entry')">
+                    <i class="ph ph-user-plus"></i><span>New Entry</span>
+                </button>
+                <button class="mwn-tab" id="mwn-btn-pending" onclick="switchMobileWorkspaceTab('pending')">
                     <i class="ph ph-hourglass-medium"></i><span>Pending</span>
                     <span class="mwn-badge" id="mwn-badge-pending">0</span>
-                </button>
-                <button class="mwn-tab" id="mwn-btn-entry" onclick="switchMobileWorkspaceTab('entry')">
-                    <i class="ph ph-user-plus"></i><span>New Entry</span>
                 </button>
                 <button class="mwn-tab" id="mwn-btn-repeat" onclick="switchMobileWorkspaceTab('repeat')">
                     <i class="ph ph-arrows-clockwise"></i><span>Repeat</span>
@@ -321,7 +321,7 @@
             </div>
 
             <input type="hidden" id="finalPatientId">
-            <div class="workspace-grid" id="workspace-grid-container" data-mobile-tab="pending">
+            <div class="workspace-grid" id="workspace-grid-container" data-mobile-tab="entry">
 
                 <div class="workspace-col" id="col-entry">
                     <div class="workspace-header" id="entry-main-header">
