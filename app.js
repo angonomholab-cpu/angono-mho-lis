@@ -99,15 +99,19 @@ window.alert = function(message) { showAppAlert("Notice", message, "info"); };
 
 function parseAnyDate(dStr) {
     if(!dStr) return null;
+    if (typeof dStr === 'string') {
+        const clean = dStr.trim();
+        const ymd = clean.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+        if (ymd) {
+            return new Date(parseInt(ymd[1], 10), parseInt(ymd[2], 10) - 1, parseInt(ymd[3], 10));
+        }
+        const mdy = clean.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+        if (mdy) {
+            return new Date(parseInt(mdy[3], 10), parseInt(mdy[1], 10) - 1, parseInt(mdy[2], 10));
+        }
+    }
     let d = new Date(dStr);
     if(!isNaN(d.getTime())) return d;
-    let parts = String(dStr).split(/[-/]/);
-    if(parts.length === 3) {
-        let try1 = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
-        if(!isNaN(try1.getTime())) return try1;
-        let try2 = new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
-        if(!isNaN(try2.getTime())) return try2;
-    }
     return null;
 }
 
@@ -212,10 +216,6 @@ async function apiGet(action, params = {}) {
                         q = (tName === 'lab_tests')
                             ? q.or(`patient_name.ilike.%${params.searchQuery}%`)
                             : q.or(`"Patient Name".ilike.%${params.searchQuery}%`);
-                    }
-                    if (params.monthFilter) {
-                        const mNum = String(parseInt(params.monthFilter, 10)).padStart(2, '0');
-                        if (mNum !== 'NaN') q = q.ilike(dateColFilter, `____-${mNum}-%`);
                     }
                     return q.order(dateColOrder, { ascending: isAsc });
                 }
@@ -1266,7 +1266,10 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
                 });
                 
-                const tcIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h === 'Test Code' || h === 'ID');
+                const tcIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => {
+                    const clean = String(h).toUpperCase().replace(/[_\s]+/g, '');
+                    return clean === 'TESTCODE' || clean === 'ID';
+                });
                 const testCode = tcIdx > -1 ? row[tcIdx] : '';
                 if (testCode) window.REGISTRY_ROWS_BY_CODE[testCode] = row;
                 if (isAdminEdit) {
@@ -1643,6 +1646,8 @@ function processNtpResultsClient(p) {
     // 🔴 FIX: Idinagdag ang TB Case No para lumabas sa mismong form
     p.tbCase = findRes("TB Case Number") || "";
     p.history = findRes("History of Treatment"); let phys = findRes("Source of Request") || p.physician || ""; p.physician = (phys === "undefined") ? "" : phys; p.xray = findRes("X-Ray Result"); p.monthTreat = findRes("Month of Treatment"); p.reason = findRes("Reason for Examination") || "Diagnosis";
+    p.appearance = findRes("Appearance") || findRes("Visual Appearance") || findRes("Specimen Volume and Quality") || p.appearance || "";
+    p.remarks = findRes("Remarks") || p.remarks || "";
     if(p.results) { p.results.forEach(r => {
         const k = String(r.param).trim(); const v = String(r.res || "").trim(); const vUpper = v.toUpperCase();
         if (k === "ResultCode") {
@@ -1685,7 +1690,7 @@ function mapSupabaseToPrintObject(d) {
     };
 }
 
-// 🟢 LATEST FIX: Inayos ang UUID Crash kapag nagpi-print gamit ang Test Code
+// 🟢 LATEST FIX: Inayos ang UUID Crash at nawawalang print generator
 async function printDirect(e, id, testName) { 
     if(e) e.stopPropagation(); 
     const correctCode = getTestCodeFromName(testName); 
@@ -1705,18 +1710,52 @@ async function printDirect(e, id, testName) {
         if (item) {
             if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
             let pObj = mapSupabaseToPrintObject(item);
-        if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; } if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; } if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
-    });}
+            
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM" || testName === "GXP" || testName === "DSSM" || String(item.test || "").toUpperCase().includes("GENEXPERT") || String(item.test || "").toUpperCase().includes("DSSM") || String(item.test || "").toUpperCase().includes("GXP");
+            let finalHtml = "";
+            try {
+                finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            } catch (genErr) {
+                console.error("Template Generation Error:", genErr);
+                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p></body></html>`;
+            }
+            showPrintModal(finalHtml);
+        } else {
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>'); 
+        }
+    } catch (err) {
+        console.error("Print Generation Error:", err); 
+        showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
+    }
 }
 
-// 🟢 LATEST FIX: Batch Print UUID Crash Resolution
+function downloadDirect(e, id, testName) {
+    if(e) e.stopPropagation();
+    printDirect(e, id, testName);
+}
+
+// 🟢 LATEST FIX: Batch Print UUID Crash Resolution & test_code header lookup
 async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE') || h.toUpperCase() === 'ID'); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); });
+    const checked = document.querySelectorAll('.chk-reg:checked'); 
+    if (checked.length === 0) { 
+        showAppAlert("Required", "Select at least one record.", "error"); 
+        return; 
+    }
+    let requests = []; 
+    checked.forEach(chk => { 
+        const rowData = JSON.parse(decodeURIComponent(chk.value)); 
+        const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => {
+            const clean = String(h).toUpperCase().replace(/[_\s]+/g, '');
+            return clean === 'TESTCODE' || clean === 'ID';
+        });
+        const targetCode = (codeCol > -1 && rowData[codeCol]) ? rowData[codeCol] : rowData[0];
+        requests.push({ testCode: targetCode, testName: window.CURRENT_TEST_TYPE }); 
+    });
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
     try {
         if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData(); 
-        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; let printContent = [];
+        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; 
+        let printContent = [];
         for(let r of requests) { 
             let { data } = await sb.from('lab_tests').select('*').eq('test_code', r.testCode).maybeSingle(); 
             if (!data) {
@@ -1726,9 +1765,22 @@ async function batchPrint() {
             if(data) printContent.push(mapSupabaseToPrintObject(data)); 
         }
         
+        if (printContent.length === 0) {
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">No printable test records found.</h2>');
+            return;
+        }
+
         await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH PRINT", details: `Batch printed ${requests.length} records.` });
-        let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); showPrintModal(finalHtml);
-    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
+        let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); 
+        showPrintModal(finalHtml);
+    } catch (err) { 
+        console.error("Batch Print Error:", err);
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); 
+    }
+}
+
+function batchDownload() {
+    batchPrint();
 }
 
 function localGenerateNTPHtml(patientsArray) {
