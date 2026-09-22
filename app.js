@@ -194,17 +194,11 @@ async function apiGet(action, params = {}) {
             case "getRegistryDataOptimized": {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
-                // 🟢 FIX: dalawang magkaibang variable — ang .ilike() ay simpleng
-                // filter key (kailangan WALANG quotes), pero ang .order() ay
-                // isang value na pinapa-parse ng PostgREST (kailangan MAY quotes
-                // kapag may space ang column name). Dating iisang variable lang
-                // ang ginamit sa dalawa, kaya nag-eerror ang buong query.
-                const dateColFilter = (tName === 'lab_tests') ? 'date' : 'Date Received';
-                const dateColOrder  = (tName === 'lab_tests') ? 'date' : '"Date Received"';
+                
+                const dateColFilter = (tName === 'lab_tests') ? 'date' : 'Date Examined';
+                const dateColOrder  = (tName === 'lab_tests') ? 'date' : '"Date Examined"';
                 const isAsc = params.sortOrder === 'ASC';
 
-                // Ginawang function ito dahil ang isang query builder ay pang-isang-gamit lang
-                // sa Supabase JS client — kailangan nating gumawa ng bago bawat .range() na tawag.
                 function buildQuery() {
                     let q = sb.from(tName).select('*');
                     if (tName === 'lab_tests') {
@@ -219,10 +213,6 @@ async function apiGet(action, params = {}) {
                             ? q.or(`patient_name.ilike.%${params.searchQuery}%`)
                             : q.or(`"Patient Name".ilike.%${params.searchQuery}%`);
                     }
-                    // 🟢 FIX: month filter na server-side na, gamit ang ILIKE wildcard sa
-                    // taning na posisyon ng buwan sa ISO date string ("____-09-%" = kahit
-                    // anong taon, basta Setyembre). Gumagana ito para sa lahat ng taon,
-                    // hindi lang sa data na nasa unang 1000 rows.
                     if (params.monthFilter) {
                         const mNum = String(parseInt(params.monthFilter, 10)).padStart(2, '0');
                         if (mNum !== 'NaN') q = q.ilike(dateColFilter, `____-${mNum}-%`);
@@ -230,8 +220,6 @@ async function apiGet(action, params = {}) {
                     return q.order(dateColOrder, { ascending: isAsc });
                 }
 
-                // 🟢 FIX: 1000-row cap. Sunud-sunod na kinukuha LAHAT ng tumutugmang
-                // rows (1000 sa isang pagkuha), hindi lang ang unang 1000.
                 let data = [];
                 for (let from = 0; ; from += 1000) {
                     const { data: chunk, error } = await buildQuery().range(from, from + 999);
@@ -243,8 +231,7 @@ async function apiGet(action, params = {}) {
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
 
                 const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
-                // 🟢 FIX: nakadagdag na ang SYPHILIS at HBSAG sa masking — dati'y HIV lang.
-                const SERO_MASK_COLS = ['HIV', 'SYPHILIS', 'HBSAG'];
+                const SERO_MASK_COLS = ['HIV', 'SYPHILIS'];
                 const SERO_PRIVILEGED = ['ADMIN', 'STAFF', 'NTP_CHECKER'];
                 const roleCheck = String(params.role).toUpperCase();
                 const rows = data.map(row => headers.map(h => {
@@ -389,10 +376,6 @@ async function apiPost(action, payload) {
                 return { status: "success" };
             }
             case "updateRegistryDetails": {
-                // 🟢 BAGO: kapalit ng editRegistryRecord na mas eksakto — dito, ang
-                // test_code (unique) ang gamit sa pag-match, hindi patient_id+test_name
-                // (na maaaring tumugma sa maling row kung may ilang test ang pasyente
-                // ng parehong klase).
                 const { data: row, error: selErr } = await sb.from('lab_tests').select('details').eq('test_code', payload.testCode).maybeSingle();
                 if (selErr) return { status: "error", message: selErr.message };
                 if (!row) return { status: "error", message: "Record not found." };
@@ -1185,37 +1168,6 @@ async function deleteEntry(id) {
     } catch(e) {} 
 }
 
-async function editFromRegistry(testId) {
-    try {
-        showAppAlert("Loading", "Fetching full record for edit...", "info");
-        const { data, error } = await sb.from('lab_tests').select('*').eq('id', testId).maybeSingle();
-        if (error || !data) {
-            closeCustomAlert();
-            return showAppAlert("Error", "Record not found in the main database.", "error");
-        }
-        
-        // Buuin at ipasok pansamantala sa pendingData list para mabasa ni editPendingFull()
-        const formattedData = {
-            id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, 
-            name: data.patient_name, test: data.test_name, date: data.date, 
-            details: data.details, encoder: data.encoder, status: data.status, facility: data.facility
-        };
-        
-        let idx = window.pendingData.findIndex(i => i.id === data.id);
-        if (idx > -1) {
-            window.pendingData[idx] = formattedData;
-        } else {
-            window.pendingData.push(formattedData); 
-        }
-        
-        closeCustomAlert();
-        showPage('workspace'); // Balik Workspace (Encoder view)
-        setTimeout(() => { editPendingFull(data.id); }, 300); // Trigger Edit
-    } catch(e) {
-        showAppAlert("Error", "Failed to load record.", "error");
-    }
-}
-
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
  const gradings = ["Negative", "Trace", "1+", "2+", "3+", "4+"]; const apps = ["Watery", "Salivary", "Mucosalivary", "Mucopurulent", "Purulent", "Blood-Streaked"];
@@ -1292,9 +1244,8 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
                     } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
                 });
-                // 🟢 BAGO: Edit button para sa ADMIN — direktang maayos ang record
-                // (hal. maling/nawawalang Syphilis value) nang hindi kailangan ng SQL.
-                const tcIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h === 'Test Code');
+                
+                const tcIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h === 'Test Code' || h === 'ID');
                 const testCode = tcIdx > -1 ? row[tcIdx] : '';
                 if (testCode) window.REGISTRY_ROWS_BY_CODE[testCode] = row;
                 if (isAdminEdit) {
