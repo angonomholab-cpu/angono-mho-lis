@@ -1,6 +1,6 @@
 // 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
-console.log("app.js build: 2026-09-22-FinalFix (Syntax Cleaned, Safe Print, Auto-Search Fix)");
+console.log("app.js build: 2026-09-22-FinalFix (Syntax Cleaned, Safe Print, Auto-Search Fix v2 - Paginated)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -149,13 +149,28 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                // Safe fetch para maiwasan ang 400 error. Kumukuha ng lahat.
-                const { data, error } = await sb.from('patients').select('*').limit(5000);
-                if (error) {
-                    console.error("Patient cache error:", error);
-                    return { status: "success", data: [] };
+                // Gumamit ng pagination (range) para makuha LAHAT ng patients (Supabase default limit is 1000)
+                let allPatients = [];
+                let limit = 1000;
+                let start = 0;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const { data, error } = await sb.from('patients').select('*').range(start, start + limit - 1);
+                    if (error) {
+                        console.error("Patient cache error:", error);
+                        break;
+                    }
+                    if (data && data.length > 0) {
+                        allPatients = allPatients.concat(data);
+                        start += data.length;
+                    }
+                    if (!data || data.length < limit) {
+                        hasMore = false;
+                    }
                 }
-                return { status: "success", data: (data || []).map(p => ({
+                
+                return { status: "success", data: allPatients.map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
                     age: p.age || "", 
