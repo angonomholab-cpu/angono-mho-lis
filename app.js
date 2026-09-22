@@ -19,6 +19,21 @@ window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString();
 
+// 🟢 Auto-compute age accurately based on birthdate and date received
+function computeAgeAtDate(bdayInput, refDateInput) {
+    if (!bdayInput) return "";
+    const bday = new Date(bdayInput);
+    if (isNaN(bday.getTime())) return "";
+    let refDate = refDateInput ? new Date(refDateInput) : new Date();
+    if (isNaN(refDate.getTime())) refDate = new Date();
+    let age = refDate.getFullYear() - bday.getFullYear();
+    const m = refDate.getMonth() - bday.getMonth();
+    if (m < 0 || (m === 0 && refDate.getDate() < bday.getDate())) {
+        age--;
+    }
+    return (age >= 0 && age <= 130) ? age : "";
+}
+
 // ========================================================
 // 📧 AUTOMATED PATIENT EMAIL NOTIFICATION SYSTEM (EmailJS)
 // ========================================================
@@ -428,6 +443,40 @@ async function apiGet(action, params = {}) {
 
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
 
+                // 🟢 Auto-compute missing Age from patients table bday & date received
+                const pIds = [...new Set(data.map(r => r.patient_id).filter(Boolean))];
+                let pMap = {};
+                if (pIds.length > 0) {
+                    try {
+                        for (let i = 0; i < pIds.length; i += 500) {
+                            const chunk = pIds.slice(i, i + 500);
+                            const { data: pList } = await sb.from('patients').select('id, bday, sex, facility').in('id', chunk);
+                            if (pList) pList.forEach(p => { pMap[p.id] = p; });
+                        }
+                    } catch (e) { }
+                }
+
+                const resolveAge = (r, detailsObj = {}) => {
+                    let existingAge = r.age_at_test || r.age || detailsObj.Age || detailsObj.age;
+                    if (existingAge && String(existingAge).trim() !== '' && String(existingAge).trim() !== '0' && String(existingAge).trim() !== '-') {
+                        return existingAge;
+                    }
+                    const p = pMap[r.patient_id];
+                    let bday = p ? p.bday : null;
+                    if (!bday && r.patient_id) {
+                        const m = String(r.patient_id).match(/MHOA-(\d{4})(\d{2})(\d{2})-/i);
+                        if (m && parseInt(m[1]) > 1900) {
+                            bday = `${m[1]}-${m[2]}-${m[3]}`;
+                        }
+                    }
+                    if (bday) {
+                        const refDate = r.received_date || r["Date Received"] || r.date || r.date_examined || r["Date Examined"];
+                        const computed = computeAgeAtDate(bday, refDate);
+                        if (computed !== "") return computed;
+                    }
+                    return existingAge || "";
+                };
+
                 // 🟢 Map GXP directly from lab_tests details para buo ang lahat ng columns hanggang dulo
                 if (params.type === 'GXP' && tName === 'lab_tests') {
                     data = data.map(r => {
@@ -438,9 +487,9 @@ async function apiGet(action, params = {}) {
                             "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
                             "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
                             "Patient Name": r.patient_name || "",
-                            "Age": r.age_at_test || d.Age || d.age || "",
-                            "Sex": r.sex || d.Sex || d.sex || "",
-                            "Facility": r.facility || d.Facility || d.facility || "",
+                            "Age": resolveAge(r, d),
+                            "Sex": r.sex || d.Sex || d.sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
+                            "Facility": r.facility || d.Facility || d.facility || (pMap[r.patient_id] ? pMap[r.patient_id].facility : "") || "",
                             "Reason for Examination": d["Reason for Examination"] || d.reason || "",
                             "History of Treatment": d["History of Treatment"] || d.history || "",
                             "Source of Request": d["Source of Request"] || d.physician || "",
@@ -465,9 +514,9 @@ async function apiGet(action, params = {}) {
                             "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
                             "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
                             "Patient Name": r.patient_name || "",
-                            "Age": r.age_at_test || d.Age || d.age || "",
-                            "Sex": r.sex || d.Sex || d.sex || "",
-                            "Facility": r.facility || d.Facility || d.facility || "",
+                            "Age": resolveAge(r, d),
+                            "Sex": r.sex || d.Sex || d.sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
+                            "Facility": r.facility || d.Facility || d.facility || (pMap[r.patient_id] ? pMap[r.patient_id].facility : "") || "",
                             "TB Case Number": d["TB Case Number"] || d.tb_case || "",
                             "Reason for Examination": d["Reason for Examination"] || d.reason || "",
                             "History of Treatment": d["History of Treatment"] || d.history || "",
@@ -494,8 +543,8 @@ async function apiGet(action, params = {}) {
                             "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
                             "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
                             "Patient Name": r.patient_name || "",
-                            "Age": r.age_at_test || d.age || d.Age || "",
-                            "Sex": r.sex || d.sex || d.Sex || "",
+                            "Age": resolveAge(r, d),
+                            "Sex": r.sex || d.sex || d.Sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
                             "Classification": d.Classification || d.classification || "",
                             "KAP Category": d["KAP Category"] || d.kap_category || "",
                             "HIV": d.HIV || d.hiv || "",
@@ -516,6 +565,18 @@ async function apiGet(action, params = {}) {
                 });
 
                 if (filteredData.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No completed records found (requires both Date Examined and Date Released)"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+
+                // Auto-fill Age for other logbooks (CHEM, HEMA, UA, FA, DENGUE, GRAM, GXVL) if missing
+                filteredData.forEach(row => {
+                    let curAge = row.Age !== undefined ? row.Age : row.age;
+                    if (!curAge || String(curAge).trim() === '' || String(curAge).trim() === '0') {
+                        const compAge = resolveAge(row);
+                        if (compAge !== '') {
+                            if (row.Age !== undefined) row.Age = compAge;
+                            if (row.age !== undefined) row.age = compAge;
+                        }
+                    }
+                });
 
                 const headers = Object.keys(filteredData[0]).filter(h => !['details', 'count'].includes(h));
 
@@ -1242,11 +1303,11 @@ async function savePatientDemographicsQS() {
 async function loadPatientResults() {
     const histContainer = document.getElementById('my-portal-history');
     if (histContainer) histContainer.innerHTML = '<div style="text-align:center; padding: 40px 20px; color: var(--pri); font-weight: 600;"><i class="ph ph-spinner ph-spin" style="font-size:2rem; margin-bottom:10px; display:block;"></i> Retrieving your laboratory records...</div>';
-    
+
     const nameEl = document.getElementById('my-portal-name');
     const metaEl = document.getElementById('my-portal-meta');
     if (nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
-    
+
     try {
         if (sb && currentUser.username) {
             const { data: pat } = await sb.from('patients').select('*').eq('id', currentUser.username).maybeSingle();
@@ -1262,7 +1323,7 @@ async function loadPatientResults() {
                             let a = now.getFullYear() - b.getFullYear();
                             if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) a--;
                             if (a >= 0) patAge = a;
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                     if (patAge) chips += `<span class="portal-chip"><i class="ph ph-calendar"></i> Age: ${patAge} yrs</span>`;
                     if (pat.facility) chips += `<span class="portal-chip"><i class="ph ph-hospital"></i> ${pat.facility}</span>`;
@@ -1914,11 +1975,11 @@ function getResultTemplate(code, safeId, item) {
     }
 }
 
-window.toggleRegistryRowDrawer = function(drawerId, rowEl) {
+window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
     const drawer = document.getElementById(drawerId);
     if (!drawer) return;
     const isVisible = drawer.style.display !== 'none';
-    
+
     // Close other drawers to keep table clean and performant
     document.querySelectorAll('.reg-drawer-row').forEach(d => {
         if (d.id !== drawerId) d.style.display = 'none';
@@ -1987,8 +2048,22 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             const isAdminEdit = String(currentUser.role).toUpperCase() === 'ADMIN';
             const totalCols = hMap.length + 2 + (isAdminEdit ? 1 : 0);
 
+            const getColClass = (hOriginal) => {
+                const clean = String(hOriginal || '').toUpperCase().replace(/[_\s]+/g, '');
+                if (clean === 'AGE' || clean === 'SEX' || clean.includes('COUNT') || clean === 'REPEAT' || clean === 'GRADE') return 'reg-col-tight';
+                if (clean === 'NAME' || clean === 'PATIENTNAME') return 'reg-col-name';
+                if (clean.includes('RESULT') || clean.includes('DIAGNOSIS') || clean === 'HIV' || clean === 'SYPHILIS' || clean === 'HBSAG') return 'reg-col-res';
+                if (clean === 'TESTCODE' || clean === 'ID') return 'reg-col-code';
+                if (clean.includes('DATE') || clean.includes('EXAMINED') || clean.includes('RELEASED') || clean.includes('RECEIVED')) return 'reg-col-date';
+                if (clean === 'FACILITY') return 'reg-col-fac';
+                return 'reg-col-compact';
+            };
+
             let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th><th style="width:75px; text-align:center; z-index:6;">Print</th>`;
-            hMap.forEach(c => html += `<th title="${c.text}">${c.text}</th>`);
+            hMap.forEach(c => {
+                const colClass = getColClass(c.original);
+                html += `<th class="${colClass}" title="${c.text}">${c.text}</th>`;
+            });
             if (isAdminEdit) html += '<th style="width:40px;">Edit</th>';
             html += `</tr></thead><tbody id="regTableBody">`;
 
@@ -2029,7 +2104,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                             <i class="ph ph-download-simple" style="font-size:1.1rem;"></i>
                         </button>
                     </td>`;
-                
+
                 let isInitialRow = false;
                 hMap.forEach(c => {
                     let hName = c.original.toUpperCase().trim();
@@ -2044,6 +2119,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
                     let isPerformedBy = hName === 'PERFORMED_BY';
                     const escapedVal = String(val).replace(/"/g, '&quot;');
+                    const colClass = getColClass(c.original);
 
                     if (isResCol && val !== "") {
                         let vU = String(val).toUpperCase().trim();
@@ -2056,11 +2132,11 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; }
                         else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; }
 
-                        html += `<td title="${escapedVal}"><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
+                        html += `<td class="${colClass}" title="${escapedVal}"><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
                     } else if (isPerformedBy && val !== "") {
-                        html += `<td title="${escapedVal}" style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
+                        html += `<td class="${colClass}" title="${escapedVal}" style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
                     } else {
-                        html += `<td title="${escapedVal}">${val}</td>`;
+                        html += `<td class="${colClass}" title="${escapedVal}">${val}</td>`;
                     }
                 });
 
