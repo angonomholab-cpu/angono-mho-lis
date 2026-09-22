@@ -19,6 +19,146 @@ window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
+// ========================================================
+// 📧 AUTOMATED PATIENT EMAIL NOTIFICATION SYSTEM (EmailJS)
+// ========================================================
+function getPatientEmailConfig() {
+    try {
+        return JSON.parse(localStorage.getItem('mho-email-config') || "{}");
+    } catch(e) {
+        return {};
+    }
+}
+
+function savePatientEmailConfig() {
+    const serviceId = document.getElementById('cfg_email_service').value.trim();
+    const templateId = document.getElementById('cfg_email_template').value.trim();
+    const publicKey = document.getElementById('cfg_email_key').value.trim();
+    const statusEl = document.getElementById('email-cfg-status');
+    
+    if (!serviceId || !templateId || !publicKey) {
+        if(statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.innerText = "Please provide Service ID, Template ID, and Public Key."; }
+        return;
+    }
+
+    const cfg = { serviceId, templateId, publicKey };
+    localStorage.setItem('mho-email-config', JSON.stringify(cfg));
+    if (window.emailjs) {
+        try { window.emailjs.init(publicKey); } catch(e){}
+    }
+    if(statusEl) { 
+        statusEl.style.color = 'var(--success)'; 
+        statusEl.innerText = "✓ Configuration saved! Ready to send automated emails."; 
+    }
+    showAppAlert("Settings Saved", "Email notification settings saved successfully.", "success");
+}
+
+function loadEmailConfigIntoUI() {
+    const cfg = getPatientEmailConfig();
+    const sEl = document.getElementById('cfg_email_service');
+    const tEl = document.getElementById('cfg_email_template');
+    const kEl = document.getElementById('cfg_email_key');
+    const statusEl = document.getElementById('email-cfg-status');
+    if (sEl && cfg.serviceId) sEl.value = cfg.serviceId;
+    if (tEl && cfg.templateId) tEl.value = cfg.templateId;
+    if (kEl && cfg.publicKey) kEl.value = cfg.publicKey;
+    if (statusEl) {
+        if (cfg.serviceId && cfg.templateId && cfg.publicKey) {
+            statusEl.style.color = 'var(--success)';
+            statusEl.innerText = "✓ Email notifications active";
+        } else {
+            statusEl.style.color = 'var(--text-muted)';
+            statusEl.innerText = "Setup EmailJS keys to enable live automated emails.";
+        }
+    }
+}
+
+async function testPatientEmailConfig() {
+    const cfg = getPatientEmailConfig();
+    if (!cfg.serviceId || !cfg.templateId || !cfg.publicKey) {
+        return showAppAlert("Setup Required", "Please fill in and save your EmailJS Service ID, Template ID, and Public Key first.", "error");
+    }
+    const testEmail = prompt("Enter an email address to receive the test notification:");
+    if (!testEmail || !testEmail.includes('@')) return;
+
+    showAppAlert("Sending...", "Sending test email via EmailJS...", "info");
+    const res = await sendPatientEmail({
+        toEmail: testEmail,
+        patientName: "Test Patient (Angono MHO)",
+        patientId: "TEST-001",
+        password: "DEMO-" + Math.floor(1000 + Math.random() * 9000),
+        testName: "GeneXpert MTB / CBC",
+        testCode: "TEST-2026-001",
+        type: "welcome"
+    });
+
+    if (res && res.success) {
+        showAppAlert("Success", "Test email sent successfully! Please check the inbox and spam folder.", "success");
+    } else {
+        showAppAlert("Email Failed", "Could not send test email: " + (res?.error || "Check your EmailJS credentials"), "error");
+    }
+}
+
+async function sendPatientEmail({ toEmail, patientName, patientId, password = "", testName = "", testCode = "", type = "welcome" }) {
+    if (!toEmail || !toEmail.includes('@')) {
+        return { success: false, reason: "No valid email" };
+    }
+
+    const cfg = getPatientEmailConfig();
+    const portalUrl = window.location.origin + window.location.pathname;
+
+    let subject = "";
+    let messageBody = "";
+    let noticeType = "";
+
+    if (type === "welcome") {
+        subject = "Angono MHO Laboratory - Patient Portal Access & Account Details";
+        noticeType = "Patient Portal Account Created / Updated";
+        messageBody = `Dear ${patientName},\n\nYour patient account has been created/updated with the Angono Municipal Health Office Laboratory.\n\nYou can access your official digital laboratory records directly through our Patient Portal:\n${portalUrl}\n\nLogin Credentials:\n• Registered Email: ${toEmail}\n• Patient ID: ${patientId}\n• Password: ${password}\n\nPlease keep your credentials confidential. You will receive an automated email notification once your test results are processed and saved.\n\nRespectfully,\nAngono MHO Laboratory Team`;
+    } else if (type === "result_ready") {
+        subject = `Angono MHO Laboratory - Result Ready for ${testName} (${testCode || 'Record'})`;
+        noticeType = "Laboratory Test Result Ready";
+        messageBody = `Dear ${patientName},\n\nThis is to notify you that the result for your laboratory test (${testName}) is now ready.\n\n[ IMPORTANT NOTICE REGARDING YOUR RESULT ]\n• SOFT COPY: An initial digital soft copy is available online right now. You can view or download it immediately by signing into the Patient Portal:\n${portalUrl}\n\n• HARD COPY: Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono Municipal Health Office.\n\nFor any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.\n\nRespectfully,\nAngono Municipal Health Office Laboratory`;
+    }
+
+    // Try EmailJS if configured
+    if (cfg.serviceId && cfg.templateId && cfg.publicKey) {
+        try {
+            if (window.emailjs) {
+                window.emailjs.init(cfg.publicKey);
+                const templateParams = {
+                    to_email: toEmail,
+                    to_name: patientName,
+                    patient_name: patientName,
+                    patient_id: patientId,
+                    portal_password: password,
+                    test_name: testName,
+                    test_code: testCode,
+                    portal_url: portalUrl,
+                    subject: subject,
+                    message: messageBody,
+                    notice_type: noticeType,
+                    release_disclaimer: "Soft copy is available online. Hard copy follows the standard Angono MHO release timeline."
+                };
+                await window.emailjs.send(cfg.serviceId, cfg.templateId, templateParams);
+                console.log(`[EmailJS] Successfully sent ${type} email to ${toEmail}`);
+                await apiPost("logAudit", { 
+                    username: currentUser.fullName || currentUser.username || "System", 
+                    action: "EMAIL SENT", 
+                    details: `Sent ${type} notification to ${toEmail} (${patientName})` 
+                });
+                return { success: true };
+            }
+        } catch(err) {
+            console.warn(`[EmailJS] Failed to send email to ${toEmail}:`, err);
+            return { success: false, error: String(err?.text || err?.message || err) };
+        }
+    } else {
+        console.log(`[Email System] EmailJS not configured. Email payload logged:`, { toEmail, subject, type });
+        return { success: false, reason: "EmailJS not configured" };
+    }
+} 
+
 const availableTests = {
     'mtb': { testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', html: '<div class="field-group"><label class="field-label">History of Treatment</label><select data-key="History of Treatment" class="form-select"><option value="New">New</option><option value="Retreatment">Retreatment</option></select></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' },
     'viral': { testName: 'Viral Load', testCode: 'GXVL', title: 'HIV-1 Viral Load', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Proceed to confirmation to add this test.</div>' },
@@ -395,7 +535,18 @@ async function apiPost(action, payload) {
                 const { error: tErr } = await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType, test_type: payload.newTestType }).eq('id', payload.testId);
                 if(tErr) throw new Error("Update Test Error: " + tErr.message);
                 
-                const { error: pErr } = await sb.from('patients').update({ full_name: payload.newName, address: details.address || null, contact: details.contact || null, facility: details.facility || null, bday: details.bday || null }).eq('id', payload.patientId);
+                let pUpdate = { 
+                    full_name: payload.newName, 
+                    address: details.address || null, 
+                    contact: details.contact || null, 
+                    facility: details.facility || null, 
+                    bday: details.bday || null 
+                };
+                if (details.email) {
+                    pUpdate.email = details.email.trim().toLowerCase();
+                    if (details.patientPassword) pUpdate.password = details.patientPassword;
+                }
+                const { error: pErr } = await sb.from('patients').update(pUpdate).eq('id', payload.patientId);
                 if(pErr) throw new Error("Update Patient Error: " + pErr.message);
                 
                 return { status: "success", data: "Updated" };
@@ -546,8 +697,20 @@ function toggleFab() { const menu = document.getElementById('fab-menu'); const i
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('fab-theme-icon'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); } }
 
 function switchLoginTab(type) {
-    if(type === 'staff') { document.getElementById('staff-login-form').style.display = 'block'; document.getElementById('patient-login-form').style.display = 'none'; document.getElementById('tab-staff-login').style.color = 'var(--pri)'; document.getElementById('tab-staff-login').style.borderBottom = '2px solid var(--pri)'; document.getElementById('tab-patient-login').style.color = 'var(--text-muted)'; document.getElementById('tab-patient-login').style.borderBottom = 'none'; } 
-    else { document.getElementById('staff-login-form').style.display = 'none'; document.getElementById('patient-login-form').style.display = 'block'; document.getElementById('tab-patient-login').style.color = 'var(--pri)'; document.getElementById('tab-patient-login').style.borderBottom = '2px solid var(--pri)'; document.getElementById('tab-staff-login').style.color = 'var(--text-muted)'; document.getElementById('tab-staff-login').style.borderBottom = 'none'; }
+    const tabStaff = document.getElementById('tab-staff-login');
+    const tabPat = document.getElementById('tab-patient-login');
+    if(type === 'staff') { 
+        document.getElementById('staff-login-form').style.display = 'block'; 
+        document.getElementById('patient-login-form').style.display = 'none'; 
+        if (tabStaff) tabStaff.classList.add('active');
+        if (tabPat) tabPat.classList.remove('active');
+    } 
+    else { 
+        document.getElementById('staff-login-form').style.display = 'none'; 
+        document.getElementById('patient-login-form').style.display = 'block'; 
+        if (tabPat) tabPat.classList.add('active');
+        if (tabStaff) tabStaff.classList.remove('active');
+    }
 }
 
 async function attemptLogin() {
@@ -601,7 +764,21 @@ async function resendPatientPassword() {
         if (data) {
             let pass = data.password;
             if(!pass) { pass = Math.random().toString(36).slice(-8).toUpperCase(); await sb.from('patients').update({password: pass}).eq('id', data.id); }
-            showAppAlert("Success", "Account Verified! Please save your login credentials:\n\nEmail: " + email + "\nPassword: " + pass + "\n\n(In the future, this will be emailed directly to you).", "success"); 
+            
+            // Dispatch live automated email
+            const emailRes = await sendPatientEmail({
+                toEmail: email,
+                patientName: data.full_name || "Patient",
+                patientId: data.id,
+                password: pass,
+                type: "welcome"
+            });
+
+            if (emailRes && emailRes.success) {
+                showAppAlert("Success", `Your login password has been sent to your email:\n${email}\n\nPlease check your inbox and spam folder.`, "success");
+            } else {
+                showAppAlert("Account Verified", `Email verified! Please save your login credentials:\n\nEmail: ${email}\nPassword: ${pass}\n\n(Configure EmailJS in Settings for direct inbox delivery).`, "success");
+            }
             backToLoginFromPatient(); 
         } else { showAppAlert("Notice", "Email is not recorded. Please contact Angono MHO Laboratory on Facebook Messenger to request access.", "error"); } 
     } catch(e) { showAppAlert("Error", "Unable to connect to the server.", "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; } 
@@ -845,8 +1022,67 @@ async function viewQuickProfile(p) {
     }
 }
 
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
-function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
+function editPatientDemographicsQS() { 
+    if(!currentQuickPatient) return; 
+    document.getElementById('qs-edit-form').style.display = 'block'; 
+    document.getElementById('qs_edit_name').value = currentQuickPatient.name || ""; 
+    document.getElementById('qs_edit_age').value = currentQuickPatient.age || ""; 
+    document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility || ""; 
+    const emailEl = document.getElementById('qs_edit_email');
+    if (emailEl) emailEl.value = currentQuickPatient.email || "";
+}
+
+async function savePatientDemographicsQS() { 
+    if (!currentQuickPatient) return;
+    const newName = document.getElementById('qs_edit_name').value.trim();
+    const newAge = document.getElementById('qs_edit_age').value.trim();
+    const newFac = document.getElementById('qs_edit_fac').value.trim();
+    const emailEl = document.getElementById('qs_edit_email');
+    const newEmail = emailEl ? emailEl.value.trim().toLowerCase() : "";
+
+    if (!newName) return showAppAlert("Required", "Patient name cannot be empty.", "error");
+
+    try {
+        let pUpdates = { full_name: newName, facility: newFac };
+        let generatedPassword = "";
+        const oldEmail = (currentQuickPatient.email || "").toLowerCase();
+
+        if (newEmail) {
+            pUpdates.email = newEmail;
+            const { data: pRec } = await sb.from('patients').select('password').eq('id', currentQuickPatient.id).maybeSingle();
+            generatedPassword = (pRec && pRec.password) ? pRec.password : Math.random().toString(36).slice(-8).toUpperCase();
+            pUpdates.password = generatedPassword;
+        }
+
+        const { error } = await sb.from('patients').update(pUpdates).eq('id', currentQuickPatient.id);
+        if (error) throw error;
+
+        // Also update cached patient data
+        currentQuickPatient.name = newName;
+        currentQuickPatient.facility = newFac;
+        currentQuickPatient.email = newEmail;
+        document.getElementById('qs-name').innerText = newName;
+        document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${currentQuickPatient.id}</span> <span><i class="ph ph-gender-intersex"></i> ${currentQuickPatient.sex || ''}</span> <span><i class="ph ph-buildings"></i> ${newFac || 'N/A'}</span>`;
+
+        // Trigger automated email if email provided/changed
+        if (newEmail && newEmail !== oldEmail) {
+            sendPatientEmail({
+                toEmail: newEmail,
+                patientName: newName,
+                patientId: currentQuickPatient.id,
+                password: generatedPassword,
+                testName: "Angono MHO Patient Record",
+                testCode: currentQuickPatient.id,
+                type: "welcome"
+            });
+        }
+
+        document.getElementById('qs-edit-form').style.display = 'none';
+        showAppAlert("Success", `Demographics updated successfully!${newEmail && newEmail !== oldEmail ? `\n\nLogin notification sent to ${newEmail}` : ''}`, "success");
+    } catch(err) {
+        showAppAlert("Error", "Could not update demographics: " + err.message, "error");
+    }
+}
 
 async function loadPatientResults() {
     const histContainer = document.getElementById('my-portal-history'); if(histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
@@ -958,7 +1194,26 @@ async function finalSubmit() {
       if (res.status === "success") { 
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; clearForm(); await loadPendingData(); 
           const savedPass = res.data?.generatedPassword || generatedPassword;
-          showAppAlert("Record Saved", `Successfully saved to Supabase!${pEmail ? '\n\nPatient Password: ' + savedPass + '\n(Please provide this directly to the patient since Javascript email is disabled)' : ''}`, "success");
+          
+          let emailStatusNote = "";
+          if (pEmail) {
+              const emailRes = await sendPatientEmail({
+                  toEmail: pEmail,
+                  patientName: formData.fullName,
+                  patientId: formData.patientId,
+                  password: savedPass,
+                  testName: finalTestsArray.map(t => t.name).join(', '),
+                  testCode: finalTestsArray.map(t => t.test_code).join(', '),
+                  type: "welcome"
+              });
+              if (emailRes && emailRes.success) {
+                  emailStatusNote = `\n\n✓ Portal Login Credentials sent to ${pEmail}!`;
+              } else {
+                  emailStatusNote = `\n\nPatient Password: ${savedPass}\n(Email sending pending/inactive. Provide directly to patient).`;
+              }
+          }
+
+          showAppAlert("Record Saved", `Successfully saved to Supabase!${emailStatusNote}`, "success");
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
       } else { 
           throw new Error(res.message || "Server rejected the save."); 
@@ -1006,13 +1261,48 @@ async function submitPendingUpdate() {
     try {
         let newDetails = {}; document.querySelectorAll('#test-details-area [data-key]').forEach(el => { newDetails[el.getAttribute('data-key')] = el.value; });
         const pEmailEl = document.getElementById('p_email');
-        let demogUpdates = { age: document.getElementById('p_age') ? document.getElementById('p_age').value : "", sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", email: pEmailEl ? pEmailEl.value.trim().toLowerCase() : "" };
+        const pEmail = pEmailEl ? pEmailEl.value.trim().toLowerCase() : "";
+        let generatedPassword = "";
+        
+        let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+        const oldEmail = (oldD.email || oldD.Email || "").trim().toLowerCase();
+
+        let demogUpdates = { 
+            age: document.getElementById('p_age') ? document.getElementById('p_age').value : "", 
+            sex: document.getElementById('p_sex') ? document.getElementById('p_sex').value : "", 
+            address: document.getElementById('p_address') ? document.getElementById('p_address').value : "", 
+            contact: document.getElementById('p_contact') ? document.getElementById('p_contact').value : "", 
+            facility: document.getElementById('p_facility') ? document.getElementById('p_facility').value : "", 
+            email: pEmail 
+        };
         const pBdayEl = document.getElementById('p_bday'); if(pBdayEl && pBdayEl.value) demogUpdates.bday = pBdayEl.value;
 
-        let oldD = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); const pNameEl = document.getElementById('p_name');
+        if (pEmail) {
+            // Check existing patient password in DB or generate one
+            const { data: pRec } = await sb.from('patients').select('password').eq('id', item.patientId).maybeSingle();
+            generatedPassword = (pRec && pRec.password) ? pRec.password : Math.random().toString(36).slice(-8).toUpperCase();
+            demogUpdates.patientPassword = generatedPassword;
+        }
+
+        let finalJsonStr = JSON.stringify({...oldD, ...newDetails, ...demogUpdates}); const pNameEl = document.getElementById('p_name');
         
         const res = await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: pNameEl ? pNameEl.value : item.name, newTestType: item.test, newJsonDetails: finalJsonStr }); 
-        cancelEditPending(); if (typeof loadPendingData === 'function') await loadPendingData(); showAppAlert("Success", "Record updated successfully!", "success");
+        
+        // Trigger automated email if email provided/updated
+        if (pEmail && pEmail !== oldEmail) {
+            sendPatientEmail({
+                toEmail: pEmail,
+                patientName: pNameEl ? pNameEl.value : item.name,
+                patientId: item.patientId,
+                password: generatedPassword,
+                testName: item.test,
+                testCode: item.testCode || item.id,
+                type: "welcome"
+            });
+        }
+
+        cancelEditPending(); if (typeof loadPendingData === 'function') await loadPendingData(); 
+        showAppAlert("Success", `Record updated successfully!${pEmail && pEmail !== oldEmail ? `\n\nAutomated notification dispatched to ${pEmail}` : ''}`, "success");
     } catch(e) { showAppAlert("Error", String(e), "error"); } finally { if (btn) { btn.innerHTML = oldTxt; btn.disabled = false; } }
 }
 
@@ -1125,7 +1415,14 @@ async function saveResult(id, safeId, btn) {
     let finalStr = JSON.stringify({ ...detailsObj, ...newResults }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-        if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); }
+        if (res.status === "success") { 
+            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
+            
+            // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
+            notifyPatientResultReady(item.patientId, item.name, item.test, item.testCode || id);
+            
+            await loadPendingData(); 
+        }
     } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", "Failed to save.", "error"); }
 }
 
@@ -1136,9 +1433,36 @@ async function saveAndPrintResult(id, safeId, btn) {
     let finalStr = JSON.stringify({ ...detailsObj, ...newResults }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
-        if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
+        if (res.status === "success") { 
+            btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; 
+            
+            // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
+            notifyPatientResultReady(item.patientId, item.name, item.test, item.testCode || id);
+            
+            await loadPendingData(); 
+            printDirect(null, id, tCodePrint); 
+        }
         else { throw new Error(res.message || "Failed to save result."); } 
     } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } 
+}
+
+async function notifyPatientResultReady(patientId, patientName, testName, testCode) {
+    try {
+        if (!patientId) return;
+        const { data } = await sb.from('patients').select('email, full_name').eq('id', patientId).maybeSingle();
+        if (data && data.email && data.email.includes('@')) {
+            sendPatientEmail({
+                toEmail: data.email,
+                patientName: data.full_name || patientName,
+                patientId: patientId,
+                testName: testName,
+                testCode: testCode,
+                type: "result_ready"
+            });
+        }
+    } catch(e) {
+        console.warn("Could not send patient result notification:", e);
+    }
 }
 
 async function moveToPendingRepeat(idStr) {
@@ -1438,6 +1762,7 @@ function printRegistryLogbook() {
 
 async function loadSettingsData() { 
     try {
+        loadEmailConfigIntoUI();
         const res = await apiPost("getSettingsData", {}); 
         if (res.status === "success") {
             const data = res.data; globalStaffList = data.staff || []; globalFacilityList = data.facilities || [];
@@ -1780,7 +2105,15 @@ async function batchSaveResults(isPrint) {
         let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
         if (rptTag.includes('INITIAL')) batchStatus = 'FOR REPEAT';
 
-        try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
+        try { 
+            const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus }).eq('id', id); 
+            if (!error) { 
+                successCount++; 
+                if (isPrint) printRequests.push({testCode: id, testName: tCodePrint});
+                // Send automated Result Ready notification
+                notifyPatientResultReady(item.patientId, item.name, item.test, item.testCode || id);
+            } 
+        } catch(e) {}
     }
     await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH SAVE", details: `Batch processed ${successCount} records.` });
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
