@@ -1,3 +1,5 @@
+// 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
+// Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
 console.log("app.js build: 2026-09-22-streamlined (strict columns, exact check constraints 'PENDING', 'ENCODED', 'FOR REPEAT')");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
@@ -13,7 +15,7 @@ let currentQuickPatient = null;
 let searchTimeout; 
 let confirmActionCallback = null; 
 window.CURRENT_TEST_TYPE = ""; 
-window.REGISTRY_SORT_ORDER = 'DESC';
+window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
@@ -146,6 +148,7 @@ async function apiGet(action, params = {}) {
                     }
                 }
                 
+                console.log(`[Cache] Successfully loaded ${allData.length} total patients.`);
                 return { status: "success", data: allData.map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
@@ -168,10 +171,12 @@ async function apiGet(action, params = {}) {
             }
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
+                if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
                 
                 let compQ = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
+                if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
                 
@@ -190,36 +195,30 @@ async function apiGet(action, params = {}) {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
                 
-                let allData = [];
-                let hasMore = true;
-                let from = 0;
-                let fetchLimit = 1000;
+                let q = sb.from(tName).select('*'); 
                 
-                while(hasMore) {
-                    let q = sb.from(tName).select('*'); 
-                    
-                    if (tName === 'lab_tests') {
-                         const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                         q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
-                    }
+                if (tName === 'lab_tests') {
+                     const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
+                     q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
+                }
 
-                    if (params.searchQuery) {
-                        q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
-                    }
-
-                    let { data: chunk, error } = await q.range(from, from + fetchLimit - 1); 
-                    if (error) throw new Error(`View/Table '${tName}': ` + error.message);
-                    
-                    allData = allData.concat(chunk || []);
-                    
-                    if (!chunk || chunk.length < fetchLimit) {
-                        hasMore = false;
-                    } else {
-                        from += fetchLimit;
-                    }
+                if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
+                    if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
                 }
                 
-                let data = allData;
+                // 🔴 FIX PARA SA 42703 ERROR (Views alias their columns, Tables don't)
+                if (params.searchQuery) {
+                    if (tName === 'lab_tests') {
+                        q = q.or(`patient_name.ilike.%${params.searchQuery}%`);
+                    } else {
+                        // Sa export_ views, "Patient Name" ang alias natin
+                        q = q.or(`"Patient Name".ilike.%${params.searchQuery}%`);
+                    }
+                }
+
+                const isAsc = params.sortOrder === 'ASC';
+                let { data, error } = await q.limit(1000); 
+                if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
                 if (params.monthFilter && data) {
                     let fVal = String(params.monthFilter).toLowerCase().trim();
@@ -1474,6 +1473,44 @@ async function submitStaffRegister() {
     } catch(e) { showAppAlert("Error", e.message || "Server error.", "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
+async function batchSaveResults(isPrint) {
+    const checked = document.querySelectorAll('.chk-pending:checked');
+    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
+    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]'); const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
+    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; } if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
+    let successCount = 0; let printRequests = [];
+    for (let chk of checked) {
+        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); const inputs = document.querySelectorAll('.res-' + safeId);
+        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
+        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
+        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, date_examined: new Date().toISOString() };
+        
+        let batchStatus = 'ENCODED';
+        let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
+        if (rptTag.includes('INITIAL')) batchStatus = 'FOR REPEAT';
+
+        try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
+    }
+    await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH SAVE", details: `Batch processed ${successCount} records.` });
+    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
+    if (isPrint && printRequests.length > 0) {
+        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
+        try {
+            const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
+            let printContent = [];
+            for(let r of printRequests) {
+                const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle();
+                if(data) printContent.push(mapSupabaseToPrintObject(data));
+            }
+            let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent);
+            showPrintModal(finalHtml);
+        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
+    }
+    if(btnSave) { btnSave.disabled = false; btnSave.innerHTML = '<i class="ph ph-floppy-disk"></i> Batch Save'; } if(btnPrint) { btnPrint.disabled = false; btnPrint.innerHTML = '<i class="ph ph-printer"></i> Save & Print'; }
+}
+
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
     p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
@@ -1555,23 +1592,6 @@ async function printDirect(e, id, testName) {
         console.error("Print Generation Error:", err); 
         showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
     }
-}
-
-async function batchPrint() {
-    const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
-    let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE') || h.toUpperCase() === 'ID'); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); });
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-    try {
-        if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData(); 
-        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM"; let printContent = [];
-        for(let r of requests) { 
-            const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle(); 
-            if(data) printContent.push(mapSupabaseToPrintObject(data)); 
-        }
-        
-        await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH PRINT", details: `Batch printed ${requests.length} records.` });
-        let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent); showPrintModal(finalHtml);
-    } catch (err) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
 }
 
 function localGenerateNTPHtml(patientsArray) {
