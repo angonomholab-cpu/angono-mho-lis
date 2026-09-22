@@ -1665,21 +1665,18 @@ function localGenerateA5Html(patientsArray) {
         .btn-close { background: #ef4444; color: white; } 
         .preview-text { color: white; font-family: sans-serif; font-size: 14px; margin-right: 20px; font-weight: normal; }
         
+        // SA DULO NG localGenerateNTPHtml at localGenerateA5Html:
+// Tanggalin ang <div class="no-print"> block
+
         @media print { 
-            .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
-            @page { size: 210mm 148mm; margin: 0; } 
-            .page-container { width: 210mm !important; max-width: 210mm !important; height: 148mm !important; max-height: 148mm !important; margin: 0 auto !important; padding: 4mm 10mm !important; border: none !important; box-shadow: none !important; zoom: 1.05 !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; } 
+            @page { size: auto; margin: 5mm; } 
+            .page-container { width: 200mm !important; min-height: 275mm !important; margin: 0 auto !important; padding: 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; zoom: 0.96 !important; } 
             .page-break { display: none !important; } 
-        }
-    </style>
-    </head><body>
-    <div class="no-print">
-        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
-        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
-        <button class="btn-close" onclick="window.close()">❌ CLOSE</button>
-    </div>
-    ${combinedHtml}</body></html>`;
+        } 
+        @media print and (max-width: 160mm) { .page-container { zoom: 0.65 !important; } } 
+        </style></head><body>
+        ${combinedHtml}</body></html>`;
 }
 
 function showPrintModal(htmlContent) {
@@ -1687,29 +1684,41 @@ function showPrintModal(htmlContent) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'print-modal-overlay';
-        modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.6); z-index:999999; display:flex; align-items:center; justify-content:center;';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.75); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
+        
+        // Gawa ng sariling Top Bar sa labas ng iframe
+        const topBar = document.createElement('div');
+        topBar.style.cssText = 'width:90%; max-width:1100px; background:#1e293b; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box;';
+        topBar.innerHTML = `
+            <span style="color:white; font-family:sans-serif; font-size:14px;">📄 Document Preview</span>
+            <div>
+                <button onclick="document.getElementById('print-iframe').contentWindow.print()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:10px;">🖨️ PRINT</button>
+                <button onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
+            </div>
+        `;
         
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
-        iframe.style.cssText = 'width:90%; max-width:1100px; height:90%; max-height:850px; border:none; border-radius:12px; background-color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+        iframe.style.cssText = 'width:90%; max-width:1100px; height:85%; border:none; border-radius:0 0 12px 12px; background-color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+        
+        modal.appendChild(topBar);
         modal.appendChild(iframe);
         document.body.appendChild(modal);
     }
+    
     modal.style.display = 'flex';
-
     const iframe = document.getElementById('print-iframe');
     
-    // Palitan ang window.close() para gumana ang close button sa modal
-    let safeHtml = htmlContent.replace(/window\.close\(\)/g, 'window.parent.closePrintModal()');
-    
-    // Gumamit ng Blob URL sa halip na srcdoc para hindi maging blangko sa Safari
-    const blob = new Blob([safeHtml], { type: 'text/html;charset=utf-8' });
-    iframe.src = URL.createObjectURL(blob);
+    // Convert to Data URI para hindi ma-block ng Safari iframe restrictions
+    const encodedHtml = encodeURIComponent(htmlContent);
+    iframe.src = 'data:text/html;charset=utf-8,' + encodedHtml;
 }
 
 window.closePrintModal = function() {
     const modal = document.getElementById('print-modal-overlay');
     if (modal) {
         modal.style.display = 'none';
+        const iframe = document.getElementById('print-iframe');
+        if(iframe) iframe.src = 'about:blank'; // I-clear ang memory
     }
 };
