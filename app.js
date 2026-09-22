@@ -1,5 +1,3 @@
-// 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
-// Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
 console.log("app.js build: 2026-09-22-streamlined (strict columns, no age in patients, accurate dates)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
@@ -129,7 +127,6 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                // Pag-fetch ng kumpletong pasyente kahit ilan pa sila (While loop)
                 let allData = [];
                 let hasMore = true;
                 let from = 0;
@@ -149,7 +146,6 @@ async function apiGet(action, params = {}) {
                     }
                 }
                 
-                console.log(`[Cache] Successfully loaded ${allData.length} total patients.`);
                 return { status: "success", data: allData.map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
@@ -208,13 +204,9 @@ async function apiGet(action, params = {}) {
                 }
                 
                 if (params.searchQuery) {
-                    // Check for multiple possible column names to avoid crashing on views vs tables
                     q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
                 }
 
-                const isAsc = params.sortOrder === 'ASC';
-                // Kung mag-eerror dahil sa sorting column, tanggalin mo ang `.order` 
-                // pero pwede namang iasa sa client-side date ang iba kung magka-iba yung column name sa view
                 let { data, error } = await q.limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
@@ -253,7 +245,6 @@ async function apiPost(action, payload) {
     try {
         switch (action) {
             case "logAudit": {
-                // Pinapagaan ang pag-save ng logs para iwas 401
                 try {
                     await sb.from('audit_logs').insert({ username: payload.username, action: payload.action, details: payload.details });
                 } catch(e) {}
@@ -277,13 +268,12 @@ async function apiPost(action, payload) {
                 
                 if(pErr) throw new Error("Patient Error: " + pErr.message);
 
-                // 🔴 FIX: Dinagdag na natin ang 'test_type' na hinahanap ng Supabase mo!
                 const rows = tests.map(t => ({
                     id: t.test_code || t.code,
                     patient_id: patientId, 
                     patient_name: f.fullName, 
                     test_name: t.name, 
-                    test_type: t.name, // <--- ITO ANG SAGOT SA ERROR MO!
+                    test_type: t.name, 
                     test_code: t.test_code || t.code,
                     details: t.details || {}, 
                     status: 'PENDING', 
@@ -299,7 +289,7 @@ async function apiPost(action, payload) {
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                // 🔴 TINANGGAL ang update para sa patient_name at test_type kasi wala pala sila sa database mo, status at details lang
+                // 🟢 Set status strictly to 'COMPLETED' so it routes to Completed list and Registry
                 const { error } = await sb.from('lab_tests').update({ details: details, status: 'COMPLETED', encoder: payload.encodedBy, date_examined: new Date().toISOString() }).eq('id', payload.testId);
                 if(error) throw new Error("Supabase Error saving result: " + error.message);
                 return { status: "success" };
@@ -820,35 +810,29 @@ async function finalSubmit() {
   const d = new Date();
   const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
-  // Kukunin natin ang kasalukuyang bilang ng mga test para sa araw at test na ito upang gumawa ng sequence
   let sequenceCounters = {};
 
-  // Gagawa tayo ng for...of loop (imbes na forEach) para makagamit tayo ng await nang maayos
   for (const key of Object.keys(labOrders)) {
       let tCode = availableTests[key].testCode;
       
-      // I-check sa database kung pang-ilan na itong test na ito ngayong araw
       if (sequenceCounters[tCode] === undefined) {
           try {
-              // Hahanapin natin ang mga existing tests ngayong araw na may ganitong code
               const { data, error } = await sb.from('lab_tests')
                   .select('test_code')
                   .like('test_code', `${tCode}-${dateStr}-%`);
               
               if (!error && data) {
-                  sequenceCounters[tCode] = data.length + 1; // Kung may 0, magiging 1. Kung may 5, magiging 6.
+                  sequenceCounters[tCode] = data.length + 1;
               } else {
-                  sequenceCounters[tCode] = 1; // Fallback kung may error
+                  sequenceCounters[tCode] = 1;
               }
           } catch(e) {
-              sequenceCounters[tCode] = 1; // Fallback kung offline
+              sequenceCounters[tCode] = 1;
           }
       } else {
-          // Kung nakapag-check na tayo kanina (e.g. dalawang magkaparehong test type sa iisang patient, bihira mangyari), mag-add na lang
           sequenceCounters[tCode]++;
       }
 
-      // I-format ang sequence (e.g. 1 magiging 001)
       const seqStr = String(sequenceCounters[tCode]).padStart(3, '0');
       const generatedTestCode = `${tCode}-${dateStr}-${seqStr}`;
 
@@ -872,7 +856,6 @@ async function finalSubmit() {
           showAppAlert("Record Saved", `Successfully saved to Supabase!${pEmail ? '\n\nPatient Password: ' + savedPass + '\n(Please provide this directly to the patient since Javascript email is disabled)' : ''}`, "success");
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
       } else { 
-          // 🔴 Ipapakita na ang eksaktong mensahe ng Supabase error
           throw new Error(res.message || "Server rejected the save."); 
       }
   } catch (err) { showAppAlert("Database Error", String(err), "error"); btn.disabled = false; btn.innerHTML = originalText; }
@@ -1043,8 +1026,8 @@ async function saveAndPrintResult(id, safeId, btn) {
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
-        else { throw new Error(res.message || "Failed to save result."); } // 🔴 Ilabas ang tunay na mensahe
-    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } // 🔴 Ipakita ang tunay na error sa pop-up
+        else { throw new Error(res.message || "Failed to save result."); } 
+    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } 
 }
 
 async function moveToPendingRepeat(idStr) {
