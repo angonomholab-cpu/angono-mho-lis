@@ -194,7 +194,13 @@ async function apiGet(action, params = {}) {
             case "getRegistryDataOptimized": {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
-                const dateCol = (tName === 'lab_tests') ? 'date' : '"Date Received"';
+                // 🟢 FIX: dalawang magkaibang variable — ang .ilike() ay simpleng
+                // filter key (kailangan WALANG quotes), pero ang .order() ay
+                // isang value na pinapa-parse ng PostgREST (kailangan MAY quotes
+                // kapag may space ang column name). Dating iisang variable lang
+                // ang ginamit sa dalawa, kaya nag-eerror ang buong query.
+                const dateColFilter = (tName === 'lab_tests') ? 'date' : 'Date Received';
+                const dateColOrder  = (tName === 'lab_tests') ? 'date' : '"Date Received"';
                 const isAsc = params.sortOrder === 'ASC';
 
                 // Ginawang function ito dahil ang isang query builder ay pang-isang-gamit lang
@@ -219,9 +225,9 @@ async function apiGet(action, params = {}) {
                     // hindi lang sa data na nasa unang 1000 rows.
                     if (params.monthFilter) {
                         const mNum = String(parseInt(params.monthFilter, 10)).padStart(2, '0');
-                        if (mNum !== 'NaN') q = q.ilike(dateCol, `____-${mNum}-%`);
+                        if (mNum !== 'NaN') q = q.ilike(dateColFilter, `____-${mNum}-%`);
                     }
-                    return q.order(dateCol, { ascending: isAsc });
+                    return q.order(dateColOrder, { ascending: isAsc });
                 }
 
                 // 🟢 FIX: 1000-row cap. Sunud-sunod na kinukuha LAHAT ng tumutugmang
@@ -380,6 +386,19 @@ async function apiPost(action, payload) {
                 const { data: row } = await sb.from('lab_tests').select('details').eq('patient_id', payload.patientId).eq('test_name', payload.testType).maybeSingle();
                 const merged = { ...(row?.details || {}), ...payload.updates };
                 await sb.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
+                return { status: "success" };
+            }
+            case "updateRegistryDetails": {
+                // 🟢 BAGO: kapalit ng editRegistryRecord na mas eksakto — dito, ang
+                // test_code (unique) ang gamit sa pag-match, hindi patient_id+test_name
+                // (na maaaring tumugma sa maling row kung may ilang test ang pasyente
+                // ng parehong klase).
+                const { data: row, error: selErr } = await sb.from('lab_tests').select('details').eq('test_code', payload.testCode).maybeSingle();
+                if (selErr) return { status: "error", message: selErr.message };
+                if (!row) return { status: "error", message: "Record not found." };
+                const merged = { ...(row.details || {}), ...payload.updates };
+                const { error } = await sb.from('lab_tests').update({ details: merged }).eq('test_code', payload.testCode);
+                if (error) return { status: "error", message: error.message };
                 return { status: "success" };
             }
             default: return { status: "error", message: "POST action not implemented: " + action };
@@ -1065,6 +1084,68 @@ async function moveToPendingRepeat(idStr) {
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 
+// 🟢 BAGO: Registry edit modal — para sa ADMIN, direktang maayos ang mga
+// resulta (hal. maling Syphilis value) nang hindi kailangan pumunta sa SQL Editor.
+// Editable lang ang mga field na tunay na resulta ng test (hindi ang Test Code,
+// Patient ID, Name, Facility atbp. — doon gamitin ang "Edit Full Profile").
+const REGISTRY_EDIT_EXCLUDE = ['Test Code', 'Patient ID', 'Name', 'Age', 'Sex', 'Facility', 'Date Received', 'Date Examined', 'Date Released', 'Performed By', 'Verified By'];
+
+function openRegistryEditModal(testCode) {
+    const row = (window.REGISTRY_ROWS_BY_CODE || {})[testCode];
+    const headers = window.CURRENT_REGISTRY_HEADERS || [];
+    if (!row) { showAppAlert("Error", "Record data not found. Please refresh the registry and try again.", "error"); return; }
+
+    let modal = document.getElementById('registry-edit-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'registry-edit-modal';
+        modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999999; display:flex; align-items:center; justify-content:center; padding:20px;';
+        document.body.appendChild(modal);
+    }
+
+    let fieldsHtml = '';
+    headers.forEach((h, i) => {
+        if (REGISTRY_EDIT_EXCLUDE.includes(h)) return;
+        const val = row[i] == null ? '' : row[i];
+        const safeVal = String(val).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        fieldsHtml += `<div class="field-group"><label class="field-label">${h}</label><input type="text" class="form-input reg-edit-field" data-key="${h}" value="${safeVal}"></div>`;
+    });
+    if (!fieldsHtml) fieldsHtml = '<div style="color:var(--text-muted); font-size:0.85rem;">Walang editable fields para sa test type na ito.</div>';
+
+    modal.innerHTML = `<div style="background:var(--bg-surface); padding:20px; border-radius:8px; width:100%; max-width:420px; max-height:85vh; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+        <h3 style="margin-top:0; display:flex; align-items:center; gap:6px;"><i class="ph ph-pencil-simple"></i> Edit Record — ${testCode}</h3>
+        <div class="form-grid grid-1">${fieldsHtml}</div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('registry-edit-modal').remove()">Cancel</button>
+            <button class="btn btn-primary" style="flex:1;" id="btn-save-registry-edit" onclick="saveRegistryEdit('${testCode}')">Save</button>
+        </div>
+    </div>`;
+}
+
+async function saveRegistryEdit(testCode) {
+    const btn = document.getElementById('btn-save-registry-edit');
+    const oldText = btn ? btn.innerHTML : 'Save';
+    if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true; }
+    const inputs = document.querySelectorAll('#registry-edit-modal .reg-edit-field');
+    let updates = {};
+    inputs.forEach(inp => { updates[inp.getAttribute('data-key')] = inp.value; });
+    try {
+        const res = await apiPost("updateRegistryDetails", { testCode, updates });
+        if (res.status === "success") {
+            const modal = document.getElementById('registry-edit-modal'); if (modal) modal.remove();
+            showAppAlert("Success", "Record updated.", "success");
+            if (typeof openRegistryTab === 'function' && window.CURRENT_TEST_TYPE) openRegistryTab(window.CURRENT_TEST_TYPE, currentRegistryPage);
+        } else {
+            showAppAlert("Error", res.message || "Failed to update record.", "error");
+            if (btn) { btn.innerHTML = oldText; btn.disabled = false; }
+        }
+    } catch (e) {
+        showAppAlert("Error", String(e), "error");
+        if (btn) { btn.innerHTML = oldText; btn.disabled = false; }
+    }
+}
+
+
 // 🟢 ADMIN EDIT FUNCTION MULA SA REGISTRY
 async function editFromRegistry(testId) {
     try {
@@ -1192,8 +1273,12 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             const colFilter = document.getElementById('colFilter'); if(colFilter) { colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach((c, displayIndex) => colFilter.innerHTML += `<option value="${displayIndex}">${c.text}</option>`); }
 
             const rows = registryData.rows || [];
+            window.REGISTRY_ROWS_BY_CODE = {};
             let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
-            hMap.forEach(c => html += `<th>${c.text}</th>`); html += `</tr></thead><tbody id="regTableBody">`;
+            hMap.forEach(c => html += `<th>${c.text}</th>`);
+            const isAdminEdit = String(currentUser.role).toUpperCase() === 'ADMIN';
+            if (isAdminEdit) html += '<th style="width:40px;">Edit</th>';
+            html += `</tr></thead><tbody id="regTableBody">`;
             
             rows.forEach((row) => {
                 html += `<tr onclick="this.classList.toggle('expanded-row')" style="cursor:pointer;"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
@@ -1206,7 +1291,16 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
                         html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
                     } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
-                }); html += `</tr>`;
+                });
+                // 🟢 BAGO: Edit button para sa ADMIN — direktang maayos ang record
+                // (hal. maling/nawawalang Syphilis value) nang hindi kailangan ng SQL.
+                const tcIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h === 'Test Code');
+                const testCode = tcIdx > -1 ? row[tcIdx] : '';
+                if (testCode) window.REGISTRY_ROWS_BY_CODE[testCode] = row;
+                if (isAdminEdit) {
+                    html += `<td onclick="event.stopPropagation()"><button class="btn-icon" title="Edit Record" onclick="openRegistryEditModal('${testCode}')"><i class="ph ph-pencil-simple"></i></button></td>`;
+                }
+                html += `</tr>`;
             });
             html += `</tbody></table>`;
             cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing All ${registryData.totalRows} Records</span>`;
