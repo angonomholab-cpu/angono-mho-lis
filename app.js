@@ -1071,12 +1071,75 @@ async function moveToPendingRepeat(idStr) {
 }
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+
+// 🟢 ADMIN EDIT FUNCTION MULA SA REGISTRY
+async function editFromRegistry(testId) {
+    try {
+        showAppAlert("Loading", "Fetching full record for edit...", "info");
+        const { data, error } = await sb.from('lab_tests').select('*').eq('id', testId).maybeSingle();
+        if (error || !data) {
+            closeCustomAlert();
+            return showAppAlert("Error", "Record not found in the main database.", "error");
+        }
+        
+        const formattedData = {
+            id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, 
+            name: data.patient_name, test: data.test_name, date: data.date, 
+            details: data.details, encoder: data.encoder, status: data.status, facility: data.facility
+        };
+        
+        let idx = window.pendingData.findIndex(i => i.id === data.id);
+        if (idx > -1) {
+            window.pendingData[idx] = formattedData;
+        } else {
+            window.pendingData.push(formattedData); 
+        }
+        
+        closeCustomAlert();
+        showPage('workspace'); 
+        setTimeout(() => { editPendingFull(data.id); }, 300); 
+    } catch(e) {
+        showAppAlert("Error", "Failed to load record.", "error");
+    }
+}
+
 async function deleteEntry(id) { 
     try { 
         await apiPost("deletePendingTestById", { testId: id }); 
         await apiPost("logAudit", { username: currentUser.username, action: "DELETE", details: `Deleted test entry ${id}` });
         loadPendingData(); 
     } catch(e) {} 
+}
+
+async function editFromRegistry(testId) {
+    try {
+        showAppAlert("Loading", "Fetching full record for edit...", "info");
+        const { data, error } = await sb.from('lab_tests').select('*').eq('id', testId).maybeSingle();
+        if (error || !data) {
+            closeCustomAlert();
+            return showAppAlert("Error", "Record not found in the main database.", "error");
+        }
+        
+        // Buuin at ipasok pansamantala sa pendingData list para mabasa ni editPendingFull()
+        const formattedData = {
+            id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, 
+            name: data.patient_name, test: data.test_name, date: data.date, 
+            details: data.details, encoder: data.encoder, status: data.status, facility: data.facility
+        };
+        
+        let idx = window.pendingData.findIndex(i => i.id === data.id);
+        if (idx > -1) {
+            window.pendingData[idx] = formattedData;
+        } else {
+            window.pendingData.push(formattedData); 
+        }
+        
+        closeCustomAlert();
+        showPage('workspace'); // Balik Workspace (Encoder view)
+        setTimeout(() => { editPendingFull(data.id); }, 300); // Trigger Edit
+    } catch(e) {
+        showAppAlert("Error", "Failed to load record.", "error");
+    }
 }
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if(sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if(box.querySelector('input')) box.querySelector('input').value = ""; } }
