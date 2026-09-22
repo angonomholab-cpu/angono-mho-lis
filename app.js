@@ -1,5 +1,6 @@
 // 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
+console.log("app.js build: 2026-09-22-FinalFix (Syntax Cleaned, Safe Print, Auto-Search Fix)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -14,7 +15,7 @@ let currentQuickPatient = null;
 let searchTimeout; 
 let confirmActionCallback = null; 
 window.CURRENT_TEST_TYPE = ""; 
-window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
+window.REGISTRY_SORT_ORDER = 'DESC'; 
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
@@ -148,7 +149,8 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                const { data, error } = await sb.from('patients').select('*').limit(3000);
+                // Safe fetch para maiwasan ang 400 error. Kumukuha ng lahat.
+                const { data, error } = await sb.from('patients').select('*').limit(5000);
                 if (error) {
                     console.error("Patient cache error:", error);
                     return { status: "success", data: [] };
@@ -177,13 +179,11 @@ async function apiGet(action, params = {}) {
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
-                const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
-                if (pErr) console.error("Pending Workload Error:", pErr);
+                const { data: pending } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 
                 let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed, error: cErr } = await compQ.order('date', { ascending: false }).limit(300);
-                if (cErr) console.error("Completed Workload Error:", cErr);
+                const { data: completed } = await compQ.order('date', { ascending: false }).limit(300);
                 
                 const toFrontend = r => ({ id: r.id, testCode: r.test_code || r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
@@ -255,7 +255,6 @@ async function apiPost(action, payload) {
     try {
         switch (action) {
             case "logAudit": {
-                // Pinapagaan ang pag-save ng logs para iwas 401
                 try {
                     await sb.from('audit_logs').insert({ username: payload.username, action: payload.action, details: payload.details });
                 } catch(e) {}
@@ -266,38 +265,22 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                // TINANGGAL: 'password' column sa payload para sa patients table
-                // Gumagamit tayo ng .select('id') para maiwasan ang 400 Error.
+                // Inalis na ang 'password' sa insert upang iwasan ang 400 error
                 await sb.from('patients').upsert({
-                    id: patientId, 
-                    full_name: f.fullName, 
-                    bday: f.bday || null, 
-                    sex: f.sex, 
-                    age: f.age, 
-                    address: f.address, 
-                    contact: f.contact, 
-                    email: f.email || null, 
-                    facility: f.facility
+                    id: patientId, full_name: f.fullName, bday: f.bday || null, sex: f.sex, age: f.age, address: f.address, contact: f.contact, email: f.email || null, facility: f.facility
                 }, { onConflict: 'id' });
 
-                // TINANGGAL: 'encoder_full_name' sa payload para sa lab_tests table
+                // Inalis ang 'encoder_full_name' sa insert
                 const rows = tests.map(t => ({
-                    patient_id: patientId, 
-                    patient_name: f.fullName, 
-                    test_name: t.name, 
-                    test_code: t.test_code || t.code,
-                    details: t.details || {}, 
-                    status: 'PENDING', 
-                    facility: f.facility, 
-                    encoder: f.encoder, 
-                    date: new Date().toISOString()
+                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
+                    details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, date: new Date().toISOString()
                 }));
                 await sb.from('lab_tests').insert(rows);
                 return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                await sb.from('lab_tests').update({ details, status: 'COMPLETED', encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
@@ -1472,7 +1455,6 @@ function mapSupabaseToPrintObject(d) {
         resultsArr.push({ param: key, res: detailsObj[key] }); 
     }
     
-    // GUMAGAMIT NA TAYO NG LIGTAS NA FALLBACKS DITO
     return {
         id: d.patient_id || d.patientId || "N/A", 
         name: d.patient_name || d.name || detailsObj.name || "Unnamed Patient", 
@@ -1482,7 +1464,7 @@ function mapSupabaseToPrintObject(d) {
         address: detailsObj.address || detailsObj.Address || "", 
         contact: detailsObj.contact || detailsObj.Contact || "",
         dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
-        dateExamined: detailsObj.date_examined || detailsObj.dateEncoded || d.date ? new Date(detailsObj.date_examined || detailsObj.dateEncoded || d.date).toLocaleDateString() : TODAY_STR, 
+        dateExamined: detailsObj.date_examined || detailsObj.dateEncoded ? new Date(detailsObj.date_examined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
         dateResult: new Date().toLocaleDateString(), 
         testCode: d.test_code || d.id || "", 
         testName: d.test_name || d.test || "Laboratory Test", 
@@ -1521,7 +1503,7 @@ async function printDirect(e, id, testName) {
             showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found.</h2>'); 
         }
     } catch (err) {
-        console.error("Print Generation Error:", err); 
+        console.error("Print Generation Error:", err);
         showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
     }
 }
@@ -1722,78 +1704,14 @@ function localGenerateA5Html(patientsArray) {
         .sig-info { font-size: 9px; }
         .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
         .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
-        
         @media print { 
-            .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             @page { size: 210mm 148mm; margin: 0; } 
             .page-container { width: 210mm !important; max-width: 210mm !important; height: 148mm !important; max-height: 148mm !important; margin: 0 auto !important; padding: 4mm 10mm !important; border: none !important; box-shadow: none !important; zoom: 1.05 !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; } 
             .page-break { display: none !important; } 
         }
     </style>
-    </head><body>
-    <div class="no-print">
-        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
-        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
-        <button class="btn-close" onclick="window.parent.closePrintModal()">❌ CLOSE</button>
-    </div>
-    ${combinedHtml}</body></html>`;
-}
-
-function showPrintModal(htmlContent) {
-    let modal = document.getElementById('print-modal-overlay');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'print-modal-overlay';
-        modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.75); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
-        
-        // Gawa ng sariling Top Bar sa labas ng iframe para siguradong nakikita ang buttons
-        const topBar = document.createElement('div');
-        topBar.style.cssText = 'width:90%; max-width:1100px; background:#1e293b; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box;';
-        topBar.innerHTML = `
-            <span style="color:white; font-family:sans-serif; font-size:14px;">📄 Document Preview</span>
-            <div>
-                <button onclick="document.getElementById('print-iframe').contentWindow.print()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:10px;">🖨️ PRINT</button>
-                <button onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
-            </div>
-        `;
-        
-        const iframe = document.createElement('iframe');
-        iframe.id = 'print-iframe';
-        iframe.style.cssText = 'width:90%; max-width:1100px; height:85%; border:none; border-radius:0 0 12px 12px; background-color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
-        
-        modal.appendChild(topBar);
-        modal.appendChild(iframe);
-        document.body.appendChild(modal);
-    }
-    
-    modal.style.display = 'flex';
-    const iframe = document.getElementById('print-iframe');
-    
-    // 🟢 SAFARI ULTIMATE FIX: Gagamitin natin ang document.write para pwersahang ilagay ang HTML
-    iframe.src = 'about:blank';
-    setTimeout(() => {
-        try {
-            let doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write(htmlContent);
-            doc.close();
-        } catch (err) {
-            console.error("Iframe write failed", err);
-        }
-    }, 100);
-}
-
-window.closePrintModal = function() {
-    const modal = document.getElementById('print-modal-overlay');
-    if (modal) {
-        modal.style.display = 'none';
-        const iframe = document.getElementById('print-iframe');
-        if(iframe) iframe.src = 'about:blank'; // I-clear ang memory
-    }
-};
-    </head><body>
-    ${combinedHtml}</body></html>`;
+    </head><body>${combinedHtml}</body></html>`;
 }
 
 function showPrintModal(htmlContent) {
@@ -1809,7 +1727,7 @@ function showPrintModal(htmlContent) {
             <span style="color:white; font-family:sans-serif; font-size:14px;">📄 Document Preview</span>
             <div>
                 <button onclick="document.getElementById('print-iframe').contentWindow.print()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:10px;">🖨️ PRINT</button>
-                <button onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
+                <button onclick="window.closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
             </div>
         `;
         
@@ -1825,7 +1743,6 @@ function showPrintModal(htmlContent) {
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
     
-    // 🟢 PINAKALIGTAS NA PARAAN: Reset iframe and Write directly. Ito ay 100% gagana at hindi magiging blangko!
     iframe.src = 'about:blank';
     setTimeout(() => {
         try {
@@ -1834,10 +1751,10 @@ function showPrintModal(htmlContent) {
             doc.write(htmlContent);
             doc.close();
         } catch (err) {
-            console.error("Iframe write failed, trying fallback", err);
+            console.error("Iframe write error:", err);
             iframe.srcdoc = htmlContent;
         }
-    }, 100);
+    }, 150);
 }
 
 window.closePrintModal = function() {
@@ -1845,6 +1762,6 @@ window.closePrintModal = function() {
     if (modal) {
         modal.style.display = 'none';
         const iframe = document.getElementById('print-iframe');
-        if(iframe) iframe.src = 'about:blank'; // I-clear ang memory
+        if(iframe) iframe.src = 'about:blank';
     }
 };
