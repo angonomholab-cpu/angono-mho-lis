@@ -2495,25 +2495,27 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 .data-table th {
     background: var(--bg-subtle);
     color: var(--text-main);
-    padding: 7px 9px;
+    padding: 8px 12px;
     text-align: left;
     font-weight: 800;
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     letter-spacing: -0.01em;
     border-bottom: 2px solid var(--border-color);
     position: sticky;
     top: 0;
     z-index: 5;
+    white-space: nowrap !important;
 }
 
 .data-table td {
-    padding: 6px 9px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--border-color);
-    max-width: 110px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: nowrap !important;
+    font-size: 0.74rem;
+    max-width: none !important;
+    overflow: visible;
+    text-overflow: clip;
     cursor: pointer;
-    font-size: 0.72rem;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
