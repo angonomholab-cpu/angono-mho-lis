@@ -1338,6 +1338,16 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                         `;
                     }
 
+                    let tbCareNoticeHtml = "";
+                    if (tUpper.includes("GXP") || tUpper.includes("MTB") || tUpper.includes("DSSM") || tUpper.includes("AFB")) {
+                        tbCareNoticeHtml = `
+                            <div style="margin-top:10px; padding:8px 12px; background:rgba(13, 148, 136, 0.06); border:1px solid rgba(13, 148, 136, 0.2); border-radius:8px; font-size:0.73rem; color:var(--text-main); display:flex; align-items:flex-start; gap:8px;">
+                                <i class="ph ph-first-aid" style="color:var(--pri); font-size:1.1rem; flex-shrink:0; margin-top:1px;"></i>
+                                <span style="line-height:1.45;"><strong>TB DOTS Gamutan & Monitoring:</strong> Para sa gamutan, monitoring, at libreng gamot, mangyaring magtungo sa <strong>Health Center ng inyong Barangay</strong> at hanapin ang inyong <strong>assigned Nurse o Midwife</strong>.</span>
+                            </div>
+                        `;
+                    }
+
                     return `
                         <div class="patient-result-card">
                             <div class="prc-header">
@@ -1352,6 +1362,7 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                             <div class="prc-actions" style="flex-wrap: wrap;">
                                 ${actionAreaHtml}
                             </div>
+                            ${tbCareNoticeHtml}
                             <div id="${uniqueId}" class="prc-breakdown-panel">
                                 <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Official Laboratory Parameters</div>
                                 ${summaryHtml}
@@ -1911,7 +1922,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             };
             const displayHeaders = window.CURRENT_REGISTRY_HEADERS.map(formatHeader);
 
-            const hMap = displayHeaders.map((h, i) => window.CURRENT_REGISTRY_HEADERS[i].includes("{") ? null : { index: i, text: h.replace("Date ", "").replace("Patient ", ""), original: window.CURRENT_REGISTRY_HEADERS[i] }).filter(x => x);
+            const hMap = displayHeaders.map((h, i) => window.CURRENT_REGISTRY_HEADERS[i].includes("{") ? null : { index: i, text: h, original: window.CURRENT_REGISTRY_HEADERS[i] }).filter(x => x);
             const colFilter = document.getElementById('colFilter');
             if (colFilter) {
                 const prevSelected = cQuery || (colFilter.selectedIndex >= 0 ? colFilter.options[colFilter.selectedIndex]?.text : "ALL");
@@ -1929,9 +1940,9 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             const rows = registryData.rows || [];
             window.REGISTRY_ROWS_BY_CODE = {};
             const isAdminEdit = String(currentUser.role).toUpperCase() === 'ADMIN';
-            const totalCols = hMap.length + 1 + (isAdminEdit ? 1 : 0);
+            const totalCols = hMap.length + 2 + (isAdminEdit ? 1 : 0);
 
-            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th><th style="width:75px; text-align:center; z-index:6;">Print</th>`;
             hMap.forEach(c => html += `<th title="${c.text}">${c.text}</th>`);
             if (isAdminEdit) html += '<th style="width:40px;">Edit</th>';
             html += `</tr></thead><tbody id="regTableBody">`;
@@ -1963,8 +1974,16 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     `;
                 });
 
-                html += `<tr class="reg-data-row" id="row-${rowDrawerId}" onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" title="Click to view all row details">
-                    <td onclick="event.stopPropagation()"><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                html += `<tr class="reg-data-row" id="row-${rowDrawerId}" onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" title="Click to view full record drawer">
+                    <td onclick="event.stopPropagation()"><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>
+                    <td onclick="event.stopPropagation()" style="text-align:center; white-space:nowrap;">
+                        <button type="button" class="btn-icon" style="color:var(--success); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;" onclick="printDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)" title="Print Official Slip">
+                            <i class="ph ph-printer" style="font-size:1.1rem;"></i>
+                        </button>
+                        <button type="button" class="btn-icon" style="color:var(--pri); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; margin-left:4px;" onclick="downloadDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)" title="Save / Download PDF">
+                            <i class="ph ph-download-simple" style="font-size:1.1rem;"></i>
+                        </button>
+                    </td>`;
                 
                 let isInitialRow = false;
                 hMap.forEach(c => {
@@ -2555,6 +2574,24 @@ function mapSupabaseToPrintObject(d) {
     };
 }
 
+async function ensureStaffList() {
+    if (globalStaffList && globalStaffList.length > 0) return globalStaffList;
+    try {
+        const { data, error } = await sb.from('staff').select('*');
+        if (!error && data && data.length > 0) {
+            globalStaffList = data.map(s => ({
+                name: s.name,
+                role: s.role,
+                license: s.license,
+                sigUrl: s.sig_url
+            }));
+        }
+    } catch (e) {
+        console.warn("Could not load staff list directly:", e);
+    }
+    return globalStaffList || [];
+}
+
 // 🟢 LATEST FIX: Inayos ang UUID Crash at nawawalang print generator
 async function printDirect(e, id, testName) {
     if (e) e.stopPropagation();
@@ -2573,7 +2610,7 @@ async function printDirect(e, id, testName) {
             if (data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date };
         }
         if (item) {
-            if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
+            await ensureStaffList();
             let pObj = mapSupabaseToPrintObject(item);
 
             const isNTP = correctCode === "GXP" || correctCode === "DSSM" || testName === "GXP" || testName === "DSSM" || String(item.test || "").toUpperCase().includes("GENEXPERT") || String(item.test || "").toUpperCase().includes("DSSM") || String(item.test || "").toUpperCase().includes("GXP");
@@ -2618,7 +2655,7 @@ async function batchPrint() {
     });
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
     try {
-        if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
+        await ensureStaffList();
         const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
         let printContent = [];
         for (let r of requests) {
@@ -2838,25 +2875,34 @@ function localGenerateA5Html(patientsArray) {
 }
 
 function showPrintModal(htmlContent) {
+    window._CURRENT_PRINT_HTML = htmlContent;
     let modal = document.getElementById('print-modal-overlay');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'print-modal-overlay';
-        modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.75); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(15,23,42,0.85); backdrop-filter:blur(4px); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; box-sizing:border-box;';
 
         const topBar = document.createElement('div');
-        topBar.style.cssText = 'width:90%; max-width:1100px; background:#1e293b; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box;';
+        topBar.id = 'print-modal-topbar';
+        topBar.style.cssText = 'width:100%; max-width:1100px; background:#1e293b; padding:10px 16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box; gap:10px; border-bottom:1px solid #334155;';
         topBar.innerHTML = `
-            <span style="color:white; font-family:sans-serif; font-size:14px;">📄 Document Preview</span>
-            <div>
-                <button onclick="document.getElementById('print-iframe').contentWindow.print()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:10px;">🖨️ PRINT</button>
-                <button onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
+            <div style="display:flex; flex-direction:column; gap:2px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="color:#f8fafc; font-family:'Inter', sans-serif; font-size:14px; font-weight:700;"><i class="ph ph-file-text" style="color:#10b981;"></i> Official Laboratory Result</span>
+                    <span style="background:#334155; color:#94a3b8; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;">PRINT & PDF</span>
+                </div>
+                <div style="font-size:11px; color:#cbd5e1; font-family:'Inter', sans-serif;">💡 <strong>Paano i-save sa cellphone / computer:</strong> Pindutin ang <em>'PRINT / SAVE PDF'</em>, tapos piliin ang <strong>Save as PDF</strong> sa Destination.</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <button type="button" onclick="triggerDirectPrint()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(16,185,129,0.35);"><i class="ph ph-printer"></i> PRINT / SAVE PDF</button>
+                <button type="button" onclick="openPrintInNewTab(true)" style="background:#0284c7; color:white; border:none; padding:8px 14px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(2,132,199,0.35);"><i class="ph ph-arrow-square-out"></i> OPEN TAB / SHARE</button>
+                <button type="button" onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 14px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-x"></i> CLOSE</button>
             </div>
         `;
 
         const iframe = document.createElement('iframe');
         iframe.id = 'print-iframe';
-        iframe.style.cssText = 'width:90%; max-width:1100px; height:85%; border:none; border-radius:0 0 12px 12px; background-color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+        iframe.style.cssText = 'width:100%; max-width:1100px; height:80vh; border:none; border-radius:0 0 12px 12px; background-color:#fff; box-shadow:0 12px 36px rgba(0,0,0,0.5);';
 
         modal.appendChild(topBar);
         modal.appendChild(iframe);
@@ -2874,6 +2920,38 @@ function showPrintModal(htmlContent) {
         doc.close();
     }, 50);
 }
+
+window.triggerDirectPrint = function () {
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        openPrintInNewTab(true);
+        return;
+    }
+    try {
+        const iframe = document.getElementById('print-iframe');
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            return;
+        }
+    } catch (e) { }
+    openPrintInNewTab(true);
+};
+
+window.openPrintInNewTab = function (autoPrint = false) {
+    const win = window.open('', '_blank');
+    if (win) {
+        win.document.open();
+        win.document.write(window._CURRENT_PRINT_HTML || '<p>No document loaded.</p>');
+        win.document.close();
+        win.focus();
+        if (autoPrint) {
+            setTimeout(() => {
+                try { win.print(); } catch (e) { }
+            }, 600);
+        }
+    }
+};
 
 window.closePrintModal = function () {
     const modal = document.getElementById('print-modal-overlay');
