@@ -312,9 +312,25 @@ async function apiGet(action, params = {}) {
                 let rows = data || [];
                 if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
                 return {
-                    status: "success", data: rows.map(r => ({
-                        date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.test_code || r.id }
-                    }))
+                    status: "success", data: rows.map(r => {
+                        let d = {};
+                        try { d = typeof r.details === 'string' ? JSON.parse(r.details) : (r.details || {}); } catch (e) { }
+                        let resVal = d.ResultCode || d.Diagnosis || d.VL_Choice || d.Dengue_Result || d.result || "";
+                        const stUpper = String(r.status || "").toUpperCase();
+                        if (!resVal && (stUpper === 'PENDING' || stUpper === 'FOR REPEAT')) {
+                            resVal = stUpper === 'FOR REPEAT' ? "For Repeat Testing" : "Pending Examination";
+                        }
+                        return {
+                            id: r.id,
+                            status: r.status || "COMPLETED",
+                            date: r.date,
+                            dateExamined: r.date_examined,
+                            dateReleased: r.date_released,
+                            test: r.test_name,
+                            result: resVal || (stUpper === 'PENDING' ? "Pending Examination" : (stUpper === 'FOR REPEAT' ? "For Repeat Testing" : "Recorded")),
+                            fullData: { ...d, "Test Code": r.test_code || r.id, "Status": r.status || "COMPLETED" }
+                        };
+                    })
                 };
             }
             case "getPendingWorkload": {
@@ -395,8 +411,9 @@ async function apiGet(action, params = {}) {
                         const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
                         q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']);
                     }
-                    if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
-                        if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                    // Viewer at Encoder ay nakikita ang lahat ng records sa registry (Serology confidential fields lang ang nakatago)
+                    if (params.role === 'PATIENT') {
+                        if (params.facility && params.facility !== 'ALL') q = q.eq('facility', params.facility);
                     }
                     return q.order(dateColOrder, { ascending: isAsc });
                 }
@@ -1167,9 +1184,44 @@ async function savePatientDemographicsQS() {
 }
 
 async function loadPatientResults() {
-    const histContainer = document.getElementById('my-portal-history'); if (histContainer) histContainer.innerHTML = '<div style="text-align:center;"><i class="ph ph-spinner ph-spin"></i> Retrieving your records...</div>';
-    const nameEl = document.getElementById('my-portal-name'); if (nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
-    const metaEl = document.getElementById('my-portal-meta'); if (metaEl) metaEl.innerText = `Patient ID: ${currentUser.username}`;
+    const histContainer = document.getElementById('my-portal-history');
+    if (histContainer) histContainer.innerHTML = '<div style="text-align:center; padding: 40px 20px; color: var(--pri); font-weight: 600;"><i class="ph ph-spinner ph-spin" style="font-size:2rem; margin-bottom:10px; display:block;"></i> Retrieving your laboratory records...</div>';
+    
+    const nameEl = document.getElementById('my-portal-name');
+    const metaEl = document.getElementById('my-portal-meta');
+    if (nameEl) nameEl.innerText = currentUser.fullName || "Patient Portal";
+    
+    try {
+        if (sb && currentUser.username) {
+            const { data: pat } = await sb.from('patients').select('*').eq('id', currentUser.username).maybeSingle();
+            if (pat) {
+                if (pat.name && nameEl) nameEl.innerText = pat.name;
+                if (metaEl) {
+                    let chips = `<span class="portal-chip"><i class="ph ph-identification-card"></i> ID: ${pat.id || currentUser.username}</span>`;
+                    if (pat.sex) chips += `<span class="portal-chip"><i class="ph ph-gender-intersex"></i> ${pat.sex}</span>`;
+                    let patAge = pat.age;
+                    if (!patAge && pat.dob) {
+                        try {
+                            const b = new Date(pat.dob); const now = new Date();
+                            let a = now.getFullYear() - b.getFullYear();
+                            if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) a--;
+                            if (a >= 0) patAge = a;
+                        } catch (e) {}
+                    }
+                    if (patAge) chips += `<span class="portal-chip"><i class="ph ph-calendar"></i> Age: ${patAge} yrs</span>`;
+                    if (pat.facility) chips += `<span class="portal-chip"><i class="ph ph-hospital"></i> ${pat.facility}</span>`;
+                    if (pat.contact) chips += `<span class="portal-chip"><i class="ph ph-phone"></i> ${pat.contact}</span>`;
+                    metaEl.innerHTML = chips;
+                }
+            } else if (metaEl) {
+                metaEl.innerHTML = `<span class="portal-chip"><i class="ph ph-identification-card"></i> Patient ID: ${currentUser.username}</span>`;
+            }
+        }
+    } catch (e) {
+        console.warn("Could not load portal demographics:", e);
+        if (metaEl) metaEl.innerHTML = `<span class="portal-chip"><i class="ph ph-identification-card"></i> Patient ID: ${currentUser.username}</span>`;
+    }
+
     fetchHistory(currentUser.username, null, 'my-portal-history', false, true);
 }
 
@@ -1178,35 +1230,159 @@ function getTestCodeFromName(name) {
     if (t.includes("VIRAL") || t.includes("VL")) return "GXVL"; if (t.includes("GXP") || t.includes("MTB") || t.includes("GENEXPERT")) return "GXP"; if (t.includes("DSSM") || t.includes("AFB")) return "DSSM"; if (t.includes("UA") || t.includes("URINALYSIS")) return "UA"; if (t.includes("FA") || t.includes("FECALYSIS")) return "FA"; if (t.includes("HEMA") || t.includes("CBC")) return "HEMA"; if (t.includes("CHEM") || t.includes("BLOOD CHEM")) return "CHEM"; if (t.includes("GRAM")) return "GRAM"; if (t.includes("DENGUE") || t.includes("NS1")) return "DENGUE"; if (t.includes("SERO") || t.includes("HIV") || t.includes("SYPHILIS") || t.includes("HBSAG")) return "SERO"; return t;
 }
 
+function togglePortalDetails(id) {
+    const p = document.getElementById(id);
+    const caret = document.getElementById('caret-' + id);
+    if (!p) return;
+    if (p.style.display === 'block') {
+        p.style.display = 'none';
+        if (caret) { caret.classList.remove('ph-caret-up'); caret.classList.add('ph-caret-down'); }
+    } else {
+        p.style.display = 'block';
+        if (caret) { caret.classList.remove('ph-caret-down'); caret.classList.add('ph-caret-up'); }
+    }
+}
+
 async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPatientPortal = false) {
     if (sectionId) document.getElementById(sectionId).style.display = 'block';
-    const list = document.getElementById(listId); list.innerHTML = '<div style="text-align:center; color:var(--pri);"><i class="ph ph-spinner ph-spin"></i> Retrieving full records...</div>';
+    const list = document.getElementById(listId);
+    list.innerHTML = `<div style="text-align:center; padding: 25px; color:var(--pri); font-weight:600;"><i class="ph ph-spinner ph-spin" style="font-size:1.6rem; display:block; margin-bottom:8px;"></i> Retrieving official records...</div>`;
     try {
         const res = await apiGet("getPatientHistory", { patientId: id, role: currentUser.role });
-        if (res.status === 'success' && res.data.length > 0) {
+        if (res.status === 'success' && res.data && res.data.length > 0) {
             list.innerHTML = res.data.map((h, i) => {
-                const uniqueId = `hist-${listId}-${i}`; const dateStr = new Date(h.date).toLocaleDateString();
-                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">'; let editInputsHtml = '<div class="form-grid grid-2">';
+                const uniqueId = `hist-${listId}-${i}`;
+                const dateStr = h.date ? new Date(h.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "Recently Examined";
+                let summaryHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">';
+                let editInputsHtml = '<div class="form-grid grid-2">';
                 let testCodeForPrint = id;
 
                 if (h.fullData) {
                     testCodeForPrint = h.fullData["Test Code"] || h.fullData["Sample ID"] || h.fullData["Lab Serial Number"] || id;
                     for (const [key, value] of Object.entries(h.fullData)) {
                         if (key.toUpperCase() !== "JSON DETAILS" && key.toUpperCase() !== "TEST CODE" && String(value).trim() !== "") {
-                            summaryHtml += `<span style="font-size:0.7rem; background:var(--bg-subtle); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);"><strong style="color:var(--pri);">${key}:</strong> ${value}</span>`;
+                            summaryHtml += `<span style="font-size:0.75rem; background:var(--bg-subtle); padding:5px 10px; border-radius:6px; border:1px solid var(--border-color);"><strong style="color:var(--pri); font-weight:700;">${key}:</strong> ${value}</span>`;
                             editInputsHtml += `<div class="field-group"><label class="field-label">${key}</label><input type="text" class="form-input edit-hist-${uniqueId}" data-key="${key}" value="${value}"></div>`;
                         }
                     }
                 }
-                summaryHtml += '</div>'; editInputsHtml += '</div>';
+                summaryHtml += '</div>';
+                editInputsHtml += '</div>';
+
+                if (isPatientPortal) {
+                    // Elevated Patient Portal Card
+                    const tUpper = String(h.test || "").toUpperCase();
+                    let testIcon = "ph-activity";
+                    if (tUpper.includes("GXP") || tUpper.includes("MTB") || tUpper.includes("GENEXPERT")) testIcon = "ph-dna";
+                    else if (tUpper.includes("DSSM") || tUpper.includes("AFB")) testIcon = "ph-microscope";
+                    else if (tUpper.includes("CBC") || tUpper.includes("HEMA")) testIcon = "ph-drop";
+                    else if (tUpper.includes("CHEM")) testIcon = "ph-test-tube";
+                    else if (tUpper.includes("SERO") || tUpper.includes("HIV") || tUpper.includes("SYPHILIS") || tUpper.includes("HBSAG")) testIcon = "ph-shield-check";
+                    else if (tUpper.includes("DENGUE") || tUpper.includes("NS1")) testIcon = "ph-bug";
+                    else if (tUpper.includes("URIN") || tUpper.includes("FECAL") || tUpper.includes("UA") || tUpper.includes("FA")) testIcon = "ph-flask";
+
+                    const stUpper = String(h.status || "").toUpperCase();
+                    const isRepeat = stUpper === 'FOR REPEAT' || String(h.result).toUpperCase().includes("REPEAT");
+                    const isPending = stUpper === 'PENDING' || String(h.result).toUpperCase().includes("PENDING");
+                    const rUpper = String(h.result || "").toUpperCase();
+
+                    let badgeClass = "verified";
+                    let badgeIcon = "ph-certificate";
+                    let badgeText = h.result || "Verified Completed";
+                    let actionAreaHtml = "";
+
+                    if (isRepeat) {
+                        badgeClass = "repeat";
+                        badgeIcon = "ph-arrows-clockwise";
+                        badgeText = "For Repeat Testing";
+                        actionAreaHtml = `
+                            <div style="flex:1; background:rgba(234,88,12,0.08); border:1px solid rgba(234,88,12,0.25); border-radius:8px; padding:6px 12px; font-size:0.75rem; color:#c2410c; display:flex; align-items:center; gap:6px;">
+                                <i class="ph ph-warning-circle" style="font-size:1.1rem; flex-shrink:0;"></i>
+                                <span><strong>Re-collection Required:</strong> Kinakailangan ng bagong sample o karagdagang pagsusuri. Mangyaring magsadya sa Angono MHO laboratory desk.</span>
+                            </div>
+                            <button type="button" class="prc-btn-details" onclick="togglePortalDetails('${uniqueId}')">
+                                <span>Order Details</span> <i class="ph ph-caret-down" id="caret-${uniqueId}"></i>
+                            </button>
+                        `;
+                    } else if (isPending) {
+                        badgeClass = "pending";
+                        badgeIcon = "ph-hourglass-medium";
+                        badgeText = "Pending Examination";
+                        actionAreaHtml = `
+                            <div style="flex:1; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:8px; padding:6px 12px; font-size:0.75rem; color:#b45309; display:flex; align-items:center; gap:6px;">
+                                <i class="ph ph-clock" style="font-size:1.1rem; flex-shrink:0;"></i>
+                                <span><strong>On-Going Examination:</strong> Natanggap na ang iyong specimen at kasalukuyang sinusuri. Magiging available ang PDF kapag na-validate na ng Medical Technologist.</span>
+                            </div>
+                            <button type="button" class="prc-btn-details" onclick="togglePortalDetails('${uniqueId}')">
+                                <span>Order Details</span> <i class="ph ph-caret-down" id="caret-${uniqueId}"></i>
+                            </button>
+                        `;
+                    } else {
+                        if (rUpper.includes("NOT DETECTED") || rUpper.includes("NEGATIVE") || rUpper.includes("NORMAL") || rUpper.includes("NON-REACTIVE")) {
+                            badgeClass = "negative";
+                            badgeIcon = "ph-check-circle";
+                        } else if (rUpper.includes("DETECTED") || rUpper.includes("POSITIVE") || rUpper.includes("REACTIVE") || rUpper.includes("ABNORMAL")) {
+                            badgeClass = "positive";
+                            badgeIcon = "ph-warning-circle";
+                        }
+                        actionAreaHtml = `
+                            <button type="button" class="prc-btn-action prc-btn-pdf" onclick="downloadDirect(event, '${testCodeForPrint}', '${h.test}')" title="Download Signed Official PDF Certificate">
+                                <i class="ph ph-file-pdf"></i> Download PDF
+                            </button>
+                            <button type="button" class="prc-btn-action prc-btn-print" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print Official Laboratory Slip">
+                                <i class="ph ph-printer"></i> Print Slip
+                            </button>
+                            <button type="button" class="prc-btn-details" onclick="togglePortalDetails('${uniqueId}')">
+                                <span>Clinical Breakdown</span> <i class="ph ph-caret-down" id="caret-${uniqueId}"></i>
+                            </button>
+                        `;
+                    }
+
+                    return `
+                        <div class="patient-result-card">
+                            <div class="prc-header">
+                                <div>
+                                    <h4 class="prc-test-title"><i class="ph ${testIcon}"></i> ${h.test}</h4>
+                                    <div class="prc-date"><i class="ph ph-calendar-blank"></i> ${isPending ? 'Ordered/Received' : (isRepeat ? 'Requested Repeat' : 'Released')}: ${dateStr} • Specimen: <span style="font-family:monospace; color:var(--text-main); font-weight:700;">${testCodeForPrint}</span></div>
+                                </div>
+                                <div>
+                                    <span class="prc-badge ${badgeClass}"><i class="ph ${badgeIcon}"></i> ${badgeText}</span>
+                                </div>
+                            </div>
+                            <div class="prc-actions" style="flex-wrap: wrap;">
+                                ${actionAreaHtml}
+                            </div>
+                            <div id="${uniqueId}" class="prc-breakdown-panel">
+                                <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Official Laboratory Parameters</div>
+                                ${summaryHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Standard Clinic History Card (Quick Search & Staff View)
                 let editBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn-icon" style="width:24px; height:24px; font-size:1rem;" onclick="toggleHistoryEdit('${uniqueId}')" title="Edit Record"><i class="ph ph-pencil-simple"></i></button>` : '';
-                let printBtnHtml = (isQuickSearch || isPatientPortal) ? `<button class="btn-icon" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${testCodeForPrint}', '${h.test}')" title="Download PDF" style="color:var(--pri); margin-left: 5px;"><i class="ph ph-download-simple"></i></button>` : '';
+                let printBtnHtml = `<button class="btn-icon" onclick="printDirect(event, '${testCodeForPrint}', '${h.test}')" title="Print this Result" style="color:var(--success);"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${testCodeForPrint}', '${h.test}')" title="Download PDF" style="color:var(--pri); margin-left: 5px;"><i class="ph ph-download-simple"></i></button>`;
                 let updateBtnHtml = (isQuickSearch && !isPatientPortal) ? `<button class="btn btn-primary text-xs" onclick="saveHistoryEdit('${id}', '${h.test}', '${uniqueId}')"><i class="ph ph-floppy-disk"></i> Update Record</button>` : '';
 
                 return `<div class="history-card" style="display:flex; flex-direction:column; align-items:stretch;"><div style="display:flex; justify-content:space-between; align-items:center; width:100%; cursor:pointer;" ondblclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'" title="Double click to view full details"><div><div class="h-test">${h.test}</div><div class="h-date">${dateStr}</div></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:0.8rem; font-weight:bold; color:var(--text-main);">${h.result}</span>${printBtnHtml}<i class="ph ph-caret-down" style="color:var(--text-muted);" onclick="document.getElementById('${uniqueId}').style.display = document.getElementById('${uniqueId}').style.display === 'none' ? 'block' : 'none'"></i></div></div><div id="${uniqueId}" class="h-expanded-details"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:6px;"><span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">RESULT SUMMARY</span>${editBtnHtml}</div><div id="summary-view-${uniqueId}">${summaryHtml}</div><div id="edit-view-${uniqueId}" style="display:none; background:var(--bg-body); padding:10px; border-radius:var(--radius-sm); border:1px dashed var(--warning);"><div>${editInputsHtml}</div><div style="margin-top:10px; display:flex; gap:10px;"><button class="btn btn-secondary text-xs" onclick="toggleHistoryEdit('${uniqueId}')">Cancel</button>${updateBtnHtml}</div></div></div></div>`;
             }).join('');
-        } else { list.innerHTML = '<div class="text-muted text-xs text-center">No lab records found.</div>'; }
-    } catch (e) { list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger);">Failed to load history.</div>'; }
+        } else {
+            if (isPatientPortal) {
+                list.innerHTML = `
+                    <div style="background: var(--bg-surface); border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 40px 20px; text-align: center;">
+                        <i class="ph ph-clipboard-text" style="font-size: 2.5rem; color: var(--text-muted); opacity: 0.6; display: block; margin-bottom: 10px;"></i>
+                        <h4 style="margin: 0 0 6px 0; color: var(--text-main); font-weight: 700; font-size:1rem;">No Released Laboratory Results Yet</h4>
+                        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted); max-width: 360px; margin: 0 auto; line-height: 1.45;">Your diagnostic tests may currently be undergoing examination or awaiting medical verification by the municipal health laboratory. Please check back shortly.</p>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = '<div class="text-muted text-xs text-center" style="padding: 20px;">No lab records found.</div>';
+            }
+        }
+    } catch (e) {
+        list.innerHTML = '<div class="text-xs text-center" style="color:var(--danger); padding:20px;">Failed to load laboratory history.</div>';
+    }
 }
 
 function toggleHistoryEdit(id) { const sum = document.getElementById('summary-view-' + id); const edt = document.getElementById('edit-view-' + id); if (sum.style.display === 'none') { sum.style.display = 'block'; edt.style.display = 'none'; } else { sum.style.display = 'none'; edt.style.display = 'block'; } }
@@ -1682,6 +1858,28 @@ function getResultTemplate(code, safeId, item) {
     }
 }
 
+window.toggleRegistryRowDrawer = function(drawerId, rowEl) {
+    const drawer = document.getElementById(drawerId);
+    if (!drawer) return;
+    const isVisible = drawer.style.display !== 'none';
+    
+    // Close other drawers to keep table clean and performant
+    document.querySelectorAll('.reg-drawer-row').forEach(d => {
+        if (d.id !== drawerId) d.style.display = 'none';
+    });
+    document.querySelectorAll('#regTableBody tr.reg-data-row').forEach(r => {
+        if (r !== rowEl) r.classList.remove('active-row');
+    });
+
+    if (isVisible) {
+        drawer.style.display = 'none';
+        if (rowEl) rowEl.classList.remove('active-row');
+    } else {
+        drawer.style.display = 'table-row';
+        if (rowEl) rowEl.classList.add('active-row');
+    }
+};
+
 async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = null, forceCol = null) {
     window.CURRENT_TEST_TYPE = type; currentRegistryPage = page;
     const titleEl = document.getElementById('regTitle');
@@ -1730,35 +1928,107 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
             const rows = registryData.rows || [];
             window.REGISTRY_ROWS_BY_CODE = {};
-            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
-            hMap.forEach(c => html += `<th>${c.text}</th>`);
             const isAdminEdit = String(currentUser.role).toUpperCase() === 'ADMIN';
+            const totalCols = hMap.length + 1 + (isAdminEdit ? 1 : 0);
+
+            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
+            hMap.forEach(c => html += `<th title="${c.text}">${c.text}</th>`);
             if (isAdminEdit) html += '<th style="width:40px;">Edit</th>';
             html += `</tr></thead><tbody id="regTableBody">`;
 
-            rows.forEach((row) => {
-                html += `<tr onclick="this.classList.toggle('expanded-row')" style="cursor:pointer;"><td><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onclick="event.stopPropagation()" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
-                let isInitialRow = false; hMap.forEach(c => { let hName = c.original.toUpperCase().trim(); if (hName === 'REPEAT' || hName === 'TEST TYPE') { if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true; } });
-                hMap.forEach(c => {
-                    let val = row[c.index] || ''; let hName = c.original.toUpperCase().trim();
-                    let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED_BY';
-                    if (isResCol && val !== "") {
-                        let vU = String(val).toUpperCase().trim(); let bg = "transparent", col = "inherit";
-                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; }
-                        html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
-                    } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
-                });
-
+            rows.forEach((row, rowIdx) => {
+                const rowDrawerId = `reg-drawer-${rowIdx}`;
                 const tcIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => {
                     const clean = String(h).toUpperCase().replace(/[_\s]+/g, '');
                     return clean === 'TESTCODE' || clean === 'ID';
                 });
-                const testCode = tcIdx > -1 ? row[tcIdx] : '';
+                const testCode = tcIdx > -1 ? (row[tcIdx] || '') : '';
                 if (testCode) window.REGISTRY_ROWS_BY_CODE[testCode] = row;
+
+                const nameIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => {
+                    const clean = String(h).toUpperCase().replace(/[_\s]+/g, '');
+                    return clean === 'NAME' || clean === 'PATIENTNAME';
+                });
+                const patientName = nameIdx > -1 ? (row[nameIdx] || '') : 'Patient Record';
+
+                // Build rich drawer cards showing all columns of this record
+                let drawerCardsHtml = '';
+                hMap.forEach(c => {
+                    let val = row[c.index] || '';
+                    drawerCardsHtml += `
+                        <div class="rdd-card">
+                            <span class="rdd-card-label">${c.text}</span>
+                            <span class="rdd-card-value">${val ? val : '<span style="color:var(--text-muted); font-weight:normal;">—</span>'}</span>
+                        </div>
+                    `;
+                });
+
+                html += `<tr class="reg-data-row" id="row-${rowDrawerId}" onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" title="Click to view all row details">
+                    <td onclick="event.stopPropagation()"><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
+                
+                let isInitialRow = false;
+                hMap.forEach(c => {
+                    let hName = c.original.toUpperCase().trim();
+                    if (hName === 'REPEAT' || hName === 'TEST TYPE') {
+                        if (String(row[c.index]).toUpperCase().trim() === 'INITIAL') isInitialRow = true;
+                    }
+                });
+
+                hMap.forEach(c => {
+                    let val = row[c.index] || '';
+                    let hName = c.original.toUpperCase().trim();
+                    let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG';
+                    let isPerformedBy = hName === 'PERFORMED_BY';
+                    const escapedVal = String(val).replace(/"/g, '&quot;');
+
+                    if (isResCol && val !== "") {
+                        let vU = String(val).toUpperCase().trim();
+                        let bg = "transparent", col = "inherit";
+                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; }
+                        else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; }
+                        else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; }
+                        else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; }
+                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; }
+                        else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; }
+                        else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; }
+
+                        html += `<td title="${escapedVal}"><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
+                    } else if (isPerformedBy && val !== "") {
+                        html += `<td title="${escapedVal}" style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
+                    } else {
+                        html += `<td title="${escapedVal}">${val}</td>`;
+                    }
+                });
+
                 if (isAdminEdit) {
                     html += `<td onclick="event.stopPropagation()"><button class="btn-icon" title="Edit Record" onclick="openRegistryEditModal('${testCode}')"><i class="ph ph-pencil-simple"></i></button></td>`;
                 }
                 html += `</tr>`;
+
+                // Interactive row drawer displaying all values
+                html += `
+                    <tr id="${rowDrawerId}" class="reg-drawer-row" style="display:none;">
+                        <td colspan="${totalCols}">
+                            <div class="reg-drawer-container">
+                                <div class="rdd-header">
+                                    <div class="rdd-title">
+                                        <span class="rdd-code"><i class="ph ph-barcode"></i> ${testCode || 'LOGBOOK RECORD'}</span>
+                                        <span class="rdd-name">${patientName}</span>
+                                        <span style="font-size:0.72rem; color:var(--text-muted);"><i class="ph ph-list-magnifying-glass"></i> Clicked Record Details</span>
+                                    </div>
+                                    <div class="rdd-actions">
+                                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" onclick="printDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)"><i class="ph ph-printer"></i> Print</button>
+                                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" onclick="downloadDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)"><i class="ph ph-download-simple"></i> PDF</button>
+                                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="toggleRegistryRowDrawer('${rowDrawerId}')"><i class="ph ph-x"></i> Close</button>
+                                    </div>
+                                </div>
+                                <div class="rdd-grid">
+                                    ${drawerCardsHtml}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
             });
             html += `</tbody></table>`;
             cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing All ${registryData.totalRows} Records</span>`;
