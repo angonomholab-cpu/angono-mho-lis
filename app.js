@@ -253,6 +253,7 @@ async function apiPost(action, payload) {
     try {
         switch (action) {
             case "logAudit": {
+                // Pinapagaan ang pag-save ng logs para iwas 401
                 try {
                     await sb.from('audit_logs').insert({ username: payload.username, action: payload.action, details: payload.details });
                 } catch(e) {}
@@ -263,7 +264,7 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                // 🔴 TINANGGAL NAMIN ANG AGE AT PASSWORD dito para walang 400 ERROR
+                // 🔴 TINANGGAL: 'age' at 'password' para maiwasan ang 400 Bad Request
                 const { error: pErr } = await sb.from('patients').upsert({
                     id: patientId, 
                     full_name: f.fullName, 
@@ -271,14 +272,15 @@ async function apiPost(action, payload) {
                     sex: f.sex || null, 
                     address: f.address || null, 
                     contact: f.contact || null, 
-                    email: f.email || null, 
                     facility: f.facility || null
                 }, { onConflict: 'id' });
                 
-                if(pErr) throw new Error("Patient Save Error: " + pErr.message);
+                if(pErr) throw new Error("Patient Error: " + pErr.message);
 
-                // 🔴 STRICT COLUMN MAPPING PARA SA LAB_TESTS
+                // 🔴 FIX SA "NULL ID": Ipapasa natin ang test_code bilang 'id'!
+                // Tinanggal din natin ang 'encoder_full_name' na nagko-cause ng error
                 const rows = tests.map(t => ({
+                    id: t.test_code || t.code, // <-- ITO ANG MAG-AAYOS SA NULL ID ERROR
                     patient_id: patientId, 
                     patient_name: f.fullName, 
                     test_name: t.name, 
@@ -287,46 +289,28 @@ async function apiPost(action, payload) {
                     status: 'PENDING', 
                     facility: f.facility, 
                     encoder: f.encoder, 
-                    date: new Date().toISOString() // DITO PUMAPASOK ANG "DATE RECEIVED / ENCODED"
+                    date: new Date().toISOString()
                 }));
                 
                 const { error: tErr } = await sb.from('lab_tests').insert(rows);
-                if(tErr) throw new Error("Lab Test Save Error: " + tErr.message);
+                if(tErr) throw new Error("Lab Test Error: " + tErr.message);
                 
                 return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                const { error: resErr } = await sb.from('lab_tests').update({ 
-                    details: details, 
-                    status: 'COMPLETED', 
-                    date_examined: new Date().toISOString(), // DITO PUMAPASOK ANG DATE NG PAG-SAVE
-                    encoder: payload.encodedBy, 
-                    patient_name: payload.updatedName, 
-                    test_name: payload.updatedTest 
-                }).eq('id', payload.testId);
-                
-                if(resErr) throw new Error("Result Save Error: " + resErr.message);
+                const { error } = await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                if(error) throw new Error("Result Error: " + error.message);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
                 const details = JSON.parse(payload.newJsonDetails || "{}");
-                await sb.from('lab_tests').update({ 
-                    details: details, 
-                    patient_name: payload.newName, 
-                    test_name: payload.newTestType 
-                }).eq('id', payload.testId);
+                const { error: tErr } = await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
+                if(tErr) throw new Error("Update Test Error: " + tErr.message);
                 
-                // Muli, HUWAG ISAMA ANG AGE.
-                await sb.from('patients').update({ 
-                    full_name: payload.newName, 
-                    sex: details.sex || null, 
-                    address: details.address || null, 
-                    contact: details.contact || null, 
-                    facility: details.facility || null, 
-                    email: details.email || null, 
-                    bday: details.bday || null 
-                }).eq('id', payload.patientId);
+                // 🔴 TINANGGAL DIN ANG 'age' DITO
+                const { error: pErr } = await sb.from('patients').update({ full_name: payload.newName, sex: details.sex || null, address: details.address || null, contact: details.contact || null, facility: details.facility || null, bday: details.bday || null }).eq('id', payload.patientId);
+                if(pErr) throw new Error("Update Patient Error: " + pErr.message);
                 
                 return { status: "success", data: "Updated" };
             }
@@ -850,7 +834,7 @@ async function finalSubmit() {
       finalTestsArray.push(entry); 
   });
 
-  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
+  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
   try {
       const res = await apiPost("submitForm", { formObject: formData });
@@ -859,8 +843,11 @@ async function finalSubmit() {
           const savedPass = res.data?.generatedPassword || generatedPassword;
           showAppAlert("Record Saved", `Successfully saved to Supabase!${pEmail ? '\n\nPatient Password: ' + savedPass + '\n(Please provide this directly to the patient since Javascript email is disabled)' : ''}`, "success");
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
-      } else { throw new Error(res.message || "Server rejected the save."); }
-  } catch (err) { showAppAlert("Error", String(err), "error"); btn.disabled = false; btn.innerHTML = originalText; }
+      } else { 
+          // 🔴 Ipapakita na ang eksaktong mensahe ng Supabase error
+          throw new Error(res.message || "Server rejected the save."); 
+      }
+  } catch (err) { showAppAlert("Database Error", String(err), "error"); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
 function editPendingFull(id) {
