@@ -1699,10 +1699,10 @@ function showPrintModal(htmlContent) {
     
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
-    
-    // Convert to Data URI para hindi ma-block ng Safari iframe restrictions
-    const encodedHtml = encodeURIComponent(htmlContent);
-    iframe.src = 'data:text/html;charset=utf-8,' + encodedHtml;
+    // 🟢 FIX: bumalik sa srcdoc — ang data: URI approach ay walang praktikal na
+    // limitasyon sa laki, kaya blangko lumalabas ang mahahabang result form
+    // (GXP/DSSM ~10k+ characters bago pa i-encode).
+    iframe.srcdoc = htmlContent;
 }
 
 window.closePrintModal = function() {
