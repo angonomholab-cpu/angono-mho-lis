@@ -222,7 +222,7 @@ async function apiGet(action, params = {}) {
                 
                 if (tName === 'lab_tests') {
                      const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                     // Fetch ENCODED records for registry if using lab_tests fallback
+                     // 🟢 FIX: Ngayon kukunin na niya both ENCODED at COMPLETED records sa Registry!
                      q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
                 }
 
@@ -613,11 +613,11 @@ function applyPermissions() {
     }
 
     // 🟢 UPDATED HIV PERMISSION: ADMIN AND STAFF CAN VIEW HIV.
-    if (role !== 'ADMIN' && role !== 'STAFF') {
+    if (role !== 'ADMIN') {
         document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn').forEach(card => { const attr = card.getAttribute('onclick') || ''; if(attr.includes('GXVL')) card.style.display = 'none'; });
         const btnViral = document.getElementById('btn-viral'); if(btnViral) btnViral.style.display = 'none';
     }
-    // 🟢 UPDATED SERO PERMISSION:
+    // 🟢 FIX: Inallow na natin ang STAFF at ENCODER na makapag-click at makapag-encode ng Serology
     if (role !== 'ADMIN' && role !== 'STAFF' && role !== 'ENCODER') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
 }
 
@@ -1438,7 +1438,10 @@ function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entr
 
 function printReport() {
     let activeTab = ""; document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
-    const headerHtml = `<table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;"><tr><td style="width: 70px; text-align: left; vertical-align: middle;"><img src="./icon-192.png" style="width: 50px; height: 50px;"></td><td style="text-align: center; vertical-align: middle;"><h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1><h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3><p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></td><td style="width: 70px; text-align: right; vertical-align: middle;"><img src="./icon-512.png" style="width: 50px; height: 50px;"></td></tr></table>`;
+    const lguLogo = "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000";
+    const mhoLogo = "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000";
+    const labLogo = "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000";
+    const headerHtml = `<table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;"><tr><td style="width: 70px; text-align: left; vertical-align: middle;"><img src="${lguLogo}" style="width: 50px; height: 50px; object-fit:contain;"></td><td style="text-align: center; vertical-align: middle;"><img src="${labLogo}" style="width: 30px; height: 30px; margin-bottom: 2px;"><h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1><h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3><p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></td><td style="width: 70px; text-align: right; vertical-align: middle;"><img src="${mhoLogo}" style="width: 50px; height: 50px; object-fit:contain;"></td></tr></table>`;
     const footerHtml = document.querySelector('.rep-footer').outerHTML;
     const htmlContent = `<html><head><title>Print Report</title><link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display"><style>@page { size: A4 landscape; margin: 10mm; } body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;} table.main-layout { width: 100%; border-collapse: collapse; } .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; } .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; } .data-table th { background-color: #f0f0f0 !important; } .text-center { text-align: center; } .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; } .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; } thead { display: table-header-group; } tfoot { display: table-footer-group; } .controls-area, .chip-group, button { display: none !important; }</style></head><body><table class="main-layout"><thead><tr><td>${headerHtml}</td></tr></thead><tbody><tr><td>${activeTab}</td></tr></tbody><tfoot><tr><td>${footerHtml}</td></tr></tfoot></table><script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 800); };</script></html>`;
     const win = window.open('', '_blank'); win.document.write(htmlContent); win.document.close();
@@ -1624,7 +1627,11 @@ async function batchPrint() {
 }
 
 function localGenerateNTPHtml(patientsArray) {
-    const logos = { left: "./icon-512.png", lab: "./icon-192.png", right: "./icon-512.png" };
+    const logos = { 
+        left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000",
+        lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", 
+        right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000"
+    };
     const getStaff = (name) => { if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
     let combinedHtml = "";
     patientsArray.forEach((p, index) => {
@@ -1676,7 +1683,11 @@ function localGenerateNTPHtml(patientsArray) {
 }
 
 function localGenerateA5Html(patientsArray) {
-    const logos = { left: "./icon-512.png", lab: "./icon-192.png", right: "./icon-512.png" };
+    const logos = { 
+        left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000",
+        lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", 
+        right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000"
+    };
     let combinedHtml = "";
     
     const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
