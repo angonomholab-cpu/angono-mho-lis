@@ -212,11 +212,6 @@ async function apiGet(action, params = {}) {
                     if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
                         if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
                     }
-                    if (params.searchQuery) {
-                        q = (tName === 'lab_tests')
-                            ? q.or(`patient_name.ilike.%${params.searchQuery}%`)
-                            : q.or(`"Patient Name".ilike.%${params.searchQuery}%`);
-                    }
                     return q.order(dateColOrder, { ascending: isAsc });
                 }
 
@@ -283,6 +278,29 @@ async function apiGet(action, params = {}) {
                                fVal === mName || 
                                fVal === sName || 
                                fVal === `${yNum}-${String(mNum).padStart(2, '0')}`;
+                    });
+                }
+
+                // 🟢 Column Filter + Search Query: Halimbawa Month = April + Column = Classification + Search = TB Patient
+                if (params.searchQuery && String(params.searchQuery).trim() !== '') {
+                    const s = String(params.searchQuery).toLowerCase().trim();
+                    const colTarget = (params.colFilter && params.colFilter !== 'ALL') ? String(params.colFilter).toLowerCase().trim() : null;
+
+                    filteredData = filteredData.filter(row => {
+                        if (colTarget) {
+                            const targetNorm = colTarget.replace(/[_\s]+/g, '');
+                            const matchKey = Object.keys(row).find(k => {
+                                const kNorm = k.toLowerCase().replace(/[_\s]+/g, '');
+                                return kNorm === targetNorm || 
+                                       kNorm.replace('date', '') === targetNorm || 
+                                       kNorm.replace('patient', '') === targetNorm ||
+                                       kNorm.includes(targetNorm);
+                            });
+                            if (matchKey) {
+                                return String(row[matchKey] || '').toLowerCase().includes(s);
+                            }
+                        }
+                        return Object.values(row).some(v => v !== null && v !== undefined && String(v).toLowerCase().includes(s));
                     });
                 }
 
@@ -1007,6 +1025,11 @@ async function loadPendingData() {
 }
 
 window.undoResult = function(id) {
+    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
+    if (role !== 'ADMIN' && role !== 'STAFF') {
+        showAppAlert("Access Denied", "Only Admin and Lab Staff can undo completed results.", "error");
+        return;
+    }
     customConfirm("Are you sure you want to UNDO this result? It will go back to Pending.", async () => {
         const btn = document.getElementById('btn-undo-'+id);
         if(btn) btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
@@ -1018,7 +1041,7 @@ window.undoResult = function(id) {
             delete d.date_examined;
             delete d.dateEncoded;
             
-            await sb.from('lab_tests').update({ status: 'PENDING', details: d }).eq('id', id);
+            await sb.from('lab_tests').update({ status: 'PENDING', details: d, date_examined: null, date_released: null }).eq('id', id);
             await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "UNDO RESULT", details: `Undid result for Test ID: ${id}` });
             
             showAppAlert("Success", "Record reverted to Pending.", "success");
@@ -1053,21 +1076,19 @@ function renderLists() {
         return filterFn(i) && (encodedDateStr === TODAY_STR);
     });
 
-    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border: 1px solid var(--pri); box-shadow: 0 4px 10px rgba(0,0,0,0.1);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button><button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button></div></div>` : '';
+    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') ? `<div style="position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border: 1px solid var(--pri); box-shadow: 0 4px 10px rgba(0,0,0,0.1);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button><button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button></div></div>` : '';
 
     const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); if(d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch(e){}
         
-        let actionsHtml = ''; let checkboxHtml = (role === 'ADMIN' || role === 'STAFF') ? `<div style="padding-top:2px;"><input type="checkbox" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);"></div>` : '';
+        let actionsHtml = ''; let checkboxHtml = (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') ? `<div style="padding-top:2px;"><input type="checkbox" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);"></div>` : '';
 
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) { actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`; }
 
-        let clickAttr = `style="flex-grow:1;"`; let expandAreaHtml = '';
-        if (role === 'ADMIN' || role === 'STAFF') {
-            clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
-            expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
-        }
+        // Save at Print ay available sa lahat (Admin, Staff, Encoder, Viewer)
+        let clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
+        let expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         
         const displaySerial = item.testCode || item.id;
 
@@ -1088,7 +1109,10 @@ function renderLists() {
         let tCodePrint = getTestCodeFromName(item.test); let repeatBadge = ""; 
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let rpt = d.Repeat || d["Test Type"]; if(rpt && String(rpt).toUpperCase() === 'INITIAL') repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.55rem; background:var(--warning); color:white; padding:2px 4px; border-radius:3px;">INITIAL</span>`; } catch(e){}
         const displaySerial = item.testCode || item.id;
-        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:8px;"><button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button><button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
+        // Undo button is ONLY available to ADMIN and STAFF
+        const canUndo = (role === 'ADMIN' || role === 'STAFF');
+        const undoBtn = canUndo ? `<button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button>` : '';
+        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:8px;">${undoBtn}<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
@@ -1277,7 +1301,19 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             const displayHeaders = window.CURRENT_REGISTRY_HEADERS.map(formatHeader);
 
             const hMap = displayHeaders.map((h, i) => window.CURRENT_REGISTRY_HEADERS[i].includes("{") ? null : { index: i, text: h.replace("Date ","").replace("Patient ",""), original: window.CURRENT_REGISTRY_HEADERS[i] }).filter(x=>x);
-            const colFilter = document.getElementById('colFilter'); if(colFilter) { colFilter.innerHTML = '<option value="ALL">All Columns</option>'; hMap.forEach((c, displayIndex) => colFilter.innerHTML += `<option value="${displayIndex}">${c.text}</option>`); }
+            const colFilter = document.getElementById('colFilter'); 
+            if(colFilter) { 
+                const prevSelected = cQuery || (colFilter.selectedIndex >= 0 ? colFilter.options[colFilter.selectedIndex]?.text : "ALL");
+                colFilter.innerHTML = '<option value="ALL">All Columns</option>'; 
+                hMap.forEach((c) => {
+                    const isSel = (c.text === prevSelected || c.original === prevSelected) ? 'selected' : '';
+                    colFilter.innerHTML += `<option value="${c.text}" ${isSel}>${c.text}</option>`;
+                });
+            }
+            const regSearchInput = document.getElementById('regSearch');
+            if (regSearchInput) {
+                regSearchInput.placeholder = (cQuery && cQuery !== 'ALL') ? `Search ${cQuery}...` : 'Search...';
+            }
 
             const rows = registryData.rows || [];
             window.REGISTRY_ROWS_BY_CODE = {};
@@ -1320,7 +1356,18 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 let registrySearchTimeout = null;
 function filterRegistryTable() {
     clearTimeout(registrySearchTimeout); const cont = document.getElementById('registry-table-content'); if (cont && document.getElementById('regSearch') === document.activeElement) cont.style.opacity = '0.5';
-    registrySearchTimeout = setTimeout(() => { if(cont) cont.style.opacity = '1'; const sQuery = document.getElementById('regSearch') ? document.getElementById('regSearch').value.trim() : ""; const mQuery = document.getElementById('monthFilter') ? document.getElementById('monthFilter').value.trim() : ""; const cQuery = (document.getElementById('colFilter') && document.getElementById('colFilter').value !== "ALL") ? document.getElementById('colFilter').options[document.getElementById('colFilter').selectedIndex].text : "ALL"; openRegistryTab(window.CURRENT_TEST_TYPE, 1, sQuery, mQuery, cQuery); }, 800); 
+    registrySearchTimeout = setTimeout(() => { 
+        if(cont) cont.style.opacity = '1'; 
+        const sQuery = document.getElementById('regSearch') ? document.getElementById('regSearch').value.trim() : ""; 
+        const mQuery = document.getElementById('monthFilter') ? document.getElementById('monthFilter').value.trim() : ""; 
+        const cEl = document.getElementById('colFilter');
+        const cQuery = (cEl && cEl.value !== "ALL") ? (cEl.value || cEl.options[cEl.selectedIndex]?.text) : "ALL"; 
+        const regSearchInput = document.getElementById('regSearch');
+        if (regSearchInput) {
+            regSearchInput.placeholder = (cQuery && cQuery !== 'ALL') ? `Search ${cQuery}...` : 'Search...';
+        }
+        openRegistryTab(window.CURRENT_TEST_TYPE, 1, sQuery, mQuery, cQuery); 
+    }, 300); 
 }
 
 function printRegistryLogbook() {
@@ -1461,84 +1508,167 @@ async function generateReport() {
     const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; 
     
     try { 
-        let q = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
-        if(targetFacility !== "ALL") q = q.eq('facility', targetFacility);
-        const { data, error } = await q;
-        if (data) { 
-            const d = buildReportData(data, type, val, year, targetFacility);
-            renderTB(d.tb); renderHIV(d.hiv); renderSTI(d.sti); renderDengue(d.dengue); renderWorkload(d.workload); renderFHSIS(d.fhsis_maternal); 
-        } 
-    } catch (err) {} finally { btn.innerHTML = oldHtml; btn.disabled = false; } 
+        let data = [];
+        for (let from = 0; ; from += 1000) {
+            let q = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
+            if (targetFacility !== "ALL") q = q.eq('facility', targetFacility);
+            const { data: chunk, error } = await q.range(from, from + 999);
+            if (error) { console.error("Report fetch error:", error); break; }
+            data = data.concat(chunk || []);
+            if (!chunk || chunk.length < 1000) break;
+        }
+        const d = buildReportData(data || [], type, val, year, targetFacility);
+        renderTB(d.tb); renderHIV(d.hiv); renderSTI(d.sti); renderDengue(d.dengue); renderWorkload(d.workload); renderFHSIS(d.fhsis_maternal); 
+    } catch (err) { 
+        console.error("Error generating report:", err); 
+        showAppAlert("Error", "Failed to generate report: " + (err.message || String(err)), "error");
+    } finally { btn.innerHTML = oldHtml; btn.disabled = false; } 
 }
 
 function buildReportData(data, type, val, year, targetFacility) {
-    let report = { tb: { exam: {new:0, ret:0}, pos: {new:0, ret:0}, rr: {new:0, ret:0}, t: {new:0, ret:0}, ti: {new:0, ret:0}, n: {new:0, ret:0}, tt: {new:0, ret:0}, invalid: {new:0, ret:0}, initial: {new:0, ret:0}, cartridges: 0, dssm: 0 }, hiv: { tested: createHivGrid(), reactive: createHivGrid() }, sti: { hiv: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, syph: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, hbsag: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0} }, dengue: { pos:0, neg:0, total:0 }, fhsis_maternal: {}, workload: {} };
+    let report = { 
+        tb: { exam: {new:0, ret:0}, pos: {new:0, ret:0}, rr: {new:0, ret:0}, t: {new:0, ret:0}, ti: {new:0, ret:0}, n: {new:0, ret:0}, tt: {new:0, ret:0}, invalid: {new:0, ret:0}, initial: {new:0, ret:0}, cartridges: 0, dssm: 0 }, 
+        hiv: { tested: createHivGrid(), reactive: createHivGrid() }, 
+        sti: { hiv: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, syph: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0}, hbsag: {m:0, f:0, mat:0, m_r:0, f_r:0, mat_r:0, total:0, react:0} }, 
+        dengue: { pos:0, neg:0, total:0 }, 
+        fhsis_maternal: {}, 
+        workload: {} 
+    };
     const FACILITIES = ["SAN ISIDRO", "SAN VICENTE", "KALAYAAN", "STO. NIÑO", "SAN ROQUE", "MAHABANG PARANG", "POB. ITAAS", "POB. IBABA", "BAGUMBAYAN", "SAN PEDRO", "ANGONO RHU I"];
     FACILITIES.forEach(f => report.fhsis_maternal[f] = { syp_s_t:0, syp_s_10:0, syp_s_15:0, syp_s_20:0, syp_p_t:0, syp_p_10:0, syp_p_15:0, syp_p_20:0, hiv_s_t:0, hiv_s_10:0, hiv_s_15:0, hiv_s_20:0, hiv_r_t:0, hiv_r_10:0, hiv_r_15:0, hiv_r_20:0, hbs_s_t:0, hbs_s_10:0, hbs_s_15:0, hbs_s_20:0, hbs_r_t:0, hbs_r_10:0, hbs_r_15:0, hbs_r_20:0 });
 
-    let filterFac = (targetFacility || "").trim().toUpperCase(); if (filterFac === "ADMIN" || filterFac === "ALL" || filterFac === "MAIN") filterFac = "";
+    let filterFac = (targetFacility || "").trim().toUpperCase(); 
+    if (filterFac === "ADMIN" || filterFac === "ALL" || filterFac === "MAIN") filterFac = "";
 
     data.forEach(row => {
-        let rDate = row.date || row.date_received || row.Date || row["Date Received"];
+        let details = typeof row.details === 'string' ? (JSON.parse(row.details || '{}') || {}) : (row.details || {});
+        let rDate = row.date_examined || row.date_released || row.date || row.received_date || row.date_received || row.Date || row["Date Received"] || row["Date Examined"] || details.date_examined || details["Date Examined"];
         if (!isDateInPeriod(rDate, type, val, year)) return;
-        let rowFac = String(row.facility || "").toUpperCase().trim(); if (filterFac !== "" && rowFac !== filterFac) return;
+        
+        let rowFac = String(row.facility || details.facility || details.Facility || "").toUpperCase().trim(); 
+        if (filterFac !== "" && rowFac !== filterFac) return;
 
-        let tName = String(row.test_name || "").toUpperCase(); report.workload[tName] = (report.workload[tName] || 0) + 1;
-        let details = row.details || {};
+        let tName = String(row.test_name || row.test_type || "").toUpperCase(); 
+        report.workload[tName] = (report.workload[tName] || 0) + 1;
 
         if (tName.includes('GENEXPERT') || tName.includes('GXP')) {
-            report.tb.cartridges++; let ptType = String(details["History of Treatment"] || "").toUpperCase().includes("RETREAT") ? "ret" : "new";
-            let res = String(details.ResultCode || "").toUpperCase(); let rem = String(details.Remarks || "").toUpperCase(); let full = res + " " + rem;
-            if (res === "I" || full.includes("INVALID") || full.includes("ERROR")) report.tb.invalid[ptType]++;
-            else if (full.includes("INITIAL")) report.tb.initial[ptType]++;
-            else if (res === "RR" || full.includes("RR")) { report.tb.rr[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++; }
-            else if (res === "TT" || full.includes("TRACE")) { report.tb.tt[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++; }
-            else if (res === "TI" || full.includes("INDETERMINATE")) { report.tb.ti[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++; }
-            else if (res === "T" || full.includes("SENSITIVE")) { report.tb.t[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++; }
-            else if (res === "N" || full.includes("NOT DETECTED")) { report.tb.n[ptType]++; report.tb.exam[ptType]++; }
+            report.tb.cartridges++; 
+            let hist = String(details["History of Treatment"] || details.history_of_treatment || details["Registration Group"] || "").toUpperCase();
+            let ptType = (hist.includes("RETREAT") || hist.includes("RELAPSE") || hist.includes("PREVIOUS")) ? "ret" : "new";
+            let res = String(details.ResultCode || details.result_code || details.Result || details.result || "").toUpperCase().trim(); 
+            let rem = String(details.Remarks || details.remarks || "").toUpperCase().trim(); 
+            let full = (res + " " + rem).trim();
+
+            if (res === "I" || full.includes("INVALID") || full.includes("ERROR") || full.includes("NO RESULT")) {
+                report.tb.invalid[ptType]++;
+            } else if (full.includes("INITIAL")) {
+                report.tb.initial[ptType]++;
+            } else if (res === "RR" || full.includes("RR") || full.includes("RIF RESISTANT") || (full.includes("RESISTANT") && !full.includes("NOT"))) {
+                report.tb.rr[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
+            } else if (res === "TT" || full.includes("TRACE")) {
+                report.tb.tt[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
+            } else if (res === "TI" || full.includes("INDETERMINATE")) {
+                report.tb.ti[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
+            } else if (res === "T" || full.includes("SENSITIVE") || (full.includes("DETECTED") && !full.includes("NOT DETECTED"))) {
+                report.tb.t[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
+            } else if (res === "N" || full.includes("NOT DETECTED") || full.includes("NEGATIVE")) {
+                report.tb.n[ptType]++; report.tb.exam[ptType]++;
+            } else {
+                report.tb.exam[ptType]++;
+            }
         }
-        if (tName.includes('DSSM') || tName.includes('AFB')) report.tb.dssm++;
+
+        if (tName.includes('DSSM') || tName.includes('AFB')) {
+            report.tb.dssm++;
+        }
 
         if (tName.includes('DENGUE')) {
-            report.dengue.total++; let dRes = String(details.Dengue_Result || details.Result || "").toUpperCase();
-            if (dRes.includes("POS")) report.dengue.pos++; else report.dengue.neg++;
+            report.dengue.total++; 
+            let dRes = String(details.Dengue_Result || details.dengue_result || details.Result || details.result || details.NS1 || "").toUpperCase();
+            if (dRes.includes("POS") || dRes.includes("REACTIVE")) report.dengue.pos++; 
+            else report.dengue.neg++;
         }
 
         if (tName.includes('SERO')) {
-            let age = parseInt(details.age || details.Age) || 0; let sex = String(details.sex || details.Sex).toUpperCase().charAt(0);
-            let classification = String(details.Classification || "").toUpperCase(); let isMat = classification.includes("MATERNAL") || classification.includes("PREGNANT"); let isTB = classification.includes("TB") || classification.includes("TUBER"); let kap = String(details["KAP Category"] || "").toUpperCase();
-            let ageKey = ""; if (age >= 10 && age <= 14) ageKey = "10"; else if (age >= 15 && age <= 19) ageKey = "15"; else if (age >= 20 && age <= 49) ageKey = "20";
+            let age = parseInt(details.age || details.Age || row.age_at_test || row.age) || 0; 
+            let rawSex = details.sex || details.Sex || row.sex || "";
+            let sex = String(rawSex).trim().toUpperCase().charAt(0);
+            let classification = String(details.Classification || details.classification || "").toUpperCase(); 
+            let isMat = classification.includes("MATERNAL") || classification.includes("PREGNANT"); 
+            let isTB = classification.includes("TB") || classification.includes("TUBER"); 
+            let kap = String(details["KAP Category"] || details.kap_category || details["KAP"] || "").toUpperCase();
+            let ageKey = ""; 
+            if (age >= 10 && age <= 14) ageKey = "10"; 
+            else if (age >= 15 && age <= 19) ageKey = "15"; 
+            else if (age >= 20 && age <= 49) ageKey = "20";
 
-            let facRow = rowFac;
-            let hiv = String(details.HIV || "").toUpperCase();
-            if (hiv && hiv !== "-") {
-                fillHivGrid(report.hiv.tested, age, sex, isMat, kap, isTB); report.sti.hiv.total++;
-                if (sex === 'M') report.sti.hiv.m++; else { report.sti.hiv.f++; if(isMat) report.sti.hiv.mat++; }
-                if (isMat && report.fhsis_maternal[facRow]) { report.fhsis_maternal[facRow].hiv_s_t++; if (ageKey) report.fhsis_maternal[facRow]["hiv_s_" + ageKey]++; }
+            // Find matching facility for FHSIS
+            let facRow = FACILITIES.find(f => {
+                let fNorm = f.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                let rNorm = rowFac.replace(/[^A-Z0-9]/g, '');
+                return fNorm === rNorm || rNorm.includes(fNorm) || fNorm.includes(rNorm);
+            }) || rowFac;
+
+            let hiv = String(details.HIV || details.hiv || "").toUpperCase().trim();
+            if (hiv && hiv !== "-" && hiv !== "NONE") {
+                fillHivGrid(report.hiv.tested, age, sex, isMat, kap, isTB); 
+                report.sti.hiv.total++;
+                if (sex === 'M') report.sti.hiv.m++; 
+                else { report.sti.hiv.f++; if (isMat) report.sti.hiv.mat++; }
+                
+                if (isMat && report.fhsis_maternal[facRow]) { 
+                    report.fhsis_maternal[facRow].hiv_s_t++; 
+                    if (ageKey) report.fhsis_maternal[facRow]["hiv_s_" + ageKey]++; 
+                }
                 if (hiv.includes("REACTIVE") && !hiv.includes("NON")) {
-                    fillHivGrid(report.hiv.reactive, age, sex, isMat, kap, isTB); report.sti.hiv.react++;
-                    if (sex === 'M') report.sti.hiv.m_r++; else { report.sti.hiv.f_r++; if(isMat) report.sti.hiv.mat_r++; }
-                    if (isMat && report.fhsis_maternal[facRow]) { report.fhsis_maternal[facRow].hiv_r_t++; if (ageKey) report.fhsis_maternal[facRow]["hiv_r_" + ageKey]++; }
+                    fillHivGrid(report.hiv.reactive, age, sex, isMat, kap, isTB); 
+                    report.sti.hiv.react++;
+                    if (sex === 'M') report.sti.hiv.m_r++; 
+                    else { report.sti.hiv.f_r++; if (isMat) report.sti.hiv.mat_r++; }
+                    if (isMat && report.fhsis_maternal[facRow]) { 
+                        report.fhsis_maternal[facRow].hiv_r_t++; 
+                        if (ageKey) report.fhsis_maternal[facRow]["hiv_r_" + ageKey]++; 
+                    }
                 }
             }
             
-            let syph = String(details.Syphilis || details.SYPHILIS || "").toUpperCase();
-            if (syph && syph !== "-") {
-                report.sti.syph.total++; if (sex === 'M') report.sti.syph.m++; else { report.sti.syph.f++; if(isMat) report.sti.syph.mat++; }
-                if (isMat && report.fhsis_maternal[facRow]) { report.fhsis_maternal[facRow].syp_s_t++; if (ageKey) report.fhsis_maternal[facRow]["syp_s_" + ageKey]++; }
+            let syph = String(details.SYPHILIS || details.Syphilis || details.syphilis || "").toUpperCase().trim();
+            if (syph && syph !== "-" && syph !== "NONE") {
+                report.sti.syph.total++; 
+                if (sex === 'M') report.sti.syph.m++; 
+                else { report.sti.syph.f++; if (isMat) report.sti.syph.mat++; }
+                if (isMat && report.fhsis_maternal[facRow]) { 
+                    report.fhsis_maternal[facRow].syp_s_t++; 
+                    if (ageKey) report.fhsis_maternal[facRow]["syp_s_" + ageKey]++; 
+                }
                 if (syph.includes("REACTIVE") && !syph.includes("NON")) {
-                    report.sti.syph.react++; if (sex === 'M') report.sti.syph.m_r++; else { report.sti.syph.f_r++; if(isMat) report.sti.syph.mat_r++; }
-                    if (isMat && report.fhsis_maternal[facRow]) { report.fhsis_maternal[facRow].syp_p_t++; if (ageKey) report.fhsis_maternal[facRow]["syp_p_" + ageKey]++; }
+                    report.sti.syph.react++; 
+                    if (sex === 'M') report.sti.syph.m_r++; 
+                    else { report.sti.syph.f_r++; if (isMat) report.sti.syph.mat_r++; }
+                    if (isMat && report.fhsis_maternal[facRow]) { 
+                        report.fhsis_maternal[facRow].syp_p_t++; 
+                        if (ageKey) report.fhsis_maternal[facRow]["syp_p_" + ageKey]++; 
+                    }
                 }
             }
 
-            let hbs = String(details.HBsAg || details.HBSAG || "").toUpperCase();
-            if (hbs && hbs !== "-") {
-                report.sti.hbsag.total++; if (sex === 'M') report.sti.hbsag.m++; else { report.sti.hbsag.f++; if(isMat) report.sti.hbsag.mat++; }
-                if (isMat && report.fhsis_maternal[facRow]) { report.fhsis_maternal[facRow].hbs_s_t++; if (ageKey) report.fhsis_maternal[facRow]["hbs_s_" + ageKey]++; }
+            let hbs = String(details.HBSAG || details.HBsAg || details.hbsag || "").toUpperCase().trim();
+            if (hbs && hbs !== "-" && hbs !== "NONE") {
+                report.sti.hbsag.total++; 
+                if (sex === 'M') report.sti.hbsag.m++; 
+                else { report.sti.hbsag.f++; if (isMat) report.sti.hbsag.mat++; }
+                if (isMat && report.fhsis_maternal[facRow]) { 
+                    report.fhsis_maternal[facRow].hbs_s_t++; 
+                    if (ageKey) report.fhsis_maternal[facRow]["hbs_s_" + ageKey]++; 
+                }
                 if (hbs.includes("REACTIVE") && !hbs.includes("NON")) {
-                    report.sti.hbsag.react++; if (sex === 'M') report.sti.hbsag.m_r++; else { report.sti.hbsag.f_r++; if(isMat) report.sti.hbsag.mat_r++; }
-                    if (isMat && report.fhsis_maternal[facRow]) { report.fhsis_maternal[facRow].hbs_r_t++; if (ageKey) report.fhsis_maternal[facRow]["hbs_r_" + ageKey]++; }
+                    report.sti.hbsag.react++; 
+                    if (sex === 'M') report.sti.hbsag.m_r++; 
+                    else { report.sti.hbsag.f_r++; if (isMat) report.sti.hbsag.mat_r++; }
+                    if (isMat && report.fhsis_maternal[facRow]) { 
+                        report.fhsis_maternal[facRow].hbs_r_t++; 
+                        if (ageKey) report.fhsis_maternal[facRow]["hbs_r_" + ageKey]++; 
+                    }
                 }
             }
         }
