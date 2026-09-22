@@ -1,68 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Angono MHO LIS</title>
     <!-- PWA Manifest -->
-<link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
 
-<!-- Tema ng kulay sa taas (status bar) -->
-<meta name="theme-color" content="#1e293b">
+    <!-- Tema ng kulay sa taas (status bar) -->
+    <meta name="theme-color" content="#1e293b">
 
-<!-- Para maitago ang UI kapag ginamit sa iPad o Mac -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Angono LIS">
+    <!-- Para maitago ang UI kapag ginamit sa iPad o Mac -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Angono LIS">
 
-<!-- Para sa Android / Windows -->
-<meta name="mobile-web-app-capable" content="yes">
+    <!-- Para sa Android / Windows -->
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
-        .switch-row:last-child { border-bottom: none; }
-        .pass-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
-        .pass-wrapper input { width: 100%; margin-bottom: 0 !important; padding-right: 35px; }
-        .pass-wrapper i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); font-size: 1.1rem; }
+        .switch-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--border-color);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .switch-row:last-child {
+            border-bottom: none;
+        }
+
+        .pass-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .pass-wrapper input {
+            width: 100%;
+            margin-bottom: 0 !important;
+            padding-right: 35px;
+        }
+
+        .pass-wrapper i {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
         /* 🟢 ANIMATION PARA SA REFRESH ICON 🟢 */
         @keyframes spinAnimation {
-            100% { transform: rotate(360deg); }
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .ph-spin {
             animation: spinAnimation 1s linear infinite;
-            display: inline-block; /* Kailangan ito para maka-ikot ang icon */
+            display: inline-block;
+            /* Kailangan ito para maka-ikot ang icon */
         }
-       /* 🟢 FLOATING ACTION BUTTON (HALF-CIRCLE SLIDE LEFT) 🟢 */
-        .fab-wrapper { position: fixed; bottom: 25px; right: 0; display: flex; flex-direction: row; align-items: center; z-index: 99999; }
-        .fab-menu { display: flex; flex-direction: row; align-items: center; gap: 8px; opacity: 0; visibility: hidden; transform: translateX(50px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; padding-right: 15px; }
-        .fab-menu.show { opacity: 1; visibility: visible; transform: translateX(0); pointer-events: auto; }
-        .fab-btn { width: 45px; height: 45px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 1.3rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: all 0.2s ease; background: var(--bg-body); color: var(--text-main); border: 1px solid var(--border-color); }
-        .fab-btn:hover { background: var(--bg-subtle); transform: scale(1.1); color: var(--pri); border-color: var(--pri); }
-        
+
+        /* 🟢 FLOATING ACTION BUTTON (HALF-CIRCLE SLIDE LEFT) 🟢 */
+        .fab-wrapper {
+            position: fixed;
+            bottom: 25px;
+            right: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            z-index: 99999;
+        }
+
+        .fab-menu {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(50px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            padding-right: 15px;
+        }
+
+        .fab-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .fab-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+            background: var(--bg-body);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .fab-btn:hover {
+            background: var(--bg-subtle);
+            transform: scale(1.1);
+            color: var(--pri);
+            border-color: var(--pri);
+        }
+
         /* HALF-CIRCLE MAIN BUTTON */
-        .fab-main { background: var(--pri); color: white; font-size: 1.5rem; width: 40px; height: 60px; border-radius: 50px 0 0 50px; border: none; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: -3px 4px 10px rgba(0,0,0,0.2); transition: all 0.2s ease; z-index: 100000; }
-        .fab-main:hover { width: 45px; }
+        .fab-main {
+            background: var(--pri);
+            color: white;
+            font-size: 1.5rem;
+            width: 40px;
+            height: 60px;
+            border-radius: 50px 0 0 50px;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: -3px 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            z-index: 100000;
+        }
+
+        .fab-main:hover {
+            width: 45px;
+        }
 
         /* MINI PROFILE PILL (Pahalang adaptation) */
-        .fab-profile-pill { display: flex; align-items: center; gap: 8px; background: var(--bg-body); border: 1px solid var(--border-color); padding: 4px 4px 4px 12px; border-radius: 50px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: default; }
-        .fab-profile-text { display: flex; flex-direction: column; text-align: right; }
-        #display-full-name { font-size: 0.75rem; font-weight: bold; color: var(--text-main); white-space: nowrap; line-height: 1.2; }
-        #display-role-facility { font-size: 0.6rem; color: var(--text-muted); white-space: nowrap; }
-        .fab-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--pri); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 0.9rem; }
+        .fab-profile-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-body);
+            border: 1px solid var(--border-color);
+            padding: 4px 4px 4px 12px;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            cursor: default;
+        }
+
+        .fab-profile-text {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+        }
+
+        #display-full-name {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: var(--text-main);
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+
+        #display-role-facility {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .fab-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--pri);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
+
 <body>
 
     <div id="custom-alert" class="modal-backdrop" style="display:none; z-index:9999999;">
         <div class="auth-card" style="width: 320px; padding: 25px; text-align: center; animation: popIn 0.3s ease;">
-            <i id="custom-alert-icon" class="ph ph-info" style="font-size: 3rem; color: var(--pri); margin-bottom: 15px;"></i>
+            <i id="custom-alert-icon" class="ph ph-info"
+                style="font-size: 3rem; color: var(--pri); margin-bottom: 15px;"></i>
             <h3 id="custom-alert-title" style="margin-bottom: 10px; color: var(--text-main);">Notice</h3>
-            <p id="custom-alert-msg" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; white-space: pre-wrap;"></p>
+            <p id="custom-alert-msg"
+                style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; white-space: pre-wrap;">
+            </p>
             <button class="btn btn-primary full-width" onclick="closeCustomAlert()">Okay</button>
         </div>
     </div>
@@ -71,18 +218,20 @@
         <div class="auth-card" style="width: 320px; padding: 25px; text-align: center; animation: popIn 0.3s ease;">
             <i class="ph ph-warning-circle" style="font-size: 3rem; color: var(--warning); margin-bottom: 15px;"></i>
             <h3 style="margin-bottom: 10px; color: var(--text-main);">Are you sure?</h3>
-            <p id="custom-confirm-msg" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;"></p>
+            <p id="custom-confirm-msg"
+                style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;"></p>
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-secondary full-width" onclick="closeCustomConfirm(false)">Cancel</button>
-                <button class="btn btn-primary full-width" onclick="closeCustomConfirm(true)" style="background: var(--danger); border-color: var(--danger);">Yes, Proceed</button>
+                <button class="btn btn-primary full-width" onclick="closeCustomConfirm(true)"
+                    style="background: var(--danger); border-color: var(--danger);">Yes, Proceed</button>
             </div>
         </div>
     </div>
 
-<!-- 🟢 BAGONG FLOATING CIRCLE MENU (HALF-CIRCLE SLIDE LEFT) 🟢 -->
+    <!-- 🟢 BAGONG FLOATING CIRCLE MENU (HALF-CIRCLE SLIDE LEFT) 🟢 -->
     <div class="fab-wrapper">
         <div id="fab-menu" class="fab-menu">
-            
+
             <!-- Profile Pill (Pinaka-kaliwa) -->
             <div class="fab-profile-pill">
                 <div class="fab-profile-text">
@@ -93,15 +242,22 @@
             </div>
 
             <!-- Icon Buttons (Pahalang papuntang kanan) -->
-            <button class="fab-btn" style="border-color:var(--danger);" onclick="logoutUser(); toggleFab()" title="Log Out"><i class="ph ph-sign-out" style="color:var(--danger);"></i></button>
-            <button class="fab-btn" onclick="toggleDarkMode()" title="Dark / Light Mode"><i class="ph ph-moon-stars" id="fab-theme-icon"></i></button>
-            <button class="fab-btn" id="fab-nav-settings" onclick="showPage('settings'); toggleFab()" title="Settings"><i class="ph ph-gear-six"></i></button>
-            <button class="fab-btn" id="fab-nav-reports" onclick="showPage('reports'); toggleFab()" title="Reports"><i class="ph ph-chart-bar"></i></button>
-            <button class="fab-btn" id="fab-nav-registry" onclick="showPage('registry'); toggleFab()" title="Lab Registry"><i class="ph ph-books"></i></button>
-            <button class="fab-btn" id="fab-nav-workspace" onclick="showPage('workspace'); toggleFab()" title="Workspace"><i class="ph ph-desktop"></i></button>
-            <button class="fab-btn" onclick="openQuickSearch(); toggleFab()" title="Search Patient"><i class="ph ph-magnifying-glass"></i></button>
+            <button class="fab-btn" style="border-color:var(--danger);" onclick="logoutUser(); toggleFab()"
+                title="Log Out"><i class="ph ph-sign-out" style="color:var(--danger);"></i></button>
+            <button class="fab-btn" onclick="toggleDarkMode()" title="Dark / Light Mode"><i class="ph ph-moon-stars"
+                    id="fab-theme-icon"></i></button>
+            <button class="fab-btn" id="fab-nav-settings" onclick="showPage('settings'); toggleFab()"
+                title="Settings"><i class="ph ph-gear-six"></i></button>
+            <button class="fab-btn" id="fab-nav-reports" onclick="showPage('reports'); toggleFab()" title="Reports"><i
+                    class="ph ph-chart-bar"></i></button>
+            <button class="fab-btn" id="fab-nav-registry" onclick="showPage('registry'); toggleFab()"
+                title="Lab Registry"><i class="ph ph-books"></i></button>
+            <button class="fab-btn" id="fab-nav-workspace" onclick="showPage('workspace'); toggleFab()"
+                title="Workspace"><i class="ph ph-desktop"></i></button>
+            <button class="fab-btn" onclick="openQuickSearch(); toggleFab()" title="Search Patient"><i
+                    class="ph ph-magnifying-glass"></i></button>
         </div>
-        
+
         <!-- MAIN HALF-CIRCLE BUTTON (Pinaka-kanan, nakadikit sa dulo) -->
         <button class="fab-main" id="fab-main-btn" onclick="toggleFab()">
             <i class="ph ph-caret-left" id="fab-main-icon"></i>
@@ -112,83 +268,150 @@
         <div id="page-workspace" class="page-area" style="display: block; padding: 0;">
             <input type="hidden" id="finalPatientId">
             <div class="workspace-grid" id="workspace-grid-container">
-                
+
                 <div class="workspace-col" id="col-entry">
                     <div class="workspace-header" id="entry-main-header">
                         <h2><i class="ph ph-user-plus"></i> Patient Entry</h2>
-                        <button class="btn-icon" onclick="cancelEditPending()" title="Clear Form"><i class="ph ph-eraser"></i></button>
+                        <button class="btn-icon" onclick="cancelEditPending()" title="Clear Form"><i
+                                class="ph ph-eraser"></i></button>
                     </div>
-                    
+
                     <div class="ap-split">
                         <div class="ap-left" id="entry-left-pane">
-                            <div id="new-entry-header" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;"><h3 style="font-size: 0.9rem; color: var(--text-main);"><i class="ph ph-user-plus" style="color: var(--pri);"></i> New Entry Form</h3></div>
-                            <div id="profile-header" style="margin-bottom: 10px; display: none; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--pri); padding-bottom: 5px;"><h3 style="font-size: 0.9rem; color: var(--pri);"><i class="ph ph-user-circle"></i> Patient Profile</h3><span class="badge badge-negative">Returning Patient</span></div>
+                            <div id="new-entry-header"
+                                style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                <h3 style="font-size: 0.9rem; color: var(--text-main);"><i class="ph ph-user-plus"
+                                        style="color: var(--pri);"></i> New Entry Form</h3>
+                            </div>
+                            <div id="profile-header"
+                                style="margin-bottom: 10px; display: none; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--pri); padding-bottom: 5px;">
+                                <h3 style="font-size: 0.9rem; color: var(--pri);"><i class="ph ph-user-circle"></i>
+                                    Patient Profile</h3><span class="badge badge-negative">Returning Patient</span>
+                            </div>
 
-                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1" style="gap: 12px;">
+                            <form id="regForm" onsubmit="event.preventDefault();" class="form-grid grid-1"
+                                style="gap: 12px;">
                                 <div style="position: relative; z-index: 105;">
                                     <label class="field-label">Full Name (Type to Auto-Search)</label>
                                     <div style="position: relative; margin-top: 4px;">
-                                        <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--pri);"></i>
-                                        <input type="text" id="p_name" class="form-input" placeholder="Surname, First Middle" oninput="generateSmartID(); runDirectSearch(this.value);" style="padding-left: 32px; font-weight: bold;">
-                                        <div id="search-status" style="font-size: 0.65rem; color: var(--warning); position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-weight: bold; display: none;">Searching...</div>
+                                        <i class="ph ph-magnifying-glass"
+                                            style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--pri);"></i>
+                                        <input type="text" id="p_name" class="form-input"
+                                            placeholder="Surname, First Middle"
+                                            oninput="generateSmartID(); runDirectSearch(this.value);"
+                                            style="padding-left: 32px; font-weight: bold;">
+                                        <div id="search-status"
+                                            style="font-size: 0.65rem; color: var(--warning); position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-weight: bold; display: none;">
+                                            Searching...</div>
                                     </div>
                                     <div id="direct-results-box" class="search-results-container"></div>
                                 </div>
                                 <div style="display:flex; gap:8px;">
-                                    <div class="field-group" style="flex:2;"><label class="field-label">Birthday</label><input type="date" id="p_bday" class="form-input" onchange="calculateAge(); generateSmartID();"></div>
-                                    <div class="field-group" style="flex:1;"><label class="field-label">Age</label><input type="number" id="p_age" class="form-input"></div>
+                                    <div class="field-group" style="flex:2;"><label
+                                            class="field-label">Birthday</label><input type="date" id="p_bday"
+                                            class="form-input" onchange="calculateAge(); generateSmartID();"></div>
+                                    <div class="field-group" style="flex:1;"><label
+                                            class="field-label">Age</label><input type="number" id="p_age"
+                                            class="form-input"></div>
                                 </div>
                                 <div style="display:flex; gap:8px;">
-                                    <div class="field-group" style="flex:1;"><label class="field-label">Sex</label><select id="p_sex" class="form-select"><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                                    <div class="field-group" style="flex:2;"><label class="field-label">Contact #</label><input type="text" id="p_contact" class="form-input"></div>
+                                    <div class="field-group" style="flex:1;"><label
+                                            class="field-label">Sex</label><select id="p_sex" class="form-select">
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select></div>
+                                    <div class="field-group" style="flex:2;"><label class="field-label">Contact
+                                            #</label><input type="text" id="p_contact" class="form-input"></div>
                                 </div>
-                                <div class="field-group"><label class="field-label">Address</label><input type="text" id="p_address" class="form-input" placeholder="Brgy. / Address"></div>
-                                <div class="field-group"><label class="field-label">Email Address (For Patient Portal)</label><input type="email" id="p_email" class="form-input" placeholder="patient@email.com" onblur="this.value = this.value.toLowerCase()"></div>
+                                <div class="field-group"><label class="field-label">Address</label><input type="text"
+                                        id="p_address" class="form-input" placeholder="Brgy. / Address"></div>
+                                <div class="field-group"><label class="field-label">Email Address (For Patient
+                                        Portal)</label><input type="email" id="p_email" class="form-input"
+                                        placeholder="patient@email.com" onblur="this.value = this.value.toLowerCase()">
+                                </div>
                                 <div class="field-group">
                                     <label class="field-label">Source Facility</label>
                                     <select id="p_facility" class="form-select">
                                         <option value="" disabled selected>Select Source...</option>
-                                        <option value="San Isidro">San Isidro</option><option value="Kalayaan">Kalayaan</option><option value="San Vicente">San Vicente</option><option value="Sto. Niño">Sto. Niño</option><option value="San Roque">San Roque</option><option value="San Pedro">San Pedro</option><option value="Bagumbayan">Bagumbayan</option><option value="Pob. Itaas">Pob. Itaas</option><option value="Pob. Ibaba">Pob. Ibaba</option><option value="Mahabang Parang">Mahabang Parang</option><option value="San Isidro Hospital">San Isidro Hospital</option><option value="Angono Medics Hospital">Angono Medics Hospital</option><option value="Angono RHU I">Angono RHU I</option><option value="Angono RHU II">Angono RHU II</option>
+                                        <option value="San Isidro">San Isidro</option>
+                                        <option value="Kalayaan">Kalayaan</option>
+                                        <option value="San Vicente">San Vicente</option>
+                                        <option value="Sto. Niño">Sto. Niño</option>
+                                        <option value="San Roque">San Roque</option>
+                                        <option value="San Pedro">San Pedro</option>
+                                        <option value="Bagumbayan">Bagumbayan</option>
+                                        <option value="Pob. Itaas">Pob. Itaas</option>
+                                        <option value="Pob. Ibaba">Pob. Ibaba</option>
+                                        <option value="Mahabang Parang">Mahabang Parang</option>
+                                        <option value="San Isidro Hospital">San Isidro Hospital</option>
+                                        <option value="Angono Medics Hospital">Angono Medics Hospital</option>
+                                        <option value="Angono RHU I">Angono RHU I</option>
+                                        <option value="Angono RHU II">Angono RHU II</option>
                                     </select>
                                 </div>
                             </form>
 
-                            <div id="history-section" style="display:none; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
-                                <h4 style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;"><i class="ph ph-clock-counter-clockwise"></i> Previous Lab Records</h4>
-                                <div id="history-list" style="max-height: 150px; overflow-y: auto; padding-right: 5px;"></div>
+                            <div id="history-section"
+                                style="display:none; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                                <h4
+                                    style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;">
+                                    <i class="ph ph-clock-counter-clockwise"></i> Previous Lab Records</h4>
+                                <div id="history-list" style="max-height: 150px; overflow-y: auto; padding-right: 5px;">
+                                </div>
                             </div>
-                            
+
                             <div class="sticky-footer" id="entry-sticky-footer">
-                                <div id="order-summary" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom: 10px;"></div>
-                                <button class="btn btn-primary full-width" id="save-btn-action" onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save Record</button>
+                                <div id="order-summary"
+                                    style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom: 10px;"></div>
+                                <button class="btn btn-primary full-width" id="save-btn-action"
+                                    onclick="finalSubmit()"><i class="ph ph-paper-plane-right"></i> Save Record</button>
                             </div>
                         </div>
 
                         <div class="ap-right" id="entry-right-pane">
-                            <label class="field-label" id="lbl-select-tests" style="margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px;">Select Tests</label>
+                            <label class="field-label" id="lbl-select-tests"
+                                style="margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px;">Select
+                                Tests</label>
                             <div class="vertical-test-list" id="test-buttons-container">
-                                <div class="test-btn-vert" onclick="openTestDetails('mtb')" id="btn-mtb"><i class="ph ph-virus"></i><span>GeneXpert MTB</span></div>
-                                <div class="test-btn-vert" onclick="openTestDetails('dssm')" id="btn-dssm"><i class="ph ph-microscope"></i><span>DSSM / AFB</span></div>
-                                <div class="test-btn-vert" onclick="toggleSimple('viral')" id="btn-viral"><i class="ph ph-dna"></i><span>Viral Load</span></div>
-                                <div class="test-btn-vert" onclick="openTestDetails('sero')" id="btn-sero"><i class="ph ph-drop"></i><span>Serology</span></div>
-                                <div class="test-btn-vert" onclick="openTestDetails('hema')" id="btn-hema"><i class="ph ph-drop-half"></i><span>Hematology</span></div>
-                                <div class="test-btn-vert" onclick="openTestDetails('chem')" id="btn-chem"><i class="ph ph-flask"></i><span>Blood Chemistry</span></div>
-                                <div class="test-btn-vert" onclick="toggleSimple('uria')" id="btn-uria"><i class="ph ph-toilet-paper"></i><span>Urinalysis</span></div>
-                                <div class="test-btn-vert" onclick="toggleSimple('feca')" id="btn-feca"><i class="ph ph-bug"></i><span>Fecalysis</span></div>
-                                <div class="test-btn-vert" onclick="openTestDetails('dengue')" id="btn-dengue"><i class="ph ph-warning-circle"></i><span>Dengue NS1 / Duo</span></div>
-                                <div class="test-btn-vert" onclick="openTestDetails('gram')" id="btn-gram"><i class="ph ph-selection-background"></i><span>Gram Stain</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('mtb')" id="btn-mtb"><i
+                                        class="ph ph-virus"></i><span>GeneXpert MTB</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('dssm')" id="btn-dssm"><i
+                                        class="ph ph-microscope"></i><span>DSSM / AFB</span></div>
+                                <div class="test-btn-vert" onclick="toggleSimple('viral')" id="btn-viral"><i
+                                        class="ph ph-dna"></i><span>Viral Load</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('sero')" id="btn-sero"><i
+                                        class="ph ph-drop"></i><span>Serology</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('hema')" id="btn-hema"><i
+                                        class="ph ph-drop-half"></i><span>Hematology</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('chem')" id="btn-chem"><i
+                                        class="ph ph-flask"></i><span>Blood Chemistry</span></div>
+                                <div class="test-btn-vert" onclick="toggleSimple('uria')" id="btn-uria"><i
+                                        class="ph ph-toilet-paper"></i><span>Urinalysis</span></div>
+                                <div class="test-btn-vert" onclick="toggleSimple('feca')" id="btn-feca"><i
+                                        class="ph ph-bug"></i><span>Fecalysis</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('dengue')" id="btn-dengue"><i
+                                        class="ph ph-warning-circle"></i><span>Dengue NS1 / Duo</span></div>
+                                <div class="test-btn-vert" onclick="openTestDetails('gram')" id="btn-gram"><i
+                                        class="ph ph-selection-background"></i><span>Gram Stain</span></div>
                             </div>
-                            <div id="test-details-area" style="display:none; background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); margin-bottom:10px; border:1px solid var(--pri);"></div>
+                            <div id="test-details-area"
+                                style="display:none; background:var(--bg-body); padding:12px; border-radius:var(--radius-sm); margin-bottom:10px; border:1px solid var(--pri);">
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="workspace-col" id="col-pending">
                     <div class="workspace-header">
-                        <h2><i class="ph ph-hourglass-medium"></i> Pending <span id="count-pending" style="color:var(--pri); margin-left:5px;">(0)</span></h2>
+                        <h2><i class="ph ph-hourglass-medium"></i> Pending <span id="count-pending"
+                                style="color:var(--pri); margin-left:5px;">(0)</span></h2>
                         <div style="display: flex; gap: 6px;">
-                            <select id="test-filter" onchange="renderLists()" class="form-select" style="width: auto; padding: 4px 8px; min-height: 0; font-size: 0.75rem; font-weight: bold;"><option value="ALL">All Sections</option></select>
-                            <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon" class="ph ph-arrows-clockwise"></i></button>
+                            <select id="test-filter" onchange="renderLists()" class="form-select"
+                                style="width: auto; padding: 4px 8px; min-height: 0; font-size: 0.75rem; font-weight: bold;">
+                                <option value="ALL">All Sections</option>
+                            </select>
+                            <button onclick="loadPendingData()" class="btn-icon" title="Refresh"><i id="refresh-icon"
+                                    class="ph ph-arrows-clockwise"></i></button>
                         </div>
                     </div>
                     <div id="list-pending" class="patient-list"></div>
@@ -196,11 +419,17 @@
 
                 <div class="col-stacked-wrapper" id="col-stacked-wrapper">
                     <div class="workspace-col" id="col-repeat">
-                        <div class="workspace-header"><h2><i class="ph ph-arrows-clockwise" style="color:var(--warning);"></i> For Repeat <span id="count-repeat" style="color:var(--warning); margin-left:5px;">(0)</span></h2></div>
-                        <div id="list-repeat" class="patient-list" style="padding-top: 10px; background: var(--bg-subtle);"></div>
+                        <div class="workspace-header">
+                            <h2><i class="ph ph-arrows-clockwise" style="color:var(--warning);"></i> For Repeat <span
+                                    id="count-repeat" style="color:var(--warning); margin-left:5px;">(0)</span></h2>
+                        </div>
+                        <div id="list-repeat" class="patient-list"
+                            style="padding-top: 10px; background: var(--bg-subtle);"></div>
                     </div>
                     <div class="workspace-col" id="col-completed">
-                        <div class="workspace-header"><h2><i class="ph ph-check-circle"></i> Completed</h2></div>
+                        <div class="workspace-header">
+                            <h2><i class="ph ph-check-circle"></i> Completed</h2>
+                        </div>
                         <div id="list-completed" class="patient-list"></div>
                     </div>
                 </div>
@@ -208,84 +437,136 @@
         </div>
 
         <div id="page-patient" class="page-area" style="padding: 20px; text-align: center;">
-            <div class="report-card" style="margin: 40px auto; width: 850px; max-width: 100%; text-align: left; padding: 30px; box-shadow: var(--shadow-float); border-top: 5px solid var(--pri);">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
+            <div class="report-card"
+                style="margin: 40px auto; width: 850px; max-width: 100%; text-align: left; padding: 30px; box-shadow: var(--shadow-float); border-top: 5px solid var(--pri);">
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
                     <div>
-                        <h2 style="color:var(--pri); margin-bottom: 5px;"><i class="ph ph-files"></i> My Laboratory Profile</h2>
-                        <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">View, save as PDF, or print your official lab results below.</p>
+                        <h2 style="color:var(--pri); margin-bottom: 5px;"><i class="ph ph-files"></i> My Laboratory
+                            Profile</h2>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">View, save as PDF, or print your
+                            official lab results below.</p>
                     </div>
-                    <button class="btn btn-secondary text-xs" onclick="logoutUser()"><i class="ph ph-sign-out"></i> Log Out</button>
+                    <button class="btn btn-secondary text-xs" onclick="logoutUser()"><i class="ph ph-sign-out"></i> Log
+                        Out</button>
                 </div>
 
-                <div style="background: var(--bg-subtle); padding: 20px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 20px; margin-bottom: 25px;">
-                    <div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--pri); box-shadow: var(--shadow-card);"><i class="ph ph-user"></i></div>
+                <div
+                    style="background: var(--bg-subtle); padding: 20px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 20px; margin-bottom: 25px;">
+                    <div
+                        style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--pri); box-shadow: var(--shadow-card);">
+                        <i class="ph ph-user"></i></div>
                     <div>
-                        <h3 id="my-portal-name" style="color:var(--text-main); font-size: 1.5rem; margin-bottom: 5px;"></h3>
-                        <div id="my-portal-meta" style="font-size:0.85rem; color:var(--text-muted); display:flex; gap: 15px; flex-wrap: wrap;"></div>
+                        <h3 id="my-portal-name" style="color:var(--text-main); font-size: 1.5rem; margin-bottom: 5px;">
+                        </h3>
+                        <div id="my-portal-meta"
+                            style="font-size:0.85rem; color:var(--text-muted); display:flex; gap: 15px; flex-wrap: wrap;">
+                        </div>
                     </div>
                 </div>
 
-                <h4 style="color: var(--text-main); margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">My Laboratory Requests</h4>
+                <h4
+                    style="color: var(--text-main); margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">
+                    My Laboratory Requests</h4>
                 <div id="my-portal-history" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
         </div>
 
         <div id="page-registry" class="page-area">
             <!-- 🟢 UPDATED: Inalis ang report-card padding para masagad ang width/height 🟢 -->
-            <div style="height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 12px 16px;">
-                
+            <div
+                style="height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 12px 16px;">
+
                 <!-- ROW 1: TITLE & TABS -->
-                <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 8px; margin-bottom: 8px; overflow-x: auto; flex-shrink: 0;">
-                    <h2 id="regTitle" style="font-size: 1.1rem; margin: 0; white-space: nowrap;"><i class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
+                <div
+                    style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 8px; margin-bottom: 8px; overflow-x: auto; flex-shrink: 0;">
+                    <h2 id="regTitle" style="font-size: 1.1rem; margin: 0; white-space: nowrap;"><i class="ph ph-books"
+                            style="color: var(--pri);"></i> Laboratory Registry</h2>
                     <div id="registry-tabs" class="chip-group" style="flex-wrap: nowrap; gap: 4px;">
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GXP')" data-tab="GXP">GXP MTB</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GXP')" data-tab="GXP">GXP
+                            MTB</button>
                         <button class="chip reg-tab-btn" onclick="openRegistryTab('DSSM')" data-tab="DSSM">DSSM</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GXVL')" data-tab="GXVL">Viral Load</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('SERO')" data-tab="SERO">Serology</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('HEMA')" data-tab="HEMA">Hematology</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('CHEM')" data-tab="CHEM">Chemistry</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('UA')" data-tab="UA">Urinalysis</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('FA')" data-tab="FA">Fecalysis</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('DENGUE')" data-tab="DENGUE">Dengue NS1</button>
-                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GRAM')" data-tab="GRAM">Gram Stain</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GXVL')" data-tab="GXVL">Viral
+                            Load</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('SERO')"
+                            data-tab="SERO">Serology</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('HEMA')"
+                            data-tab="HEMA">Hematology</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('CHEM')"
+                            data-tab="CHEM">Chemistry</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('UA')"
+                            data-tab="UA">Urinalysis</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('FA')"
+                            data-tab="FA">Fecalysis</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('DENGUE')" data-tab="DENGUE">Dengue
+                            NS1</button>
+                        <button class="chip reg-tab-btn" onclick="openRegistryTab('GRAM')" data-tab="GRAM">Gram
+                            Stain</button>
                     </div>
                 </div>
 
                 <!-- ROW 2: COMPACT CONTROL BAR -->
-                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px; flex-shrink: 0; gap: 10px;">
-                    
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px; flex-shrink: 0; gap: 10px;">
+
                     <!-- LEFT: Filters -->
                     <div style="display: flex; gap: 6px; align-items: center; flex: 1;">
-                        <select id="colFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;"><option value="ALL">All Columns</option></select>
-                        <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 140px; padding: 2px 8px; height: 28px; font-size: 0.75rem;" onkeyup="filterRegistryTable()">
-                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;">
+                        <select id="colFilter" class="form-select" onchange="filterRegistryTable()"
+                            style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;">
+                            <option value="ALL">All Columns</option>
+                        </select>
+                        <input type="text" id="regSearch" class="form-input" placeholder="Search..."
+                            style="width: 140px; padding: 2px 8px; height: 28px; font-size: 0.75rem;"
+                            onkeyup="filterRegistryTable()">
+                        <select id="monthFilter" class="form-select" onchange="filterRegistryTable()"
+                            style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;">
                             <option value="">All Months</option>
-                            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
-                            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
-                            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
-                            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+                            <option value="1">Jan</option>
+                            <option value="2">Feb</option>
+                            <option value="3">Mar</option>
+                            <option value="4">Apr</option>
+                            <option value="5">May</option>
+                            <option value="6">Jun</option>
+                            <option value="7">Jul</option>
+                            <option value="8">Aug</option>
+                            <option value="9">Sep</option>
+                            <option value="10">Oct</option>
+                            <option value="11">Nov</option>
+                            <option value="12">Dec</option>
                         </select>
                     </div>
 
                     <!-- CENTER: Pagination (Js Injected) -->
-                    <div id="top-pagination-controls" style="display: flex; gap: 8px; align-items: center; justify-content: center; flex: 1; font-size: 0.75rem; color: var(--text-main);">
+                    <div id="top-pagination-controls"
+                        style="display: flex; gap: 8px; align-items: center; justify-content: center; flex: 1; font-size: 0.75rem; color: var(--text-main);">
                         <!-- Dito ipapasok ng app.js ang < [ 1 ] of 10 > -->
                     </div>
 
                     <!-- RIGHT: Actions -->
                     <div style="display: flex; gap: 15px; align-items: center; justify-content: flex-end; flex: 1;">
-                        <div style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">Selected: <span id="reg-selected-count" style="color: var(--pri);">0</span></div>
+                        <div style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">Selected: <span
+                                id="reg-selected-count" style="color: var(--pri);">0</span></div>
                         <div style="display: flex; gap: 6px;">
-                            <button onclick="printRegistryLogbook()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;" title="Print Logbook"><i class="ph ph-notebook" style="color:var(--sec);"></i></button>
-                            <button id="btn-batch-print" onclick="batchPrint()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;" title="Print Results"><i class="ph ph-printer" style="color:var(--pri);"></i></button>
-                            <button id="btn-batch-download" onclick="batchDownload()" class="btn-icon" style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;" title="Download PDF"><i class="ph ph-download-simple" style="color:var(--success);"></i></button>
+                            <button onclick="printRegistryLogbook()" class="btn-icon"
+                                style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;"
+                                title="Print Logbook"><i class="ph ph-notebook" style="color:var(--sec);"></i></button>
+                            <button id="btn-batch-print" onclick="batchPrint()" class="btn-icon"
+                                style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;"
+                                title="Print Results"><i class="ph ph-printer" style="color:var(--pri);"></i></button>
+                            <button id="btn-batch-download" onclick="batchDownload()" class="btn-icon"
+                                style="background:var(--bg-surface); border:1px solid var(--border-color); width:28px; height:28px;"
+                                title="Download PDF"><i class="ph ph-download-simple"
+                                    style="color:var(--success);"></i></button>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 🟢 UPDATED: TABLE CONTENT (Sagad pababa) 🟢 -->
-                <div class="table-responsive" style="flex: 1; overflow-y: auto; overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface);" id="registry-table-content">
-                    <div style="padding:40px; text-align:center; color:var(--text-muted); font-style:italic;">Please select a registry category above.</div>
+                <div class="table-responsive"
+                    style="flex: 1; overflow-y: auto; overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface);"
+                    id="registry-table-content">
+                    <div style="padding:40px; text-align:center; color:var(--text-muted); font-style:italic;">Please
+                        select a registry category above.</div>
                 </div>
 
             </div>
@@ -293,38 +574,73 @@
 
         <div id="page-reports" class="page-area">
             <div class="report-card" style="padding: 0; display:flex; flex-direction:column; height: 100%;">
-                <div class="rep-header" style="background: linear-gradient(to right, var(--pri-light), var(--bg-surface)); padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                    <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000" class="logo-side" style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
+                <div class="rep-header"
+                    style="background: linear-gradient(to right, var(--pri-light), var(--bg-surface)); padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                    <img src="https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000"
+                        class="logo-side"
+                        style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
                     <div class="rep-header-text" style="text-align: center; flex-grow: 1;">
-                        <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000" style="width: 50px; height: 50px; background: white; border-radius: 50%; padding: 4px; margin-bottom: 5px;">
-                        <h3 style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Republic of the Philippines<br>Province of Rizal<br>Municipality of Angono</h3>
+                        <img src="https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000"
+                            style="width: 50px; height: 50px; background: white; border-radius: 50%; padding: 4px; margin-bottom: 5px;">
+                        <h3
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">
+                            Republic of the Philippines<br>Province of Rizal<br>Municipality of Angono</h3>
                         <h1 style="font-size: 1.4rem; color: var(--pri); margin: 4px 0;">MUNICIPAL HEALTH OFFICE</h1>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">P. Tolentino St. Brgy. San
+                            Isidro, Angono, Rizal</p>
                     </div>
-                    <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" class="logo-side" style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
+                    <img src="https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000"
+                        class="logo-side"
+                        style="width: 70px; height: 70px; background: white; border-radius: 50%; padding: 4px; object-fit: contain;">
                 </div>
 
-                                 <div class="controls-area" style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
+                <div class="controls-area"
+                    style="padding: 16px 24px; background: var(--bg-body); border-bottom: 1px solid var(--border-color);">
                     <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-                        <div style="font-weight:700; color:var(--text-main);"><i class="ph ph-sliders"></i> SETTINGS:</div>
+                        <div style="font-weight:700; color:var(--text-main);"><i class="ph ph-sliders"></i> SETTINGS:
+                        </div>
                         <div style="display: flex; gap: 12px; align-items: center;">
-                            <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input type="radio" name="rep_type" value="monthly" checked onclick="togglePeriod()"> Monthly</label>
-                            <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input type="radio" name="rep_type" value="quarterly" onclick="togglePeriod()"> Quarterly</label>
-                            <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input type="radio" name="rep_type" value="annual" onclick="togglePeriod()"> Annually</label>
+                            <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input
+                                    type="radio" name="rep_type" value="monthly" checked onclick="togglePeriod()">
+                                Monthly</label>
+                            <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input
+                                    type="radio" name="rep_type" value="quarterly" onclick="togglePeriod()">
+                                Quarterly</label>
+                            <label style="cursor: pointer; display: flex; gap: 4px; align-items: center;"><input
+                                    type="radio" name="rep_type" value="annual" onclick="togglePeriod()">
+                                Annually</label>
                         </div>
                         <select id="rep_month" class="form-select" style="width: auto;">
-                            <option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
                         </select>
                         <select id="rep_quarter" class="form-select" style="display:none; width: auto;">
-                            <option value="1">1st Quarter</option><option value="2">2nd Quarter</option><option value="3">3rd Quarter</option><option value="4">4th Quarter</option>
+                            <option value="1">1st Quarter</option>
+                            <option value="2">2nd Quarter</option>
+                            <option value="3">3rd Quarter</option>
+                            <option value="4">4th Quarter</option>
                         </select>
-                          <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
-                        <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i class="ph ph-lightning"></i> GENERATE</button>
-                        <button onclick="printReport()" class="btn btn-secondary" style="margin-left: auto;"><i class="ph ph-printer"></i> PRINT</button>
-                        <button onclick="downloadReport()" class="btn btn-secondary" style="color:var(--pri);"><i class="ph ph-download-simple"></i> DOWNLOAD</button>
+                        <input type="number" id="rep_year" class="form-input" value="2026" style="width: 80px;">
+                        <button class="btn btn-primary" id="btn-generate-rep" onclick="generateReport()"><i
+                                class="ph ph-lightning"></i> GENERATE</button>
+                        <button onclick="printReport()" class="btn btn-secondary" style="margin-left: auto;"><i
+                                class="ph ph-printer"></i> PRINT</button>
+                        <button onclick="downloadReport()" class="btn btn-secondary" style="color:var(--pri);"><i
+                                class="ph ph-download-simple"></i> DOWNLOAD</button>
                     </div>
                     <div class="chip-group" style="margin-top: 16px;">
-                        <button class="chip active" onclick="switchTab('fhsis')" id="tab-btn-fhsis">FHSIS REPORT</button>
+                        <button class="chip active" onclick="switchTab('fhsis')" id="tab-btn-fhsis">FHSIS
+                            REPORT</button>
                         <button class="chip" onclick="switchTab('hiv')" id="tab-btn-hiv">HIV CENSUS</button>
                         <button class="chip" onclick="switchTab('sti')" id="tab-btn-sti">STI SUMMARY</button>
                         <button class="chip" onclick="switchTab('tb')" id="tab-btn-tb">TB / NTP</button>
@@ -333,110 +649,585 @@
                     </div>
                 </div>
 
-                <div class="content-area table-responsive" style="padding: 24px; flex-grow: 1; overflow: auto; width: 100%;">
-                   
+                <div class="content-area table-responsive"
+                    style="padding: 24px; flex-grow: 1; overflow: auto; width: 100%;">
+
 
 
                     <div id="tab-fhsis" class="tab-view" style="display: block;">
-                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">FHSIS REPORT - MATERNAL SCREENING <span class="rep-period"></span></h3>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">
+                            FHSIS REPORT - MATERNAL SCREENING <span class="rep-period"></span></h3>
                         <table class="data-table" style="width: 100%; font-size: 0.75rem; min-width: 900px;">
                             <thead>
                                 <tr>
                                     <th style="text-align:left;">INDICATORS (Pregnant Only)</th>
-                                    <th>SAN ISIDRO</th><th>SAN VICENTE</th><th>KALAYAAN</th><th>STO. NIÑO</th><th>SAN ROQUE</th><th>MAH. PARANG</th><th>POB. ITAAS</th><th>POB. IBABA</th><th>BAGUMBAYAN</th><th>SAN PEDRO</th><th>RHU I</th>
+                                    <th>SAN ISIDRO</th>
+                                    <th>SAN VICENTE</th>
+                                    <th>KALAYAAN</th>
+                                    <th>STO. NIÑO</th>
+                                    <th>SAN ROQUE</th>
+                                    <th>MAH. PARANG</th>
+                                    <th>POB. ITAAS</th>
+                                    <th>POB. IBABA</th>
+                                    <th>BAGUMBAYAN</th>
+                                    <th>SAN PEDRO</th>
+                                    <th>RHU I</th>
                                     <th style="background: var(--bg-body); color: var(--text-main);">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">1. SYPHILIS SCREENING</td></tr>
-                                <tr class="font-bold"><td style="text-align:left;">1. No. of pregnant women screened for syphilis - Total</td>
-                                    <td id="syp_s_t_SI" class="text-center">0</td><td id="syp_s_t_SV" class="text-center">0</td><td id="syp_s_t_KA" class="text-center">0</td><td id="syp_s_t_SN" class="text-center">0</td><td id="syp_s_t_SR" class="text-center">0</td><td id="syp_s_t_MP" class="text-center">0</td><td id="syp_s_t_PI" class="text-center">0</td><td id="syp_s_t_PB" class="text-center">0</td><td id="syp_s_t_BA" class="text-center">0</td><td id="syp_s_t_SP" class="text-center">0</td><td id="syp_s_t_R1" class="text-center">0</td><td id="syp_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
+                                <tr>
+                                    <td colspan="13"
+                                        style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">1.
+                                        SYPHILIS SCREENING</td>
                                 </tr>
-                                <tr><td style="text-align:left; padding-left:24px;">1a. 10-14 years old</td><td id="syp_s_10_SI" class="text-center">0</td><td id="syp_s_10_SV" class="text-center">0</td><td id="syp_s_10_KA" class="text-center">0</td><td id="syp_s_10_SN" class="text-center">0</td><td id="syp_s_10_SR" class="text-center">0</td><td id="syp_s_10_MP" class="text-center">0</td><td id="syp_s_10_PI" class="text-center">0</td><td id="syp_s_10_PB" class="text-center">0</td><td id="syp_s_10_BA" class="text-center">0</td><td id="syp_s_10_SP" class="text-center">0</td><td id="syp_s_10_R1" class="text-center">0</td><td id="syp_s_10_TOT" class="text-center font-bold">0</td></tr>
-                                <tr><td style="text-align:left; padding-left:24px;">1b. 15-19 years old</td><td id="syp_s_15_SI" class="text-center">0</td><td id="syp_s_15_SV" class="text-center">0</td><td id="syp_s_15_KA" class="text-center">0</td><td id="syp_s_15_SN" class="text-center">0</td><td id="syp_s_15_SR" class="text-center">0</td><td id="syp_s_15_MP" class="text-center">0</td><td id="syp_s_15_PI" class="text-center">0</td><td id="syp_s_15_PB" class="text-center">0</td><td id="syp_s_15_BA" class="text-center">0</td><td id="syp_s_15_SP" class="text-center">0</td><td id="syp_s_15_R1" class="text-center">0</td><td id="syp_s_15_TOT" class="text-center font-bold">0</td></tr>
-                                <tr><td style="text-align:left; padding-left:24px;">1c. 20-49 years old</td><td id="syp_s_20_SI" class="text-center">0</td><td id="syp_s_20_SV" class="text-center">0</td><td id="syp_s_20_KA" class="text-center">0</td><td id="syp_s_20_SN" class="text-center">0</td><td id="syp_s_20_SR" class="text-center">0</td><td id="syp_s_20_MP" class="text-center">0</td><td id="syp_s_20_PI" class="text-center">0</td><td id="syp_s_20_PB" class="text-center">0</td><td id="syp_s_20_BA" class="text-center">0</td><td id="syp_s_20_SP" class="text-center">0</td><td id="syp_s_20_R1" class="text-center">0</td><td id="syp_s_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr class="font-bold">
+                                    <td style="text-align:left;">1. No. of pregnant women screened for syphilis - Total
+                                    </td>
+                                    <td id="syp_s_t_SI" class="text-center">0</td>
+                                    <td id="syp_s_t_SV" class="text-center">0</td>
+                                    <td id="syp_s_t_KA" class="text-center">0</td>
+                                    <td id="syp_s_t_SN" class="text-center">0</td>
+                                    <td id="syp_s_t_SR" class="text-center">0</td>
+                                    <td id="syp_s_t_MP" class="text-center">0</td>
+                                    <td id="syp_s_t_PI" class="text-center">0</td>
+                                    <td id="syp_s_t_PB" class="text-center">0</td>
+                                    <td id="syp_s_t_BA" class="text-center">0</td>
+                                    <td id="syp_s_t_SP" class="text-center">0</td>
+                                    <td id="syp_s_t_R1" class="text-center">0</td>
+                                    <td id="syp_s_t_TOT" class="text-center font-bold"
+                                        style="background:var(--bg-body);">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">1a. 10-14 years old</td>
+                                    <td id="syp_s_10_SI" class="text-center">0</td>
+                                    <td id="syp_s_10_SV" class="text-center">0</td>
+                                    <td id="syp_s_10_KA" class="text-center">0</td>
+                                    <td id="syp_s_10_SN" class="text-center">0</td>
+                                    <td id="syp_s_10_SR" class="text-center">0</td>
+                                    <td id="syp_s_10_MP" class="text-center">0</td>
+                                    <td id="syp_s_10_PI" class="text-center">0</td>
+                                    <td id="syp_s_10_PB" class="text-center">0</td>
+                                    <td id="syp_s_10_BA" class="text-center">0</td>
+                                    <td id="syp_s_10_SP" class="text-center">0</td>
+                                    <td id="syp_s_10_R1" class="text-center">0</td>
+                                    <td id="syp_s_10_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">1b. 15-19 years old</td>
+                                    <td id="syp_s_15_SI" class="text-center">0</td>
+                                    <td id="syp_s_15_SV" class="text-center">0</td>
+                                    <td id="syp_s_15_KA" class="text-center">0</td>
+                                    <td id="syp_s_15_SN" class="text-center">0</td>
+                                    <td id="syp_s_15_SR" class="text-center">0</td>
+                                    <td id="syp_s_15_MP" class="text-center">0</td>
+                                    <td id="syp_s_15_PI" class="text-center">0</td>
+                                    <td id="syp_s_15_PB" class="text-center">0</td>
+                                    <td id="syp_s_15_BA" class="text-center">0</td>
+                                    <td id="syp_s_15_SP" class="text-center">0</td>
+                                    <td id="syp_s_15_R1" class="text-center">0</td>
+                                    <td id="syp_s_15_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">1c. 20-49 years old</td>
+                                    <td id="syp_s_20_SI" class="text-center">0</td>
+                                    <td id="syp_s_20_SV" class="text-center">0</td>
+                                    <td id="syp_s_20_KA" class="text-center">0</td>
+                                    <td id="syp_s_20_SN" class="text-center">0</td>
+                                    <td id="syp_s_20_SR" class="text-center">0</td>
+                                    <td id="syp_s_20_MP" class="text-center">0</td>
+                                    <td id="syp_s_20_PI" class="text-center">0</td>
+                                    <td id="syp_s_20_PB" class="text-center">0</td>
+                                    <td id="syp_s_20_BA" class="text-center">0</td>
+                                    <td id="syp_s_20_SP" class="text-center">0</td>
+                                    <td id="syp_s_20_R1" class="text-center">0</td>
+                                    <td id="syp_s_20_TOT" class="text-center font-bold">0</td>
+                                </tr>
 
-                                <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">2. No. of pregnant women tested positive for syphilis - Total</td>
-                                    <td id="syp_p_t_SI" class="text-center">0</td><td id="syp_p_t_SV" class="text-center">0</td><td id="syp_p_t_KA" class="text-center">0</td><td id="syp_p_t_SN" class="text-center">0</td><td id="syp_p_t_SR" class="text-center">0</td><td id="syp_p_t_MP" class="text-center">0</td><td id="syp_p_t_PI" class="text-center">0</td><td id="syp_p_t_PB" class="text-center">0</td><td id="syp_p_t_BA" class="text-center">0</td><td id="syp_p_t_SP" class="text-center">0</td><td id="syp_p_t_R1" class="text-center">0</td><td id="syp_p_t_TOT" class="text-center font-bold">0</td>
+                                <tr class="font-bold" style="color:var(--danger);">
+                                    <td style="text-align:left;">2. No. of pregnant women tested positive for syphilis -
+                                        Total</td>
+                                    <td id="syp_p_t_SI" class="text-center">0</td>
+                                    <td id="syp_p_t_SV" class="text-center">0</td>
+                                    <td id="syp_p_t_KA" class="text-center">0</td>
+                                    <td id="syp_p_t_SN" class="text-center">0</td>
+                                    <td id="syp_p_t_SR" class="text-center">0</td>
+                                    <td id="syp_p_t_MP" class="text-center">0</td>
+                                    <td id="syp_p_t_PI" class="text-center">0</td>
+                                    <td id="syp_p_t_PB" class="text-center">0</td>
+                                    <td id="syp_p_t_BA" class="text-center">0</td>
+                                    <td id="syp_p_t_SP" class="text-center">0</td>
+                                    <td id="syp_p_t_R1" class="text-center">0</td>
+                                    <td id="syp_p_t_TOT" class="text-center font-bold">0</td>
                                 </tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2a. 10-14 years old</td><td id="syp_p_10_SI" class="text-center">0</td><td id="syp_p_10_SV" class="text-center">0</td><td id="syp_p_10_KA" class="text-center">0</td><td id="syp_p_10_SN" class="text-center">0</td><td id="syp_p_10_SR" class="text-center">0</td><td id="syp_p_10_MP" class="text-center">0</td><td id="syp_p_10_PI" class="text-center">0</td><td id="syp_p_10_PB" class="text-center">0</td><td id="syp_p_10_BA" class="text-center">0</td><td id="syp_p_10_SP" class="text-center">0</td><td id="syp_p_10_R1" class="text-center">0</td><td id="syp_p_10_TOT" class="text-center font-bold">0</td></tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2b. 15-19 years old</td><td id="syp_p_15_SI" class="text-center">0</td><td id="syp_p_15_SV" class="text-center">0</td><td id="syp_p_15_KA" class="text-center">0</td><td id="syp_p_15_SN" class="text-center">0</td><td id="syp_p_15_SR" class="text-center">0</td><td id="syp_p_15_MP" class="text-center">0</td><td id="syp_p_15_PI" class="text-center">0</td><td id="syp_p_15_PB" class="text-center">0</td><td id="syp_p_15_BA" class="text-center">0</td><td id="syp_p_15_SP" class="text-center">0</td><td id="syp_p_15_R1" class="text-center">0</td><td id="syp_p_15_TOT" class="text-center font-bold">0</td></tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">2c. 20-49 years old</td><td id="syp_p_20_SI" class="text-center">0</td><td id="syp_p_20_SV" class="text-center">0</td><td id="syp_p_20_KA" class="text-center">0</td><td id="syp_p_20_SN" class="text-center">0</td><td id="syp_p_20_SR" class="text-center">0</td><td id="syp_p_20_MP" class="text-center">0</td><td id="syp_p_20_PI" class="text-center">0</td><td id="syp_p_20_PB" class="text-center">0</td><td id="syp_p_20_BA" class="text-center">0</td><td id="syp_p_20_SP" class="text-center">0</td><td id="syp_p_20_R1" class="text-center">0</td><td id="syp_p_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">2a. 10-14 years old</td>
+                                    <td id="syp_p_10_SI" class="text-center">0</td>
+                                    <td id="syp_p_10_SV" class="text-center">0</td>
+                                    <td id="syp_p_10_KA" class="text-center">0</td>
+                                    <td id="syp_p_10_SN" class="text-center">0</td>
+                                    <td id="syp_p_10_SR" class="text-center">0</td>
+                                    <td id="syp_p_10_MP" class="text-center">0</td>
+                                    <td id="syp_p_10_PI" class="text-center">0</td>
+                                    <td id="syp_p_10_PB" class="text-center">0</td>
+                                    <td id="syp_p_10_BA" class="text-center">0</td>
+                                    <td id="syp_p_10_SP" class="text-center">0</td>
+                                    <td id="syp_p_10_R1" class="text-center">0</td>
+                                    <td id="syp_p_10_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">2b. 15-19 years old</td>
+                                    <td id="syp_p_15_SI" class="text-center">0</td>
+                                    <td id="syp_p_15_SV" class="text-center">0</td>
+                                    <td id="syp_p_15_KA" class="text-center">0</td>
+                                    <td id="syp_p_15_SN" class="text-center">0</td>
+                                    <td id="syp_p_15_SR" class="text-center">0</td>
+                                    <td id="syp_p_15_MP" class="text-center">0</td>
+                                    <td id="syp_p_15_PI" class="text-center">0</td>
+                                    <td id="syp_p_15_PB" class="text-center">0</td>
+                                    <td id="syp_p_15_BA" class="text-center">0</td>
+                                    <td id="syp_p_15_SP" class="text-center">0</td>
+                                    <td id="syp_p_15_R1" class="text-center">0</td>
+                                    <td id="syp_p_15_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">2c. 20-49 years old</td>
+                                    <td id="syp_p_20_SI" class="text-center">0</td>
+                                    <td id="syp_p_20_SV" class="text-center">0</td>
+                                    <td id="syp_p_20_KA" class="text-center">0</td>
+                                    <td id="syp_p_20_SN" class="text-center">0</td>
+                                    <td id="syp_p_20_SR" class="text-center">0</td>
+                                    <td id="syp_p_20_MP" class="text-center">0</td>
+                                    <td id="syp_p_20_PI" class="text-center">0</td>
+                                    <td id="syp_p_20_PB" class="text-center">0</td>
+                                    <td id="syp_p_20_BA" class="text-center">0</td>
+                                    <td id="syp_p_20_SP" class="text-center">0</td>
+                                    <td id="syp_p_20_R1" class="text-center">0</td>
+                                    <td id="syp_p_20_TOT" class="text-center font-bold">0</td>
+                                </tr>
 
-                                <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">2. HIV SCREENING</td></tr>
-                                <tr class="font-bold"><td style="text-align:left;">3. No. of pregnant women screened for HIV - Total</td>
-                                    <td id="hiv_s_t_SI" class="text-center">0</td><td id="hiv_s_t_SV" class="text-center">0</td><td id="hiv_s_t_KA" class="text-center">0</td><td id="hiv_s_t_SN" class="text-center">0</td><td id="hiv_s_t_SR" class="text-center">0</td><td id="hiv_s_t_MP" class="text-center">0</td><td id="hiv_s_t_PI" class="text-center">0</td><td id="hiv_s_t_PB" class="text-center">0</td><td id="hiv_s_t_BA" class="text-center">0</td><td id="hiv_s_t_SP" class="text-center">0</td><td id="hiv_s_t_R1" class="text-center">0</td><td id="hiv_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
+                                <tr>
+                                    <td colspan="13"
+                                        style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">2.
+                                        HIV SCREENING</td>
                                 </tr>
-                                <tr><td style="text-align:left; padding-left:24px;">3a. 10-14 years old</td><td id="hiv_s_10_SI" class="text-center">0</td><td id="hiv_s_10_SV" class="text-center">0</td><td id="hiv_s_10_KA" class="text-center">0</td><td id="hiv_s_10_SN" class="text-center">0</td><td id="hiv_s_10_SR" class="text-center">0</td><td id="hiv_s_10_MP" class="text-center">0</td><td id="hiv_s_10_PI" class="text-center">0</td><td id="hiv_s_10_PB" class="text-center">0</td><td id="hiv_s_10_BA" class="text-center">0</td><td id="hiv_s_10_SP" class="text-center">0</td><td id="hiv_s_10_R1" class="text-center">0</td><td id="hiv_s_10_TOT" class="text-center font-bold">0</td></tr>
-                                <tr><td style="text-align:left; padding-left:24px;">3b. 15-19 years old</td><td id="hiv_s_15_SI" class="text-center">0</td><td id="hiv_s_15_SV" class="text-center">0</td><td id="hiv_s_15_KA" class="text-center">0</td><td id="hiv_s_15_SN" class="text-center">0</td><td id="hiv_s_15_SR" class="text-center">0</td><td id="hiv_s_15_MP" class="text-center">0</td><td id="hiv_s_15_PI" class="text-center">0</td><td id="hiv_s_15_PB" class="text-center">0</td><td id="hiv_s_15_BA" class="text-center">0</td><td id="hiv_s_15_SP" class="text-center">0</td><td id="hiv_s_15_R1" class="text-center">0</td><td id="hiv_s_15_TOT" class="text-center font-bold">0</td></tr>
-                                <tr><td style="text-align:left; padding-left:24px;">3c. 20-49 years old</td><td id="hiv_s_20_SI" class="text-center">0</td><td id="hiv_s_20_SV" class="text-center">0</td><td id="hiv_s_20_KA" class="text-center">0</td><td id="hiv_s_20_SN" class="text-center">0</td><td id="hiv_s_20_SR" class="text-center">0</td><td id="hiv_s_20_MP" class="text-center">0</td><td id="hiv_s_20_PI" class="text-center">0</td><td id="hiv_s_20_PB" class="text-center">0</td><td id="hiv_s_20_BA" class="text-center">0</td><td id="hiv_s_20_SP" class="text-center">0</td><td id="hiv_s_20_R1" class="text-center">0</td><td id="hiv_s_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr class="font-bold">
+                                    <td style="text-align:left;">3. No. of pregnant women screened for HIV - Total</td>
+                                    <td id="hiv_s_t_SI" class="text-center">0</td>
+                                    <td id="hiv_s_t_SV" class="text-center">0</td>
+                                    <td id="hiv_s_t_KA" class="text-center">0</td>
+                                    <td id="hiv_s_t_SN" class="text-center">0</td>
+                                    <td id="hiv_s_t_SR" class="text-center">0</td>
+                                    <td id="hiv_s_t_MP" class="text-center">0</td>
+                                    <td id="hiv_s_t_PI" class="text-center">0</td>
+                                    <td id="hiv_s_t_PB" class="text-center">0</td>
+                                    <td id="hiv_s_t_BA" class="text-center">0</td>
+                                    <td id="hiv_s_t_SP" class="text-center">0</td>
+                                    <td id="hiv_s_t_R1" class="text-center">0</td>
+                                    <td id="hiv_s_t_TOT" class="text-center font-bold"
+                                        style="background:var(--bg-body);">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">3a. 10-14 years old</td>
+                                    <td id="hiv_s_10_SI" class="text-center">0</td>
+                                    <td id="hiv_s_10_SV" class="text-center">0</td>
+                                    <td id="hiv_s_10_KA" class="text-center">0</td>
+                                    <td id="hiv_s_10_SN" class="text-center">0</td>
+                                    <td id="hiv_s_10_SR" class="text-center">0</td>
+                                    <td id="hiv_s_10_MP" class="text-center">0</td>
+                                    <td id="hiv_s_10_PI" class="text-center">0</td>
+                                    <td id="hiv_s_10_PB" class="text-center">0</td>
+                                    <td id="hiv_s_10_BA" class="text-center">0</td>
+                                    <td id="hiv_s_10_SP" class="text-center">0</td>
+                                    <td id="hiv_s_10_R1" class="text-center">0</td>
+                                    <td id="hiv_s_10_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">3b. 15-19 years old</td>
+                                    <td id="hiv_s_15_SI" class="text-center">0</td>
+                                    <td id="hiv_s_15_SV" class="text-center">0</td>
+                                    <td id="hiv_s_15_KA" class="text-center">0</td>
+                                    <td id="hiv_s_15_SN" class="text-center">0</td>
+                                    <td id="hiv_s_15_SR" class="text-center">0</td>
+                                    <td id="hiv_s_15_MP" class="text-center">0</td>
+                                    <td id="hiv_s_15_PI" class="text-center">0</td>
+                                    <td id="hiv_s_15_PB" class="text-center">0</td>
+                                    <td id="hiv_s_15_BA" class="text-center">0</td>
+                                    <td id="hiv_s_15_SP" class="text-center">0</td>
+                                    <td id="hiv_s_15_R1" class="text-center">0</td>
+                                    <td id="hiv_s_15_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">3c. 20-49 years old</td>
+                                    <td id="hiv_s_20_SI" class="text-center">0</td>
+                                    <td id="hiv_s_20_SV" class="text-center">0</td>
+                                    <td id="hiv_s_20_KA" class="text-center">0</td>
+                                    <td id="hiv_s_20_SN" class="text-center">0</td>
+                                    <td id="hiv_s_20_SR" class="text-center">0</td>
+                                    <td id="hiv_s_20_MP" class="text-center">0</td>
+                                    <td id="hiv_s_20_PI" class="text-center">0</td>
+                                    <td id="hiv_s_20_PB" class="text-center">0</td>
+                                    <td id="hiv_s_20_BA" class="text-center">0</td>
+                                    <td id="hiv_s_20_SP" class="text-center">0</td>
+                                    <td id="hiv_s_20_R1" class="text-center">0</td>
+                                    <td id="hiv_s_20_TOT" class="text-center font-bold">0</td>
+                                </tr>
 
-                                <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">4. No. of pregnant women screened reactive for HIV - Total</td>
-                                    <td id="hiv_r_t_SI" class="text-center">0</td><td id="hiv_r_t_SV" class="text-center">0</td><td id="hiv_r_t_KA" class="text-center">0</td><td id="hiv_r_t_SN" class="text-center">0</td><td id="hiv_r_t_SR" class="text-center">0</td><td id="hiv_r_t_MP" class="text-center">0</td><td id="hiv_r_t_PI" class="text-center">0</td><td id="hiv_r_t_PB" class="text-center">0</td><td id="hiv_r_t_BA" class="text-center">0</td><td id="hiv_r_t_SP" class="text-center">0</td><td id="hiv_r_t_R1" class="text-center">0</td><td id="hiv_r_t_TOT" class="text-center font-bold">0</td>
+                                <tr class="font-bold" style="color:var(--danger);">
+                                    <td style="text-align:left;">4. No. of pregnant women screened reactive for HIV -
+                                        Total</td>
+                                    <td id="hiv_r_t_SI" class="text-center">0</td>
+                                    <td id="hiv_r_t_SV" class="text-center">0</td>
+                                    <td id="hiv_r_t_KA" class="text-center">0</td>
+                                    <td id="hiv_r_t_SN" class="text-center">0</td>
+                                    <td id="hiv_r_t_SR" class="text-center">0</td>
+                                    <td id="hiv_r_t_MP" class="text-center">0</td>
+                                    <td id="hiv_r_t_PI" class="text-center">0</td>
+                                    <td id="hiv_r_t_PB" class="text-center">0</td>
+                                    <td id="hiv_r_t_BA" class="text-center">0</td>
+                                    <td id="hiv_r_t_SP" class="text-center">0</td>
+                                    <td id="hiv_r_t_R1" class="text-center">0</td>
+                                    <td id="hiv_r_t_TOT" class="text-center font-bold">0</td>
                                 </tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4a. 10-14 years old</td><td id="hiv_r_10_SI" class="text-center">0</td><td id="hiv_r_10_SV" class="text-center">0</td><td id="hiv_r_10_KA" class="text-center">0</td><td id="hiv_r_10_SN" class="text-center">0</td><td id="hiv_r_10_SR" class="text-center">0</td><td id="hiv_r_10_MP" class="text-center">0</td><td id="hiv_r_10_PI" class="text-center">0</td><td id="hiv_r_10_PB" class="text-center">0</td><td id="hiv_r_10_BA" class="text-center">0</td><td id="hiv_r_10_SP" class="text-center">0</td><td id="hiv_r_10_R1" class="text-center">0</td><td id="hiv_r_10_TOT" class="text-center font-bold">0</td></tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4b. 15-19 years old</td><td id="hiv_r_15_SI" class="text-center">0</td><td id="hiv_r_15_SV" class="text-center">0</td><td id="hiv_r_15_KA" class="text-center">0</td><td id="hiv_r_15_SN" class="text-center">0</td><td id="hiv_r_15_SR" class="text-center">0</td><td id="hiv_r_15_MP" class="text-center">0</td><td id="hiv_r_15_PI" class="text-center">0</td><td id="hiv_r_15_PB" class="text-center">0</td><td id="hiv_r_15_BA" class="text-center">0</td><td id="hiv_r_15_SP" class="text-center">0</td><td id="hiv_r_15_R1" class="text-center">0</td><td id="hiv_r_15_TOT" class="text-center font-bold">0</td></tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">4c. 20-49 years old</td><td id="hiv_r_20_SI" class="text-center">0</td><td id="hiv_r_20_SV" class="text-center">0</td><td id="hiv_r_20_KA" class="text-center">0</td><td id="hiv_r_20_SN" class="text-center">0</td><td id="hiv_r_20_SR" class="text-center">0</td><td id="hiv_r_20_MP" class="text-center">0</td><td id="hiv_r_20_PI" class="text-center">0</td><td id="hiv_r_20_PB" class="text-center">0</td><td id="hiv_r_20_BA" class="text-center">0</td><td id="hiv_r_20_SP" class="text-center">0</td><td id="hiv_r_20_R1" class="text-center">0</td><td id="hiv_r_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">4a. 10-14 years old</td>
+                                    <td id="hiv_r_10_SI" class="text-center">0</td>
+                                    <td id="hiv_r_10_SV" class="text-center">0</td>
+                                    <td id="hiv_r_10_KA" class="text-center">0</td>
+                                    <td id="hiv_r_10_SN" class="text-center">0</td>
+                                    <td id="hiv_r_10_SR" class="text-center">0</td>
+                                    <td id="hiv_r_10_MP" class="text-center">0</td>
+                                    <td id="hiv_r_10_PI" class="text-center">0</td>
+                                    <td id="hiv_r_10_PB" class="text-center">0</td>
+                                    <td id="hiv_r_10_BA" class="text-center">0</td>
+                                    <td id="hiv_r_10_SP" class="text-center">0</td>
+                                    <td id="hiv_r_10_R1" class="text-center">0</td>
+                                    <td id="hiv_r_10_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">4b. 15-19 years old</td>
+                                    <td id="hiv_r_15_SI" class="text-center">0</td>
+                                    <td id="hiv_r_15_SV" class="text-center">0</td>
+                                    <td id="hiv_r_15_KA" class="text-center">0</td>
+                                    <td id="hiv_r_15_SN" class="text-center">0</td>
+                                    <td id="hiv_r_15_SR" class="text-center">0</td>
+                                    <td id="hiv_r_15_MP" class="text-center">0</td>
+                                    <td id="hiv_r_15_PI" class="text-center">0</td>
+                                    <td id="hiv_r_15_PB" class="text-center">0</td>
+                                    <td id="hiv_r_15_BA" class="text-center">0</td>
+                                    <td id="hiv_r_15_SP" class="text-center">0</td>
+                                    <td id="hiv_r_15_R1" class="text-center">0</td>
+                                    <td id="hiv_r_15_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">4c. 20-49 years old</td>
+                                    <td id="hiv_r_20_SI" class="text-center">0</td>
+                                    <td id="hiv_r_20_SV" class="text-center">0</td>
+                                    <td id="hiv_r_20_KA" class="text-center">0</td>
+                                    <td id="hiv_r_20_SN" class="text-center">0</td>
+                                    <td id="hiv_r_20_SR" class="text-center">0</td>
+                                    <td id="hiv_r_20_MP" class="text-center">0</td>
+                                    <td id="hiv_r_20_PI" class="text-center">0</td>
+                                    <td id="hiv_r_20_PB" class="text-center">0</td>
+                                    <td id="hiv_r_20_BA" class="text-center">0</td>
+                                    <td id="hiv_r_20_SP" class="text-center">0</td>
+                                    <td id="hiv_r_20_R1" class="text-center">0</td>
+                                    <td id="hiv_r_20_TOT" class="text-center font-bold">0</td>
+                                </tr>
 
-                                <tr><td colspan="13" style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">3. HBsAg SCREENING</td></tr>
-                                <tr class="font-bold"><td style="text-align:left;">5. No. of pregnant women screened for HBsAg - Total</td>
-                                    <td id="hbs_s_t_SI" class="text-center">0</td><td id="hbs_s_t_SV" class="text-center">0</td><td id="hbs_s_t_KA" class="text-center">0</td><td id="hbs_s_t_SN" class="text-center">0</td><td id="hbs_s_t_SR" class="text-center">0</td><td id="hbs_s_t_MP" class="text-center">0</td><td id="hbs_s_t_PI" class="text-center">0</td><td id="hbs_s_t_PB" class="text-center">0</td><td id="hbs_s_t_BA" class="text-center">0</td><td id="hbs_s_t_SP" class="text-center">0</td><td id="hbs_s_t_R1" class="text-center">0</td><td id="hbs_s_t_TOT" class="text-center font-bold" style="background:var(--bg-body);">0</td>
+                                <tr>
+                                    <td colspan="13"
+                                        style="background:var(--bg-body); font-weight:bold; color:var(--text-main);">3.
+                                        HBsAg SCREENING</td>
                                 </tr>
-                                <tr><td style="text-align:left; padding-left:24px;">5a. 10-14 years old</td><td id="hbs_s_10_SI" class="text-center">0</td><td id="hbs_s_10_SV" class="text-center">0</td><td id="hbs_s_10_KA" class="text-center">0</td><td id="hbs_s_10_SN" class="text-center">0</td><td id="hbs_s_10_SR" class="text-center">0</td><td id="hbs_s_10_MP" class="text-center">0</td><td id="hbs_s_10_PI" class="text-center">0</td><td id="hbs_s_10_PB" class="text-center">0</td><td id="hbs_s_10_BA" class="text-center">0</td><td id="hbs_s_10_SP" class="text-center">0</td><td id="hbs_s_10_R1" class="text-center">0</td><td id="hbs_s_10_TOT" class="text-center font-bold">0</td></tr>
-                                <tr><td style="text-align:left; padding-left:24px;">5b. 15-19 years old</td><td id="hbs_s_15_SI" class="text-center">0</td><td id="hbs_s_15_SV" class="text-center">0</td><td id="hbs_s_15_KA" class="text-center">0</td><td id="hbs_s_15_SN" class="text-center">0</td><td id="hbs_s_15_SR" class="text-center">0</td><td id="hbs_s_15_MP" class="text-center">0</td><td id="hbs_s_15_PI" class="text-center">0</td><td id="hbs_s_15_PB" class="text-center">0</td><td id="hbs_s_15_BA" class="text-center">0</td><td id="hbs_s_15_SP" class="text-center">0</td><td id="hbs_s_15_R1" class="text-center">0</td><td id="hbs_s_15_TOT" class="text-center font-bold">0</td></tr>
-                                <tr><td style="text-align:left; padding-left:24px;">5c. 20-49 years old</td><td id="hbs_s_20_SI" class="text-center">0</td><td id="hbs_s_20_SV" class="text-center">0</td><td id="hbs_s_20_KA" class="text-center">0</td><td id="hbs_s_20_SN" class="text-center">0</td><td id="syp_s_20_SR" class="text-center">0</td><td id="hbs_s_20_MP" class="text-center">0</td><td id="hbs_s_20_PI" class="text-center">0</td><td id="hbs_s_20_PB" class="text-center">0</td><td id="hbs_s_20_BA" class="text-center">0</td><td id="hbs_s_20_SP" class="text-center">0</td><td id="hbs_s_20_R1" class="text-center">0</td><td id="hbs_s_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr class="font-bold">
+                                    <td style="text-align:left;">5. No. of pregnant women screened for HBsAg - Total
+                                    </td>
+                                    <td id="hbs_s_t_SI" class="text-center">0</td>
+                                    <td id="hbs_s_t_SV" class="text-center">0</td>
+                                    <td id="hbs_s_t_KA" class="text-center">0</td>
+                                    <td id="hbs_s_t_SN" class="text-center">0</td>
+                                    <td id="hbs_s_t_SR" class="text-center">0</td>
+                                    <td id="hbs_s_t_MP" class="text-center">0</td>
+                                    <td id="hbs_s_t_PI" class="text-center">0</td>
+                                    <td id="hbs_s_t_PB" class="text-center">0</td>
+                                    <td id="hbs_s_t_BA" class="text-center">0</td>
+                                    <td id="hbs_s_t_SP" class="text-center">0</td>
+                                    <td id="hbs_s_t_R1" class="text-center">0</td>
+                                    <td id="hbs_s_t_TOT" class="text-center font-bold"
+                                        style="background:var(--bg-body);">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">5a. 10-14 years old</td>
+                                    <td id="hbs_s_10_SI" class="text-center">0</td>
+                                    <td id="hbs_s_10_SV" class="text-center">0</td>
+                                    <td id="hbs_s_10_KA" class="text-center">0</td>
+                                    <td id="hbs_s_10_SN" class="text-center">0</td>
+                                    <td id="hbs_s_10_SR" class="text-center">0</td>
+                                    <td id="hbs_s_10_MP" class="text-center">0</td>
+                                    <td id="hbs_s_10_PI" class="text-center">0</td>
+                                    <td id="hbs_s_10_PB" class="text-center">0</td>
+                                    <td id="hbs_s_10_BA" class="text-center">0</td>
+                                    <td id="hbs_s_10_SP" class="text-center">0</td>
+                                    <td id="hbs_s_10_R1" class="text-center">0</td>
+                                    <td id="hbs_s_10_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">5b. 15-19 years old</td>
+                                    <td id="hbs_s_15_SI" class="text-center">0</td>
+                                    <td id="hbs_s_15_SV" class="text-center">0</td>
+                                    <td id="hbs_s_15_KA" class="text-center">0</td>
+                                    <td id="hbs_s_15_SN" class="text-center">0</td>
+                                    <td id="hbs_s_15_SR" class="text-center">0</td>
+                                    <td id="hbs_s_15_MP" class="text-center">0</td>
+                                    <td id="hbs_s_15_PI" class="text-center">0</td>
+                                    <td id="hbs_s_15_PB" class="text-center">0</td>
+                                    <td id="hbs_s_15_BA" class="text-center">0</td>
+                                    <td id="hbs_s_15_SP" class="text-center">0</td>
+                                    <td id="hbs_s_15_R1" class="text-center">0</td>
+                                    <td id="hbs_s_15_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left; padding-left:24px;">5c. 20-49 years old</td>
+                                    <td id="hbs_s_20_SI" class="text-center">0</td>
+                                    <td id="hbs_s_20_SV" class="text-center">0</td>
+                                    <td id="hbs_s_20_KA" class="text-center">0</td>
+                                    <td id="hbs_s_20_SN" class="text-center">0</td>
+                                    <td id="syp_s_20_SR" class="text-center">0</td>
+                                    <td id="hbs_s_20_MP" class="text-center">0</td>
+                                    <td id="hbs_s_20_PI" class="text-center">0</td>
+                                    <td id="hbs_s_20_PB" class="text-center">0</td>
+                                    <td id="hbs_s_20_BA" class="text-center">0</td>
+                                    <td id="hbs_s_20_SP" class="text-center">0</td>
+                                    <td id="hbs_s_20_R1" class="text-center">0</td>
+                                    <td id="hbs_s_20_TOT" class="text-center font-bold">0</td>
+                                </tr>
 
-                                <tr class="font-bold" style="color:var(--danger);"><td style="text-align:left;">6. No. of pregnant women screened reactive for HBsAg - Total</td>
-                                    <td id="hbs_r_t_SI" class="text-center">0</td><td id="hbs_r_t_SV" class="text-center">0</td><td id="hbs_r_t_KA" class="text-center">0</td><td id="hbs_r_t_SN" class="text-center">0</td><td id="hbs_r_t_SR" class="text-center">0</td><td id="hbs_r_t_MP" class="text-center">0</td><td id="hbs_r_t_PI" class="text-center">0</td><td id="hbs_r_t_PB" class="text-center">0</td><td id="hbs_r_t_BA" class="text-center">0</td><td id="hbs_r_t_SP" class="text-center">0</td><td id="hbs_r_t_R1" class="text-center">0</td><td id="hbs_r_t_TOT" class="text-center font-bold">0</td>
+                                <tr class="font-bold" style="color:var(--danger);">
+                                    <td style="text-align:left;">6. No. of pregnant women screened reactive for HBsAg -
+                                        Total</td>
+                                    <td id="hbs_r_t_SI" class="text-center">0</td>
+                                    <td id="hbs_r_t_SV" class="text-center">0</td>
+                                    <td id="hbs_r_t_KA" class="text-center">0</td>
+                                    <td id="hbs_r_t_SN" class="text-center">0</td>
+                                    <td id="hbs_r_t_SR" class="text-center">0</td>
+                                    <td id="hbs_r_t_MP" class="text-center">0</td>
+                                    <td id="hbs_r_t_PI" class="text-center">0</td>
+                                    <td id="hbs_r_t_PB" class="text-center">0</td>
+                                    <td id="hbs_r_t_BA" class="text-center">0</td>
+                                    <td id="hbs_r_t_SP" class="text-center">0</td>
+                                    <td id="hbs_r_t_R1" class="text-center">0</td>
+                                    <td id="hbs_r_t_TOT" class="text-center font-bold">0</td>
                                 </tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6a. 10-14 years old</td><td id="hbs_r_10_SI" class="text-center">0</td><td id="hbs_r_10_SV" class="text-center">0</td><td id="hbs_r_10_KA" class="text-center">0</td><td id="hbs_r_10_SN" class="text-center">0</td><td id="hbs_r_10_SR" class="text-center">0</td><td id="hbs_r_10_MP" class="text-center">0</td><td id="hbs_r_10_PI" class="text-center">0</td><td id="hbs_r_10_PB" class="text-center">0</td><td id="hbs_r_10_BA" class="text-center">0</td><td id="hbs_r_10_SP" class="text-center">0</td><td id="hbs_r_10_R1" class="text-center">0</td><td id="hbs_r_10_TOT" class="text-center font-bold">0</td></tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6b. 15-19 years old</td><td id="hbs_r_15_SI" class="text-center">0</td><td id="hbs_r_15_SV" class="text-center">0</td><td id="hbs_r_15_KA" class="text-center">0</td><td id="hbs_r_15_SN" class="text-center">0</td><td id="hbs_r_15_SR" class="text-center">0</td><td id="hbs_r_15_MP" class="text-center">0</td><td id="hbs_r_15_PI" class="text-center">0</td><td id="hbs_r_15_PB" class="text-center">0</td><td id="hbs_r_15_BA" class="text-center">0</td><td id="hbs_r_15_SP" class="text-center">0</td><td id="hbs_r_15_R1" class="text-center">0</td><td id="hbs_r_15_TOT" class="text-center font-bold">0</td></tr>
-                                <tr style="color:var(--danger);"><td style="text-align:left; padding-left:24px;">6c. 20-49 years old</td><td id="hbs_r_20_SI" class="text-center">0</td><td id="hbs_r_20_SV" class="text-center">0</td><td id="hbs_r_20_KA" class="text-center">0</td><td id="hbs_r_20_SN" class="text-center">0</td><td id="hbs_r_20_SR" class="text-center">0</td><td id="hbs_r_20_MP" class="text-center">0</td><td id="hbs_r_20_PI" class="text-center">0</td><td id="hbs_r_20_PB" class="text-center">0</td><td id="hbs_r_20_BA" class="text-center">0</td><td id="hbs_r_20_SP" class="text-center">0</td><td id="hbs_r_20_R1" class="text-center">0</td><td id="hbs_r_20_TOT" class="text-center font-bold">0</td></tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">6a. 10-14 years old</td>
+                                    <td id="hbs_r_10_SI" class="text-center">0</td>
+                                    <td id="hbs_r_10_SV" class="text-center">0</td>
+                                    <td id="hbs_r_10_KA" class="text-center">0</td>
+                                    <td id="hbs_r_10_SN" class="text-center">0</td>
+                                    <td id="hbs_r_10_SR" class="text-center">0</td>
+                                    <td id="hbs_r_10_MP" class="text-center">0</td>
+                                    <td id="hbs_r_10_PI" class="text-center">0</td>
+                                    <td id="hbs_r_10_PB" class="text-center">0</td>
+                                    <td id="hbs_r_10_BA" class="text-center">0</td>
+                                    <td id="hbs_r_10_SP" class="text-center">0</td>
+                                    <td id="hbs_r_10_R1" class="text-center">0</td>
+                                    <td id="hbs_r_10_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">6b. 15-19 years old</td>
+                                    <td id="hbs_r_15_SI" class="text-center">0</td>
+                                    <td id="hbs_r_15_SV" class="text-center">0</td>
+                                    <td id="hbs_r_15_KA" class="text-center">0</td>
+                                    <td id="hbs_r_15_SN" class="text-center">0</td>
+                                    <td id="hbs_r_15_SR" class="text-center">0</td>
+                                    <td id="hbs_r_15_MP" class="text-center">0</td>
+                                    <td id="hbs_r_15_PI" class="text-center">0</td>
+                                    <td id="hbs_r_15_PB" class="text-center">0</td>
+                                    <td id="hbs_r_15_BA" class="text-center">0</td>
+                                    <td id="hbs_r_15_SP" class="text-center">0</td>
+                                    <td id="hbs_r_15_R1" class="text-center">0</td>
+                                    <td id="hbs_r_15_TOT" class="text-center font-bold">0</td>
+                                </tr>
+                                <tr style="color:var(--danger);">
+                                    <td style="text-align:left; padding-left:24px;">6c. 20-49 years old</td>
+                                    <td id="hbs_r_20_SI" class="text-center">0</td>
+                                    <td id="hbs_r_20_SV" class="text-center">0</td>
+                                    <td id="hbs_r_20_KA" class="text-center">0</td>
+                                    <td id="hbs_r_20_SN" class="text-center">0</td>
+                                    <td id="hbs_r_20_SR" class="text-center">0</td>
+                                    <td id="hbs_r_20_MP" class="text-center">0</td>
+                                    <td id="hbs_r_20_PI" class="text-center">0</td>
+                                    <td id="hbs_r_20_PB" class="text-center">0</td>
+                                    <td id="hbs_r_20_BA" class="text-center">0</td>
+                                    <td id="hbs_r_20_SP" class="text-center">0</td>
+                                    <td id="hbs_r_20_R1" class="text-center">0</td>
+                                    <td id="hbs_r_20_TOT" class="text-center font-bold">0</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
 
                     <div id="tab-hiv" class="tab-view" style="display: none;">
-                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">HIV CENSUS <span class="rep-period"></span></h3>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">HIV
+                            CENSUS <span class="rep-period"></span></h3>
                         <table class="data-table" style="width: 100%; min-width: 800px;">
                             <thead>
-                                <tr><th rowspan="3" style="text-align:left;">CATEGORY</th><th colspan="5" class="text-center">MALE (Age)</th><th colspan="6" class="text-center">FEMALE (Age)</th><th colspan="5" class="text-center">KAP</th><th rowspan="3" class="text-center">TB<br>PT</th><th rowspan="3" class="text-center">TOTAL</th></tr>
-                                <tr><th class="text-center"><15</th><th class="text-center">15-24</th><th class="text-center">25-34</th><th class="text-center">35-49</th><th class="text-center">>50</th><th class="text-center"><15</th><th class="text-center">15-24</th><th class="text-center">25-34</th><th class="text-center">35-49</th><th class="text-center">>50</th><th class="text-center">PREG</th><th class="text-center">MSM</th><th class="text-center">TGW</th><th class="text-center">MSW</th><th class="text-center">FSW</th><th class="text-center">PWID</th></tr>
+                                <tr>
+                                    <th rowspan="3" style="text-align:left;">CATEGORY</th>
+                                    <th colspan="5" class="text-center">MALE (Age)</th>
+                                    <th colspan="6" class="text-center">FEMALE (Age)</th>
+                                    <th colspan="5" class="text-center">KAP</th>
+                                    <th rowspan="3" class="text-center">TB<br>PT</th>
+                                    <th rowspan="3" class="text-center">TOTAL</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-center">
+                                        <15< /th>
+                                    <th class="text-center">15-24</th>
+                                    <th class="text-center">25-34</th>
+                                    <th class="text-center">35-49</th>
+                                    <th class="text-center">>50</th>
+                                    <th class="text-center">
+                                        <15< /th>
+                                    <th class="text-center">15-24</th>
+                                    <th class="text-center">25-34</th>
+                                    <th class="text-center">35-49</th>
+                                    <th class="text-center">>50</th>
+                                    <th class="text-center">PREG</th>
+                                    <th class="text-center">MSM</th>
+                                    <th class="text-center">TGW</th>
+                                    <th class="text-center">MSW</th>
+                                    <th class="text-center">FSW</th>
+                                    <th class="text-center">PWID</th>
+                                </tr>
                             </thead>
-                            <tbody id="hiv-test-body"><tr><td colspan="19" class="text-center text-muted">No data generated yet.</td></tr></tbody>
+                            <tbody id="hiv-test-body">
+                                <tr>
+                                    <td colspan="19" class="text-center text-muted">No data generated yet.</td>
+                                </tr>
+                            </tbody>
                         </table>
-                        
-                        <h4 style="color:var(--danger); margin-top:32px; text-align:center;">REACTIVE PATIENTS (CONFIDENTIAL)</h4>
+
+                        <h4 style="color:var(--danger); margin-top:32px; text-align:center;">REACTIVE PATIENTS
+                            (CONFIDENTIAL)</h4>
                         <table class="data-table" style="width: 100%; min-width: 800px;">
                             <thead style="background:var(--danger-bg); color:var(--danger);">
-                                <tr><th rowspan="2" style="background:var(--danger-bg); color:var(--danger);">REACTIVE</th><th colspan="5" class="text-center" style="background:var(--danger-bg); color:var(--danger);">MALE</th><th colspan="6" class="text-center" style="background:var(--danger-bg); color:var(--danger);">FEMALE</th><th colspan="5" class="text-center" style="background:var(--danger-bg); color:var(--danger);">KAP</th><th rowspan="2" class="text-center" style="background:var(--danger-bg); color:var(--danger);">TB PT</th><th rowspan="2" class="text-center" style="background:var(--danger-bg); color:var(--danger);">TOTAL</th></tr>
-                                <tr><th class="text-center" style="background:var(--danger-bg); color:var(--danger);"><15</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">>50</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);"><15</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">>50</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PREG</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSM</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">TGW</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSW</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">FSW</th><th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PWID</th></tr>
+                                <tr>
+                                    <th rowspan="2" style="background:var(--danger-bg); color:var(--danger);">REACTIVE
+                                    </th>
+                                    <th colspan="5" class="text-center"
+                                        style="background:var(--danger-bg); color:var(--danger);">MALE</th>
+                                    <th colspan="6" class="text-center"
+                                        style="background:var(--danger-bg); color:var(--danger);">FEMALE</th>
+                                    <th colspan="5" class="text-center"
+                                        style="background:var(--danger-bg); color:var(--danger);">KAP</th>
+                                    <th rowspan="2" class="text-center"
+                                        style="background:var(--danger-bg); color:var(--danger);">TB PT</th>
+                                    <th rowspan="2" class="text-center"
+                                        style="background:var(--danger-bg); color:var(--danger);">TOTAL</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        <15< /th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        15-24</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        25-34</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        35-49</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        >50</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        <15< /th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        15-24</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        25-34</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        35-49</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        >50</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        PREG</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        MSM</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        TGW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        MSW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        FSW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        PWID</th>
+                                </tr>
                             </thead>
-                            <tbody id="hiv-react-body"><tr><td colspan="19" class="text-center text-muted">No data generated yet.</td></tr></tbody>
+                            <tbody id="hiv-react-body">
+                                <tr>
+                                    <td colspan="19" class="text-center text-muted">No data generated yet.</td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
 
                     <div id="tab-sti" class="tab-view" style="display: none;">
-                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">STI / HIV / HEPATITIS B SUMMARY <span class="rep-period"></span></h3>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">STI
+                            / HIV / HEPATITIS B SUMMARY <span class="rep-period"></span></h3>
                         <table class="data-table" style="width:100%; min-width: 600px;">
-                            <thead><tr><th width="20%">TEST</th><th width="20%">RESULT</th><th width="15%" class="text-center">MALE</th><th width="15%" class="text-center">FEMALE</th><th width="15%" class="text-center">PREGNANT</th><th width="15%" class="text-center">TOTAL</th></tr></thead>
-                            <tbody id="sti-body"><tr><td colspan="6" class="text-center text-muted">No data generated yet.</td></tr></tbody>
+                            <thead>
+                                <tr>
+                                    <th width="20%">TEST</th>
+                                    <th width="20%">RESULT</th>
+                                    <th width="15%" class="text-center">MALE</th>
+                                    <th width="15%" class="text-center">FEMALE</th>
+                                    <th width="15%" class="text-center">PREGNANT</th>
+                                    <th width="15%" class="text-center">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sti-body">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No data generated yet.</td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
 
-                                       <div id="tab-tb" class="tab-view" style="display: none;">
-                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">NATIONAL TB PROGRAM (NTP) <span class="rep-period"></span></h3>
-                        <div style="display:flex; justify-content:center; gap:24px; margin-bottom:24px; flex-wrap:wrap;">
+                    <div id="tab-tb" class="tab-view" style="display: none;">
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">
+                            NATIONAL TB PROGRAM (NTP) <span class="rep-period"></span></h3>
+                        <div
+                            style="display:flex; justify-content:center; gap:24px; margin-bottom:24px; flex-wrap:wrap;">
                             <table class="data-table" style="flex:1; min-width: 300px;">
-                                <thead><tr><th>EXAMINED</th><th class="text-center">NEW</th><th class="text-center">RETREAT</th></tr></thead>
-                                <tbody id="tb-exam-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
+                                <thead>
+                                    <tr>
+                                        <th>EXAMINED</th>
+                                        <th class="text-center">NEW</th>
+                                        <th class="text-center">RETREAT</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tb-exam-body">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Waiting...</td>
+                                    </tr>
+                                </tbody>
                             </table>
                             <table class="data-table" style="flex:1; min-width: 300px;">
-                                <thead><tr><th>RESULT</th><th class="text-center">NEW</th><th class="text-center">RETREAT</th></tr></thead>
-                                <tbody id="tb-res-body"><tr><td colspan="3" class="text-center text-muted">Waiting...</td></tr></tbody>
+                                <thead>
+                                    <tr>
+                                        <th>RESULT</th>
+                                        <th class="text-center">NEW</th>
+                                        <th class="text-center">RETREAT</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tb-res-body">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Waiting...</td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
-                        <div style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:600px; margin:0 auto; border-radius:var(--radius-lg); display: flex; justify-content: space-around;">
+                        <div
+                            style="text-align:center; padding:24px; border:1px solid var(--border-color); background:var(--bg-body); max-width:600px; margin:0 auto; border-radius:var(--radius-lg); display: flex; justify-content: space-around;">
                             <div>
                                 <span class="text-muted font-bold text-sm">TOTAL CARTRIDGES USED</span><br>
                                 <span id="tb-cart" style="color:var(--pri); font-size:2.5rem; font-weight:800;">0</span>
@@ -449,189 +1240,384 @@
                     </div>
 
                     <div id="tab-dengue" class="tab-view" style="display: none;">
-                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">DENGUE NS1 SURVEILLANCE <span class="rep-period"></span></h3>
-                         <div style="max-width:400px; margin:0 auto;">
-                             <table class="data-table">
-                                 <thead><tr><th>RESULT CATEGORY</th><th class="text-center">TOTAL COUNT</th></tr></thead>
-                                 <tbody id="dengue-body"><tr><td colspan="2" class="text-center text-muted">Waiting...</td></tr></tbody>
-                             </table>
-                         </div>
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">
+                            DENGUE NS1 SURVEILLANCE <span class="rep-period"></span></h3>
+                        <div style="max-width:400px; margin:0 auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>RESULT CATEGORY</th>
+                                        <th class="text-center">TOTAL COUNT</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dengue-body">
+                                    <tr>
+                                        <td colspan="2" class="text-center text-muted">Waiting...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div id="tab-summary" class="tab-view" style="display: none;">
-                         <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">TOTAL LABORATORY CENSUS <span class="rep-period"></span></h3>
-                         <div style="max-width:500px; margin:0 auto;">
+                        <h3 class="rep-title text-center font-bold" style="color: var(--pri); margin-bottom: 24px;">
+                            TOTAL LABORATORY CENSUS <span class="rep-period"></span></h3>
+                        <div style="max-width:500px; margin:0 auto;">
                             <table class="data-table">
-                                <thead><tr><th>LABORATORY SECTION</th><th class="text-center">PATIENTS SERVED</th></tr></thead>
-                                <tbody id="workload-body"><tr><td colspan="2" class="text-center text-muted">Waiting...</td></tr></tbody>
+                                <thead>
+                                    <tr>
+                                        <th>LABORATORY SECTION</th>
+                                        <th class="text-center">PATIENTS SERVED</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workload-body">
+                                    <tr>
+                                        <td colspan="2" class="text-center text-muted">Waiting...</td>
+                                    </tr>
+                                </tbody>
                             </table>
-                         </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="rep-footer" style="background: var(--bg-body); padding: 16px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid var(--border-color);">
+                <div class="rep-footer"
+                    style="background: var(--bg-body); padding: 16px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid var(--border-color);">
                     <div>
-                        <p style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 8px; line-height: 1.4; text-align: justify;"><strong style="text-transform: uppercase;">System Generated Report:</strong> This document is generated by the Angono MHO Laboratory Information System. No signature is required for system-generated summaries. However, official individual result forms must be signed by a licensed Medical Technologist and Pathologist.</p>
-                        <p style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;"><strong style="text-transform: uppercase;">Confidentiality Notice:</strong> This document contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA 10173). Unauthorized disclosure, copying, or distribution of this information is strictly prohibited.</p>
+                        <p
+                            style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 8px; line-height: 1.4; text-align: justify;">
+                            <strong style="text-transform: uppercase;">System Generated Report:</strong> This document
+                            is generated by the Angono MHO Laboratory Information System. No signature is required for
+                            system-generated summaries. However, official individual result forms must be signed by a
+                            licensed Medical Technologist and Pathologist.</p>
+                        <p
+                            style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;">
+                            <strong style="text-transform: uppercase;">Confidentiality Notice:</strong> This document
+                            contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA
+                            10173). Unauthorized disclosure, copying, or distribution of this information is strictly
+                            prohibited.</p>
                     </div>
                     <div>
-                        <p style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 8px; line-height: 1.4; text-align: justify;"><strong style="text-transform: uppercase;">Data Validity:</strong> The data presented is based on the records encoded by the facility personnel as of the generated date. Any discrepancies should be reported to the Laboratory Head for immediate verification and correction.</p>
-                        <p style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;"><strong style="text-transform: uppercase;">Certification:</strong> This report is intended for internal monitoring, surveillance, and official submission to the Department of Health (DOH) and Municipal Health Office (MHO) only.</p>
+                        <p
+                            style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 8px; line-height: 1.4; text-align: justify;">
+                            <strong style="text-transform: uppercase;">Data Validity:</strong> The data presented is
+                            based on the records encoded by the facility personnel as of the generated date. Any
+                            discrepancies should be reported to the Laboratory Head for immediate verification and
+                            correction.</p>
+                        <p
+                            style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;">
+                            <strong style="text-transform: uppercase;">Certification:</strong> This report is intended
+                            for internal monitoring, surveillance, and official submission to the Department of Health
+                            (DOH) and Municipal Health Office (MHO) only.</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="page-settings" class="page-area">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
 
                 <div class="workspace-col" style="padding:0;">
-                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
-                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-gear" style="color:var(--pri);"></i> System Preferences</h3>
+                    <div class="workspace-header"
+                        style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
+                                class="ph ph-gear" style="color:var(--pri);"></i> System Preferences</h3>
                     </div>
                     <div id="test-toggles-container" style="padding: 16px; background: var(--bg-subtle);">
-                        <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">ENABLE/DISABLE TEST MENU</div>
-                        <label class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="GXP" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="DSSM" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Viral Load</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="GXVL" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Serology</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="SERO" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Hematology</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="HEMA" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Blood Chemistry</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="CHEM" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Urinalysis</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="UA" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Fecalysis</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="FA" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="DENGUE" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Gram Stain</span> <label class="switch"><input type="checkbox" class="test-toggle" data-test="GRAM" onchange="saveTestToggles()"> <span class="slider"></span></label></label>
+                        <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
+                            ENABLE/DISABLE TEST MENU</div>
+                        <label class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input
+                                    type="checkbox" class="test-toggle" data-test="GXP" onchange="saveTestToggles()">
+                                <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="DSSM" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
+                        <label class="switch-row"><span>Viral Load</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="GXVL" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
+                        <label class="switch-row"><span>Serology</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="SERO" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
+                        <label class="switch-row"><span>Hematology</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="HEMA" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
+                        <label class="switch-row"><span>Blood Chemistry</span> <label class="switch"><input
+                                    type="checkbox" class="test-toggle" data-test="CHEM" onchange="saveTestToggles()">
+                                <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Urinalysis</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="UA" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
+                        <label class="switch-row"><span>Fecalysis</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="FA" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
+                        <label class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input
+                                    type="checkbox" class="test-toggle" data-test="DENGUE" onchange="saveTestToggles()">
+                                <span class="slider"></span></label></label>
+                        <label class="switch-row"><span>Gram Stain</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="GRAM" onchange="saveTestToggles()"> <span
+                                    class="slider"></span></label></label>
                     </div>
                 </div>
 
                 <div class="workspace-col" style="padding:0; flex-grow:2;">
-                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
-                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
+                    <div class="workspace-header"
+                        style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
+                                class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
                         <div style="display:flex; gap:8px;">
-                            <button onclick="loadSettingsData()" class="btn-icon"><i class="ph ph-arrows-clockwise"></i></button>
+                            <button onclick="loadSettingsData()" class="btn-icon"><i
+                                    class="ph ph-arrows-clockwise"></i></button>
                         </div>
                     </div>
-                    <div id="list-users" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
+                    <div id="list-users"
+                        style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;">
+                    </div>
                 </div>
 
                 <div class="workspace-col" style="padding:0;">
-                    <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
-                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-identification-badge" style="color:var(--success);"></i> Staff & Licenses</h3>
-                        <button onclick="toggleForm('staff-form')" class="btn-icon" style="color: var(--success);"><i class="ph ph-plus-circle"></i></button>
+                    <div class="workspace-header"
+                        style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
+                                class="ph ph-identification-badge" style="color:var(--success);"></i> Staff & Licenses
+                        </h3>
+                        <button onclick="toggleForm('staff-form')" class="btn-icon" style="color: var(--success);"><i
+                                class="ph ph-plus-circle"></i></button>
                     </div>
-                    <div id="staffListContainer" style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;"></div>
-                    <div id="staff-form" style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
+                    <div id="staffListContainer"
+                        style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;">
+                    </div>
+                    <div id="staff-form"
+                        style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
                         <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD STAFF</h4>
                         <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
-                            <input type="text" id="staffName" class="form-input" placeholder="Full Name (e.g. Maria Cruz, RMT)">
+                            <input type="text" id="staffName" class="form-input"
+                                placeholder="Full Name (e.g. Maria Cruz, RMT)">
                             <select id="staffRole" class="form-select">
                                 <option value="Medical Technologist">Medical Technologist</option>
                                 <option value="Pathologist">Pathologist</option>
                                 <option value="Encoder">Encoder</option>
                             </select>
                             <input type="text" id="staffLicense" class="form-input" placeholder="License No.">
-                            <input type="text" id="staffSigUrl" class="form-input" placeholder="Google Drive Link (Signature)">
+                            <input type="text" id="staffSigUrl" class="form-input"
+                                placeholder="Google Drive Link (Signature)">
                         </div>
                         <div style="display:flex; gap:8px;">
-                            <button class="btn btn-secondary" style="flex: 1;" onclick="toggleForm('staff-form');">Cancel</button>
+                            <button class="btn btn-secondary" style="flex: 1;"
+                                onclick="toggleForm('staff-form');">Cancel</button>
                             <button class="btn btn-primary" style="flex: 1;" onclick="handleSaveStaff()">Save</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Email Notification Settings -->
+                <div class="workspace-col" style="padding:0;">
+                    <div class="workspace-header"
+                        style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
+                                class="ph ph-envelope-paper" style="color:var(--pri);"></i> Patient Email System
+                        </h3>
+                    </div>
+                    <div style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:12px; font-size:0.8rem;">
+                        <div style="background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); line-height:1.4;">
+                            <i class="ph ph-info" style="color:var(--pri);"></i> <strong>Automated Notifications:</strong>
+                            <ul style="margin:6px 0 0 16px; padding:0;">
+                                <li><strong>Trigger 1:</strong> New / Updated patient email (sends Portal Login Credentials).</li>
+                                <li><strong>Trigger 2:</strong> Test result encoded & saved (sends Result Ready notification + Soft Copy notice).</li>
+                            </ul>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label">EmailJS Service ID</label>
+                            <input type="text" id="cfg_email_service" class="form-input" placeholder="e.g. service_mho123">
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">EmailJS Template ID</label>
+                            <input type="text" id="cfg_email_template" class="form-input" placeholder="e.g. template_lis456">
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label">EmailJS Public Key</label>
+                            <input type="text" id="cfg_email_key" class="form-input" placeholder="e.g. user_pub_key_xyz">
+                        </div>
+
+                        <div style="display:flex; gap:8px; margin-top:4px;">
+                            <button class="btn btn-secondary" style="flex:1;" onclick="testPatientEmailConfig()">
+                                <i class="ph ph-paper-plane-tilt"></i> Test Send
+                            </button>
+                            <button class="btn btn-primary" style="flex:1;" onclick="savePatientEmailConfig()">
+                                <i class="ph ph-floppy-disk"></i> Save Config
+                            </button>
+                        </div>
+                        <p id="email-cfg-status" style="font-size:0.75rem; color:var(--text-muted); margin:0; text-align:center;"></p>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-       <div id="login-overlay" class="modal-backdrop">
-        
-        <div id="login-card" class="auth-card" style="padding-top: 20px;">
-            <div style="display:flex; border-bottom:1px solid var(--border-color); margin-bottom:20px;">
-                <div id="tab-staff-login" style="flex:1; padding:10px; font-weight:bold; color:var(--pri); border-bottom:2px solid var(--pri); cursor:pointer;" onclick="switchLoginTab('staff')"><i class="ph ph-shield-check"></i> Staff Login</div>
-                <div id="tab-patient-login" style="flex:1; padding:10px; font-weight:bold; color:var(--text-muted); cursor:pointer;" onclick="switchLoginTab('patient')"><i class="ph ph-user"></i> Patient Portal</div>
-            </div>
-            
-            <div id="staff-login-form">
-                <input type="text" id="login_user" class="form-input" placeholder="Username" style="margin-bottom:12px;">
-                <div class="pass-wrapper" style="margin-bottom: 20px;">
-                    <input type="password" id="login_pass" class="form-input" placeholder="Password">
-                    <i class="ph ph-eye" onclick="togglePass('login_pass', this)"></i>
-                </div>
-                <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">Log In</button>
-                
-                <div style="margin-top:15px; font-size:0.75rem; text-align:center; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                    <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showStaffRegister()"><i class="ph ph-user-plus"></i> Create Staff Account</span>
-                </div>
-            </div>
+    <div id="login-overlay" class="modal-backdrop">
+        <!-- Floating ambient glowing orbs -->
+        <div class="login-orb login-orb-1"></div>
+        <div class="login-orb login-orb-2"></div>
+        <div class="login-orb login-orb-3"></div>
 
-            <div id="patient-login-form" style="display:none;">
-                <div style="background: #fffbeb; color: #b45309; padding: 10px; border-radius: 6px; font-size: 0.75rem; margin-bottom: 15px; border: 1px solid #fef3c7; text-align: left; line-height: 1.4;">
-                    <i class="ph ph-info"></i> <strong>Important:</strong> For security and privacy, we strictly allow <strong>only one email address per patient</strong> in our system.
+        <div class="login-stage">
+            <div class="login-shell">
+                <!-- Landscape Left Showcase Panel (Visible in landscape on desktop/laptop/tablets) -->
+                <div class="login-showcase-panel">
+                    <div>
+                        <div class="status-beacon" style="margin-bottom: 24px;">
+                            <span class="beacon-dot"></span> Angono Health Cloud Active
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="background: rgba(255,255,255,0.15); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; backdrop-filter: blur(8px);">
+                                <i class="ph ph-flask"></i>
+                            </div>
+                            <div>
+                                <h1 style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; line-height: 1.2;">ANGONO MHO</h1>
+                                <p style="font-size: 0.72rem; opacity: 0.85; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Laboratory Information System</p>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.85); margin-top: 14px;">
+                            Secure diagnostic repository and patient laboratory portal serving the municipality of Angono, Rizal.
+                        </p>
+                    </div>
+
+                    <div style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: rgba(255,255,255,0.7);">
+                        <span><i class="ph ph-lock-key"></i> 256-Bit Encrypted</span>
+                        <span><i class="ph ph-shield-check"></i> DOH Compliant</span>
+                    </div>
                 </div>
-                <input type="email" id="pat_user" class="form-input" placeholder="Registered Email Address" style="margin-bottom:12px; width: 100%;" onblur="this.value = this.value.toLowerCase()">
-                <div class="pass-wrapper" style="margin-bottom: 20px;">
-                    <input type="password" id="pat_pass" class="form-input" placeholder="Password" style="width: 100%;">
-                    <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
-                </div>
-                <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">View My Results</button>
-                
-                <div style="margin-top:15px; font-size:0.75rem; display:flex; justify-content:space-between; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                    <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showPatientResend()"><i class="ph ph-envelope-simple"></i> Resend Password</span>
-                    <span style="color:var(--text-muted); cursor:pointer;" onclick="showPatientInfo()"><i class="ph ph-info"></i> New Patient?</span>
+
+                <!-- Right / Main Form Panel -->
+                <div class="login-form-panel">
+                    <div id="login-card" class="auth-card">
+                        <div style="text-align: center; margin-bottom: 16px;">
+                            <div style="width: 48px; height: 48px; border-radius: 14px; background: var(--bg-subtle); color: var(--pri); display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 8px;">
+                                <i class="ph ph-shield-chevron"></i>
+                            </div>
+                            <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">Welcome Back</h2>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 3px 0 0 0;">Please sign in to access your laboratory records</p>
+                        </div>
+
+                        <!-- Segmented Switcher -->
+                        <div class="login-segmented-tabs">
+                            <div id="tab-staff-login" class="login-seg-tab active" onclick="switchLoginTab('staff')">
+                                <i class="ph ph-shield-check"></i> Staff Login
+                            </div>
+                            <div id="tab-patient-login" class="login-seg-tab" onclick="switchLoginTab('patient')">
+                                <i class="ph ph-user"></i> Patient Portal
+                            </div>
+                        </div>
+
+                        <div id="staff-login-form">
+                            <input type="text" id="login_user" class="form-input" placeholder="Username"
+                                style="margin-bottom:12px;">
+                            <div class="pass-wrapper" style="margin-bottom: 16px;">
+                                <input type="password" id="login_pass" class="form-input" placeholder="Password">
+                                <i class="ph ph-eye" onclick="togglePass('login_pass', this)"></i>
+                            </div>
+                            <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">
+                                <i class="ph ph-sign-in"></i> Log In
+                            </button>
+
+                            <div
+                                style="margin-top:14px; font-size:0.75rem; text-align:center; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                                <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showStaffRegister()"><i
+                                        class="ph ph-user-plus"></i> Create Staff Account</span>
+                            </div>
+                        </div>
+
+                        <div id="patient-login-form" style="display:none;">
+                            <div
+                                style="background: #fffbeb; color: #b45309; padding: 10px 12px; border-radius: 8px; font-size: 0.72rem; margin-bottom: 14px; border: 1px solid #fef3c7; text-align: left; line-height: 1.4;">
+                                <i class="ph ph-info"></i> <strong>Note:</strong> Enter the registered email provided during your lab test visit.
+                            </div>
+                            <input type="email" id="pat_user" class="form-input" placeholder="Registered Email Address"
+                                style="margin-bottom:12px; width: 100%;" onblur="this.value = this.value.toLowerCase()">
+                            <div class="pass-wrapper" style="margin-bottom: 16px;">
+                                <input type="password" id="pat_pass" class="form-input" placeholder="Password" style="width: 100%;">
+                                <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
+                            </div>
+                            <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">
+                                <i class="ph ph-file-text"></i> View My Results
+                            </button>
+
+                            <div
+                                style="margin-top:14px; font-size:0.75rem; display:flex; justify-content:space-between; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                                <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showPatientResend()"><i
+                                        class="ph ph-envelope-simple"></i> Resend Password</span>
+                                <span style="color:var(--text-muted); cursor:pointer;" onclick="showPatientInfo()"><i
+                                        class="ph ph-info"></i> New Patient?</span>
+                            </div>
+                        </div>
+
+                        <p id="login-error"
+                            style="color:var(--danger); margin-top:12px; display:none; font-size:0.8rem; font-weight:bold; text-align:center;"></p>
+                    </div>
+
+                    <div id="staff-register-card" class="auth-card" style="display:none;">
+                        <h2 style="margin-bottom:6px; color:var(--pri); font-size:1.15rem;"><i class="ph ph-user-plus"></i> Request Account</h2>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:12px;">Fill in your details. You will need Admin approval before login.</p>
+                        <div class="form-grid grid-1" style="gap:8px; margin-bottom:12px; text-align:left;">
+                            <input type="text" id="reg_name" class="form-input" placeholder="Full Name (e.g. Juan Cruz)">
+                            <select id="reg_fac" class="form-select">
+                                <option value="ALL">ALL / MAIN</option>
+                            </select>
+                            <select id="reg_role" class="form-select">
+                                <option value="" disabled selected>Select Role</option>
+                                <option value="STAFF">LAB STAFF</option>
+                                <option value="ENCODER">ENCODER</option>
+                                <option value="VIEWER">VIEWER</option>
+                                <option value="DOH_TB">DOH_TB</option>
+                                <option value="NTP_CHECKER">NTP_CHECKER</option>
+                            </select>
+                            <input type="text" id="reg_user" class="form-input" placeholder="Username">
+                            <div class="pass-wrapper" style="margin-bottom:0;">
+                                <input type="password" id="reg_pass" class="form-input" placeholder="Password">
+                                <i class="ph ph-eye" onclick="togglePass('reg_pass', this)"></i>
+                            </div>
+                            <div class="pass-wrapper" style="margin-bottom:0;">
+                                <input type="password" id="reg_pass2" class="form-input" placeholder="Confirm Password">
+                                <i class="ph ph-eye" onclick="togglePass('reg_pass2', this)"></i>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary full-width" onclick="submitStaffRegister()">Submit Request</button>
+                        <div style="margin-top:12px; font-size:0.78rem; color:var(--text-muted); cursor:pointer; text-align:center;"
+                            onclick="backToLoginFromRegister()">Back to Login</div>
+                    </div>
+
+                    <div id="patient-resend-card" class="auth-card" style="display:none;">
+                        <h2 style="margin-bottom:6px; color:var(--pri); font-size:1.15rem;"><i class="ph ph-paper-plane-right"></i> Resend Password</h2>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:14px;">Enter your registered email address to receive your password.</p>
+                        <input type="email" id="resend_pat_email" class="form-input" placeholder="Enter your email"
+                            style="margin-bottom:14px;">
+                        <button class="btn btn-primary full-width" onclick="resendPatientPassword()">Send Password</button>
+                        <div style="margin-top:14px; font-size:0.78rem; color:var(--text-muted); cursor:pointer; text-align:center;"
+                            onclick="backToLoginFromPatient()">Back to Login</div>
+                    </div>
+
+                    <div id="patient-info-card" class="auth-card" style="display:none;">
+                        <h2 style="margin-bottom:8px; color:var(--pri); font-size:1.15rem;"><i class="ph ph-user-plus"></i> New Patient?</h2>
+                        <p style="font-size:0.75rem; color:var(--text-main); margin-bottom:12px; line-height:1.4;">Patient accounts
+                            are <strong>automatically generated</strong> during your first laboratory visit.</p>
+                        <div
+                            style="background:var(--bg-subtle); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:16px;">
+                            <p
+                                style="margin:0 0 4px 0; font-size:0.7rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">
+                                Need Help?</p>
+                            <p style="margin:0; font-size:0.75rem; color:var(--text-main);">Chat with us on Facebook Messenger:</p>
+                            <div style="margin-top:6px; font-weight:bold; color:#0084FF; font-size:0.85rem;"><i
+                                    class="ph ph-messenger-logo"></i> Angono MHO Laboratory</div>
+                        </div>
+                        <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
+                    </div>
                 </div>
             </div>
-
-            <p id="login-error" style="color:var(--danger); margin-top:15px; display:none; font-size:0.85rem; font-weight:bold;"></p>
-        </div>
-
-        <div id="staff-register-card" class="auth-card" style="display:none; padding-top:20px;">
-            <h2 style="margin-bottom:10px; color:var(--pri);"><i class="ph ph-user-plus"></i> Request Account</h2>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:15px;">Fill in your details. You will need Admin approval before you can log in.</p>
-            <div class="form-grid grid-1" style="gap:10px; margin-bottom:15px; text-align:left;">
-                <input type="text" id="reg_name" class="form-input" placeholder="Full Name (e.g. Juan Cruz)">
-                <select id="reg_fac" class="form-select"><option value="ALL">ALL / MAIN</option></select>
-                <select id="reg_role" class="form-select">
-                    <option value="" disabled selected>Select Role</option>
-                    <option value="STAFF">LAB STAFF</option>
-                    <option value="ENCODER">ENCODER</option>
-                    <option value="VIEWER">VIEWER</option>
-                    <option value="DOH_TB">DOH_TB</option>
-                    <option value="NTP_CHECKER">NTP_CHECKER</option>
-                </select>
-                <input type="text" id="reg_user" class="form-input" placeholder="Username">
-                <div class="pass-wrapper" style="margin-bottom:0;">
-                    <input type="password" id="reg_pass" class="form-input" placeholder="Password">
-                    <i class="ph ph-eye" onclick="togglePass('reg_pass', this)"></i>
-                </div>
-                <div class="pass-wrapper" style="margin-bottom:0;">
-                    <input type="password" id="reg_pass2" class="form-input" placeholder="Confirm Password">
-                    <i class="ph ph-eye" onclick="togglePass('reg_pass2', this)"></i>
-                </div>
-            </div>
-            <button class="btn btn-primary full-width" onclick="submitStaffRegister()">Submit Request</button>
-            <div style="margin-top:15px; font-size:0.8rem; color:var(--text-muted); cursor:pointer; text-align:center;" onclick="backToLoginFromRegister()">Back to Login</div>
-        </div>
-
-        <div id="patient-resend-card" class="auth-card" style="display:none; padding-top:20px;">
-            <h2 style="margin-bottom:10px; color:var(--pri);"><i class="ph ph-paper-plane-right"></i> Resend Password</h2>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:20px;">Enter your registered email address. We will resend your password to your inbox.</p>
-            <input type="email" id="resend_pat_email" class="form-input" placeholder="Enter your email" style="margin-bottom:15px;">
-            <button class="btn btn-primary full-width" onclick="resendPatientPassword()">Send Password</button>
-            <div style="margin-top:20px; font-size:0.8rem; color:var(--text-muted); cursor:pointer;" onclick="backToLoginFromPatient()">Back to Login</div>
-        </div>
-
-        <div id="patient-info-card" class="auth-card" style="display:none; padding-top:20px;">
-            <h2 style="margin-bottom:10px; color:var(--pri);"><i class="ph ph-user-plus"></i> New Patient?</h2>
-            <p style="font-size:0.8rem; color:var(--text-main); margin-bottom:15px; line-height:1.5;">Patient accounts are <strong>automatically generated</strong> during your first laboratory visit.</p>
-            <div style="background:var(--bg-subtle); padding:15px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:20px;">
-                <p style="margin:0 0 5px 0; font-size:0.75rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Need Help or No Account?</p>
-                <p style="margin:0; font-size:0.85rem; color:var(--text-main);">Chat with us on our Facebook Messenger for assistance:</p>
-                <div style="margin-top:10px; font-weight:bold; color:#0084FF; font-size:1rem;"><i class="ph ph-messenger-logo"></i> Angono MHO Laboratory</div>
-            </div>
-            <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
         </div>
     </div>
-    
-    <div id="app-loader" class="modal-backdrop" style="flex-direction:column; background:var(--bg-body); z-index:9999999;">
+
+    <div id="app-loader" class="modal-backdrop"
+        style="flex-direction:column; background:var(--bg-body); z-index:9999999;">
         <i class="ph ph-circle-notch ph-spin" style="font-size: 3rem; color: var(--pri);"></i>
         <p style="margin-top:16px; color:var(--text-muted); font-weight:600;">Loading System...</p>
     </div>
@@ -648,53 +1634,75 @@
     </div>
 
     <div id="quick-search-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
-        <div class="auth-card" style="text-align: left; overflow: visible; min-height: 250px; width: 400px; max-width: 95%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
-                <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central Search</h2>
-                <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i class="ph ph-x"></i></button>
+        <div class="auth-card"
+            style="text-align: left; overflow: visible; min-height: 250px; width: 400px; max-width: 95%;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom: 10px; border-bottom: 1px dashed var(--border-color);">
+                <h2 style="font-size: 1.2rem; color: var(--sec);"><i class="ph ph-magnifying-glass"></i> Patient Central
+                    Search</h2>
+                <button onclick="document.getElementById('quick-search-modal').style.display='none'" class="btn-icon"><i
+                        class="ph ph-x"></i></button>
             </div>
-            
+
             <div style="position: relative; margin-bottom: 15px;">
-                <input type="text" id="quick-search-input" class="form-input" placeholder="Type name to search masterlist..." onkeyup="runQuickSearch(this.value)">
-                <div id="quick-search-results" class="search-results-container" style="position: absolute; width: 100%; z-index: 9999; max-height: 300px; overflow-y: auto; box-shadow: var(--shadow-float);"></div>
+                <input type="text" id="quick-search-input" class="form-input"
+                    placeholder="Type name to search masterlist..." onkeyup="runQuickSearch(this.value)">
+                <div id="quick-search-results" class="search-results-container"
+                    style="position: absolute; width: 100%; z-index: 9999; max-height: 300px; overflow-y: auto; box-shadow: var(--shadow-float);">
+                </div>
             </div>
-            
+
             <div id="quick-profile-view" style="display:none; overflow-y: auto; flex: 1; padding-right: 5px;">
-                <div style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
+                <div
+                    style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <h3 id="qs-name" style="color:var(--pri); font-size:1.1rem; margin:0;"></h3>
-                        <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
+                        <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i
+                                class="ph ph-pencil-simple"></i> Edit Profile</button>
                     </div>
-                    <div id="qs-meta" style="font-size:0.8rem; color:var(--text-main); font-weight:500; display:flex; flex-wrap:wrap; gap:10px;"></div>
-                    
-                    <div id="qs-edit-form" style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                    <div id="qs-meta"
+                        style="font-size:0.8rem; color:var(--text-main); font-weight:500; display:flex; flex-wrap:wrap; gap:10px;">
+                    </div>
+
+                    <div id="qs-edit-form"
+                        style="display:none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                         <div class="form-grid grid-2">
-                            <div class="field-group full-width"><label class="field-label">Name</label><input type="text" id="qs_edit_name" class="form-input"></div>
-                            <div class="field-group"><label class="field-label">Age</label><input type="text" id="qs_edit_age" class="form-input"></div>
-                            <div class="field-group"><label class="field-label">Facility</label><input type="text" id="qs_edit_fac" class="form-input"></div>
+                            <div class="field-group full-width"><label class="field-label">Name</label><input
+                                    type="text" id="qs_edit_name" class="form-input"></div>
+                            <div class="field-group"><label class="field-label">Age</label><input type="text"
+                                    id="qs_edit_age" class="form-input"></div>
+                            <div class="field-group"><label class="field-label">Facility</label><input type="text"
+                                    id="qs_edit_fac" class="form-input"></div>
+                            <div class="field-group full-width"><label class="field-label">Patient Email</label><input
+                                    type="email" id="qs_edit_email" class="form-input" placeholder="e.g. patient@gmail.com"></div>
                         </div>
-                        <button class="btn btn-primary text-xs" onclick="savePatientDemographicsQS()">Save Changes</button>
+                        <button class="btn btn-primary text-xs" onclick="savePatientDemographicsQS()">Save
+                            Changes</button>
                     </div>
                 </div>
 
-                <h4 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i class="ph ph-clock-counter-clockwise"></i> Complete Laboratory History</h4>
+                <h4 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;"><i
+                        class="ph ph-clock-counter-clockwise"></i> Complete Laboratory History</h4>
                 <div id="qs-history-list" style="display:flex; flex-direction:column; gap:10px;"></div>
             </div>
         </div>
     </div>
 
-    
 
-       <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+
+    <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
         <div class="auth-card" style="width:350px; text-align: left; padding: 25px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-pencil-simple" style="color:var(--pri);"></i> Edit User</h3>
+                <h3 style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-pencil-simple"
+                        style="color:var(--pri);"></i> Edit User</h3>
                 <button onclick="closeEditModal()" class="btn-icon"><i class="ph ph-x"></i></button>
             </div>
-            
+
             <div class="form-grid grid-1" style="gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
-                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="edit_u_name" class="form-input"></div>
-                <div class="field-group"><label class="field-label">Username</label><input type="text" id="edit_u_user" class="form-input"></div>
+                <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="edit_u_name"
+                        class="form-input"></div>
+                <div class="field-group"><label class="field-label">Username</label><input type="text" id="edit_u_user"
+                        class="form-input"></div>
                 <div class="field-group"><label class="field-label">New Password (leave blank to keep current)</label>
                     <div class="pass-wrapper">
                         <input type="password" id="edit_u_pass" class="form-input" placeholder="***">
@@ -702,30 +1710,40 @@
                     </div>
                 </div>
                 <div class="field-group"><label class="field-label">Facility</label>
-                    <select id="edit_u_fac" class="form-select"><option value="ALL">ALL / MAIN</option></select>
+                    <select id="edit_u_fac" class="form-select">
+                        <option value="ALL">ALL / MAIN</option>
+                    </select>
                 </div>
                 <div style="display:flex; gap:10px;">
                     <div class="field-group" style="flex:1;"><label class="field-label">Role</label>
                         <select id="edit_u_role" class="form-select">
-                            <option value="ADMIN">ADMIN</option><option value="STAFF">STAFF</option><option value="ENCODER">ENCODER</option><option value="VIEWER">VIEWER</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="STAFF">STAFF</option>
+                            <option value="ENCODER">ENCODER</option>
+                            <option value="VIEWER">VIEWER</option>
                         </select>
                     </div>
                     <div class="field-group" style="flex:1;"><label class="field-label">Status</label>
                         <select id="edit_u_status" class="form-select">
-                            <option value="ACTIVE">ACTIVE</option><option value="PENDING">PENDING</option><option value="REJECTED">REJECTED</option>
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="REJECTED">REJECTED</option>
                         </select>
                     </div>
                 </div>
             </div>
-            
+
             <div style="display:flex; gap:10px; margin-top: 20px;">
-                <button onclick="deleteUserRecord()" class="btn btn-secondary" style="flex: 1; border-color:var(--danger); color:var(--danger);"><i class="ph ph-trash"></i> Delete</button>
-                <button onclick="saveUserChangesFull()" id="btn-save-user-full" class="btn btn-primary" style="flex: 2;"><i class="ph ph-floppy-disk"></i> Save</button>
-            </div>
+                <button onclick="deleteUserRecord()" class="btn btn-secondary"
+                    style="flex: 1; border-color:var(--danger); color:var(--danger);"><i class="ph ph-trash"></i>
+                    Delete</button>
+                <button onclick="saveUserChangesFull()" id="btn-save-user-full" class="btn btn-primary"
+                    style="flex: 2;"><i class="ph ph-floppy-disk"></i> Save</button>
         </div>
     </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- EmailJS SDK for Patient Automated Email Notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // 🔴 PALITAN ITO ng URL at Anon Key mula sa Supabase Project Settings > API
         const SUPABASE_URL = "https://mtohvtmupjfdabrrpnii.supabase.co";
@@ -736,19 +1754,19 @@
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
-            if(el.type === 'password') { el.type = 'text'; icon.classList.replace('ph-eye', 'ph-eye-slash'); }
+            if (el.type === 'password') { el.type = 'text'; icon.classList.replace('ph-eye', 'ph-eye-slash'); }
             else { el.type = 'password'; icon.classList.replace('ph-eye-slash', 'ph-eye'); }
         }
-        
+
         window.addEventListener('load', () => {
             let prefs = JSON.parse(localStorage.getItem('mho-test-prefs') || "{}");
             document.querySelectorAll('.test-toggle').forEach(chk => {
                 let code = chk.getAttribute('data-test');
-                if(prefs[code] !== undefined) chk.checked = prefs[code];
-                else chk.checked = true; 
+                if (prefs[code] !== undefined) chk.checked = prefs[code];
+                else chk.checked = true;
             });
             applyTestToggles();
-            
+
             // Populan natin ang facilities para sa Registration Form agad
             loadFacilitiesForReg();
         });
@@ -763,7 +1781,7 @@
                         regDropdown.appendChild(o);
                     });
                 }
-            } catch(e) {}
+            } catch (e) { }
         }
 
         function saveTestToggles() {
@@ -777,29 +1795,29 @@
         function applyTestToggles() {
             let prefs = JSON.parse(localStorage.getItem('mho-test-prefs') || "{}");
             const mapping = { "GXP": { entry: "btn-mtb", reg: "GXP" }, "DSSM": { entry: "btn-dssm", reg: "DSSM" }, "GXVL": { entry: "btn-viral", reg: "GXVL" }, "SERO": { entry: "btn-sero", reg: "SERO" }, "HEMA": { entry: "btn-hema", reg: "HEMA" }, "CHEM": { entry: "btn-chem", reg: "CHEM" }, "UA": { entry: "btn-uria", reg: "UA" }, "FA": { entry: "btn-feca", reg: "FA" }, "DENGUE": { entry: "btn-dengue", reg: "DENGUE" }, "GRAM": { entry: "btn-gram", reg: "GRAM" } };
-            
+
             Object.keys(mapping).forEach(key => {
-                let isEnabled = prefs[key] !== false; 
+                let isEnabled = prefs[key] !== false;
                 let m = mapping[key];
                 let entryBtn = document.getElementById(m.entry);
-                if(entryBtn) { if(isEnabled) entryBtn.classList.remove('disabled-test'); else entryBtn.classList.add('disabled-test'); }
-                
+                if (entryBtn) { if (isEnabled) entryBtn.classList.remove('disabled-test'); else entryBtn.classList.add('disabled-test'); }
+
                 document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => {
                     let onclickAttr = card.getAttribute('onclick') || "";
-                    if(onclickAttr.includes(`'${m.reg}'`) || onclickAttr.includes(`"${m.reg}"`)) {
-                        if(isEnabled) card.classList.remove('disabled-test'); else card.classList.add('disabled-test');
+                    if (onclickAttr.includes(`'${m.reg}'`) || onclickAttr.includes(`"${m.reg}"`)) {
+                        if (isEnabled) card.classList.remove('disabled-test'); else card.classList.add('disabled-test');
                     }
                 });
             });
         }
         if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('✅ Service Worker registered'))
-            .catch(err => console.log('❌ SW failed:', err));
-    });
-}
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('✅ Service Worker registered'))
+                    .catch(err => console.log('❌ SW failed:', err));
+            });
+        }
     </script>
 </body>
-</html>
 
+</html>
