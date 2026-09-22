@@ -1,4 +1,4 @@
-console.log("app.js build: 2026-09-22-streamlined (strict columns, no age in patients, accurate dates)");
+console.log("app.js build: 2026-09-22-streamlined (strict columns, exact check constraints 'PENDING', 'ENCODED', 'FOR REPEAT')");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -167,12 +167,12 @@ async function apiGet(action, params = {}) {
                 }))};
             }
             case "getPendingWorkload": {
-                // 🟢 Patas na pagkuha ng pending / completed para sa lahat ng staff (Wala nang restriction sa facility para kita lahat ng gagawin)
+                // 🟢 Staff / Lab Staff ay makikita ang LAHAT ng pending, o naka-filter depende sa role
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
                 
-                let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
+                let compQ = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
                 
@@ -195,7 +195,7 @@ async function apiGet(action, params = {}) {
                 
                 if (tName === 'lab_tests') {
                      const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                     q = q.eq('test_name', tMap[params.type] || params.type).eq('status', 'COMPLETED'); 
+                     q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
                 }
 
                 if (params.searchQuery) {
@@ -271,7 +271,7 @@ async function apiPost(action, payload) {
                     test_type: t.name, 
                     test_code: t.test_code || t.code,
                     details: t.details || {}, 
-                    status: 'PENDING', // 🟢 Sakto sa check constraint ng SQL ('PENDING', 'COMPLETED', 'FOR REPEAT')
+                    status: 'PENDING', // 🟢 Sakto sa check constraint ng SQL ('PENDING', 'ENCODED', 'FOR REPEAT', 'COMPLETED')
                     facility: f.facility, 
                     encoder: f.encoder, 
                     date: new Date().toISOString()
@@ -284,8 +284,21 @@ async function apiPost(action, payload) {
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                // 🟢 Gagamit ng exact status na 'COMPLETED' para pumasa sa check constraint
-                const { error } = await sb.from('lab_tests').update({ details: details, status: 'COMPLETED', encoder: payload.encodedBy, date_examined: new Date().toISOString() }).eq('id', payload.testId);
+                
+                // 🟢 Tignan kung Initial Result ba ito para maging 'FOR REPEAT', kung hindi ay 'ENCODED' (o COMPLETED)
+                let testStatus = 'ENCODED';
+                let repeatTag = String(details.Repeat || details["Test Type"] || "").toUpperCase();
+                if (repeatTag.includes('INITIAL')) {
+                    testStatus = 'FOR REPEAT';
+                }
+
+                const { error } = await sb.from('lab_tests').update({ 
+                    details: details, 
+                    status: testStatus, 
+                    encoder: payload.encodedBy, 
+                    date_examined: new Date().toISOString() 
+                }).eq('id', payload.testId);
+                
                 if(error) throw new Error("Supabase Error saving result: " + error.message);
                 return { status: "success" };
             }
@@ -1021,8 +1034,8 @@ async function saveAndPrintResult(id, safeId, btn) {
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
-        else { throw new Error(res.message || "Failed to save result."); } 
-    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } 
+        else { throw new Error(res.message || "Failed to save result."); }
+    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); }
 }
 
 async function moveToPendingRepeat(idStr) {
@@ -1110,7 +1123,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED_BY';
                     if (isResCol && val !== "") {
                         let vU = String(val).toUpperCase().trim(); let bg = "transparent", col = "inherit"; 
-                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
+                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "$dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
                         html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
                     } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
                 }); html += `</tr>`;
@@ -1265,7 +1278,7 @@ async function generateReport() {
     const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true; 
     
     try { 
-        let q = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
+        let q = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
         if(targetFacility !== "ALL") q = q.eq('facility', targetFacility);
         const { data, error } = await q;
         if (data) { 
@@ -1407,11 +1420,12 @@ function startAutoSync() {
         const pendingSection = document.getElementById('col-pending'); const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
         if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
             try {
-                let q = sb.from('lab_tests').select('*').in('status', ['PENDING', 'COMPLETED', 'ENCODED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
+                let q = sb.from('lab_tests').select('*').in('status', ['PENDING', 'ENCODED', 'COMPLETED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
+                if(currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
                 const { data } = await q;
                 if (data) {
-                    window.pendingData = data.filter(d => String(d.status).toUpperCase() === 'PENDING').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
-                    window.completedData = data.filter(d => String(d.status).toUpperCase() === 'COMPLETED' || String(d.status).toUpperCase() === 'ENCODED' || String(d.status).toUpperCase() === 'FOR REPEAT').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.completedData = data.filter(d => d.status === 'ENCODED' || d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
                     renderLists();
                 }
             } catch (e) {}
@@ -1447,7 +1461,12 @@ async function batchSaveResults(isPrint) {
         let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
         if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
         let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, date_examined: new Date().toISOString() };
-        try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: 'COMPLETED' }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
+        
+        let batchStatus = 'ENCODED';
+        let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
+        if (rptTag.includes('INITIAL')) batchStatus = 'FOR REPEAT';
+
+        try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
     }
     await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH SAVE", details: `Batch processed ${successCount} records.` });
     showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
