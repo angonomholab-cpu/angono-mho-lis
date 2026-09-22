@@ -256,7 +256,7 @@
                     
                     <!-- LEFT: Filters -->
                     <div style="display: flex; gap: 6px; align-items: center; flex: 1;">
-                        <select id="colFilter" class="form-select" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;"><option value="ALL">All Columns</option></select>
+                        <select id="colFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;"><option value="ALL">All Columns</option></select>
                         <input type="text" id="regSearch" class="form-input" placeholder="Search..." style="width: 140px; padding: 2px 8px; height: 28px; font-size: 0.75rem;" onkeyup="filterRegistryTable()">
                         <select id="monthFilter" class="form-select" onchange="filterRegistryTable()" style="width: auto; padding: 2px 6px; height: 28px; font-size: 0.75rem;">
                             <option value="">All Months</option>
