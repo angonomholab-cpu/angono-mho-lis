@@ -1151,18 +1151,16 @@
                                     <th rowspan="3" class="text-center">TOTAL</th>
                                 </tr>
                                 <tr>
-                                    <th class="text-center">
-                                        <15< /th>
+                                    <th class="text-center">&lt;15</th>
                                     <th class="text-center">15-24</th>
                                     <th class="text-center">25-34</th>
                                     <th class="text-center">35-49</th>
-                                    <th class="text-center">>50</th>
-                                    <th class="text-center">
-                                        <15< /th>
+                                    <th class="text-center">&gt;50</th>
+                                    <th class="text-center">&lt;15</th>
                                     <th class="text-center">15-24</th>
                                     <th class="text-center">25-34</th>
                                     <th class="text-center">35-49</th>
-                                    <th class="text-center">>50</th>
+                                    <th class="text-center">&gt;50</th>
                                     <th class="text-center">PREG</th>
                                     <th class="text-center">MSM</th>
                                     <th class="text-center">TGW</th>
@@ -1197,38 +1195,22 @@
                                         style="background:var(--danger-bg); color:var(--danger);">TOTAL</th>
                                 </tr>
                                 <tr>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        <15< /th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        15-24</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        25-34</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        35-49</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        >50</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        <15< /th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        15-24</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        25-34</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        35-49</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        >50</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        PREG</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        MSM</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        TGW</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        MSW</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        FSW</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
-                                        PWID</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&lt;15</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&gt;50</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&lt;15</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&gt;50</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PREG</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSM</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">TGW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">FSW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PWID</th>
                                 </tr>
                             </thead>
                             <tbody id="hiv-react-body">
@@ -1395,36 +1377,36 @@
                     <div id="test-toggles-container" style="padding: 16px; background: var(--bg-subtle);">
                         <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
                             ENABLE/DISABLE TEST MENU</div>
-                        <label class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input
+                        <div class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input
                                     type="checkbox" class="test-toggle" data-test="GXP" onchange="saveTestToggles()">
-                                <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input type="checkbox"
+                                <span class="slider"></span></label></div>
+                        <div class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="DSSM" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
-                        <label class="switch-row"><span>Viral Load</span> <label class="switch"><input type="checkbox"
+                                    class="slider"></span></label></div>
+                        <div class="switch-row"><span>Viral Load</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="GXVL" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
-                        <label class="switch-row"><span>Serology</span> <label class="switch"><input type="checkbox"
+                                    class="slider"></span></label></div>
+                        <div class="switch-row"><span>Serology</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="SERO" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
-                        <label class="switch-row"><span>Hematology</span> <label class="switch"><input type="checkbox"
+                                    class="slider"></span></label></div>
+                        <div class="switch-row"><span>Hematology</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="HEMA" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
-                        <label class="switch-row"><span>Blood Chemistry</span> <label class="switch"><input
+                                    class="slider"></span></label></div>
+                        <div class="switch-row"><span>Blood Chemistry</span> <label class="switch"><input
                                     type="checkbox" class="test-toggle" data-test="CHEM" onchange="saveTestToggles()">
-                                <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Urinalysis</span> <label class="switch"><input type="checkbox"
+                                <span class="slider"></span></label></div>
+                        <div class="switch-row"><span>Urinalysis</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="UA" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
-                        <label class="switch-row"><span>Fecalysis</span> <label class="switch"><input type="checkbox"
+                                    class="slider"></span></label></div>
+                        <div class="switch-row"><span>Fecalysis</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="FA" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
-                        <label class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input
+                                    class="slider"></span></label></div>
+                        <div class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input
                                     type="checkbox" class="test-toggle" data-test="DENGUE" onchange="saveTestToggles()">
-                                <span class="slider"></span></label></label>
-                        <label class="switch-row"><span>Gram Stain</span> <label class="switch"><input type="checkbox"
+                                <span class="slider"></span></label></div>
+                        <div class="switch-row"><span>Gram Stain</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="GRAM" onchange="saveTestToggles()"> <span
-                                    class="slider"></span></label></label>
+                                    class="slider"></span></label></div>
                     </div>
                 </div>
 
@@ -2152,6 +2134,7 @@
                     Delete</button>
                 <button onclick="saveUserChangesFull()" id="btn-save-user-full" class="btn btn-primary"
                     style="flex: 2;"><i class="ph ph-floppy-disk"></i> Save</button>
+            </div>
         </div>
     </div>
     <!-- EmailJS SDK for Patient Automated Email Notifications -->
