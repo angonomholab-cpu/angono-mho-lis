@@ -167,13 +167,12 @@ async function apiGet(action, params = {}) {
                 }))};
             }
             case "getPendingWorkload": {
+                // 🟢 Patas na pagkuha ng pending / completed para sa lahat ng staff (Wala nang restriction sa facility para kita lahat ng gagawin)
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
-                if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
                 
                 let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
-                if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
                 
@@ -199,10 +198,6 @@ async function apiGet(action, params = {}) {
                      q = q.eq('test_name', tMap[params.type] || params.type).eq('status', 'COMPLETED'); 
                 }
 
-                if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
-                    if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
-                }
-                
                 if (params.searchQuery) {
                     q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
                 }
@@ -276,7 +271,7 @@ async function apiPost(action, payload) {
                     test_type: t.name, 
                     test_code: t.test_code || t.code,
                     details: t.details || {}, 
-                    status: 'PENDING', 
+                    status: 'PENDING', // 🟢 Sakto sa check constraint ng SQL ('PENDING', 'COMPLETED', 'FOR REPEAT')
                     facility: f.facility, 
                     encoder: f.encoder, 
                     date: new Date().toISOString()
@@ -289,7 +284,7 @@ async function apiPost(action, payload) {
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                // 🟢 Set status strictly to 'COMPLETED' so it routes to Completed list and Registry
+                // 🟢 Gagamit ng exact status na 'COMPLETED' para pumasa sa check constraint
                 const { error } = await sb.from('lab_tests').update({ details: details, status: 'COMPLETED', encoder: payload.encodedBy, date_examined: new Date().toISOString() }).eq('id', payload.testId);
                 if(error) throw new Error("Supabase Error saving result: " + error.message);
                 return { status: "success" };
@@ -1412,12 +1407,11 @@ function startAutoSync() {
         const pendingSection = document.getElementById('col-pending'); const isEditing = document.getElementById('col-entry') && document.getElementById('col-entry').classList.contains('edit-mode-pane');
         if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
             try {
-                let q = sb.from('lab_tests').select('*').in('status', ['PENDING', 'COMPLETED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
-                if(currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
+                let q = sb.from('lab_tests').select('*').in('status', ['PENDING', 'COMPLETED', 'ENCODED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
                 const { data } = await q;
                 if (data) {
-                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
-                    window.completedData = data.filter(d => d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.pendingData = data.filter(d => String(d.status).toUpperCase() === 'PENDING').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
+                    window.completedData = data.filter(d => String(d.status).toUpperCase() === 'COMPLETED' || String(d.status).toUpperCase() === 'ENCODED' || String(d.status).toUpperCase() === 'FOR REPEAT').map(d => ({id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date}));
                     renderLists();
                 }
             } catch (e) {}
