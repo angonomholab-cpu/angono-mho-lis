@@ -21,6 +21,9 @@
 
     <!-- Para sa Android / Windows -->
     <meta name="mobile-web-app-capable" content="yes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="style.css">
@@ -1460,157 +1463,483 @@
         <div class="login-orb login-orb-2"></div>
         <div class="login-orb login-orb-3"></div>
 
-        <div class="login-stage">
-            <div class="login-shell">
-                <!-- Landscape Left Showcase Panel (Visible in landscape on desktop/laptop/tablets) -->
-                <div class="login-showcase-panel">
-                    <div>
-                        <div class="status-beacon" style="margin-bottom: 24px;">
-                            <span class="beacon-dot"></span> Angono Health Cloud Active
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                            <div style="background: rgba(255,255,255,0.15); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; backdrop-filter: blur(8px);">
-                                <i class="ph ph-flask"></i>
+        <div class="auth-landing">
+            <!-- Left Hero Section with Laboratory Triple Column Wall -->
+            <div class="auth-hero">
+                <div class="hero-wall" aria-hidden="true">
+                    <!-- Column A: Scrolls UP -->
+                    <div class="hero-wall-col hwcol-a">
+                        <div class="hero-wall-col-track">
+                            <div class="hero-wall-card hwc-gxp">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">MOLECULAR</span>
+                                        <i class="ph ph-dna hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">MTB / RIF</div>
+                                        <div class="hwc-label">GeneXpert System</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <h1 style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; line-height: 1.2;">ANGONO MHO</h1>
-                                <p style="font-size: 0.72rem; opacity: 0.85; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Laboratory Information System</p>
+                            <div class="hero-wall-card hwc-hema">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">HEMATOLOGY</span>
+                                        <i class="ph ph-drop hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">CBC + DIFF</div>
+                                        <div class="hwc-label">Complete Blood</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-sero">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">SEROLOGY</span>
+                                        <i class="ph ph-shield-check hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">HIV • RPR • HBsAg</div>
+                                        <div class="hwc-label">Infectious Panel</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-chem">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">CHEMISTRY</span>
+                                        <i class="ph ph-flask hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">FBS • LIPID • ALT</div>
+                                        <div class="hwc-label">Clinical Chem</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Duplicated set for seamless infinite scroll -->
+                            <div class="hero-wall-card hwc-gxp">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">MOLECULAR</span>
+                                        <i class="ph ph-dna hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">MTB / RIF</div>
+                                        <div class="hwc-label">GeneXpert System</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-hema">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">HEMATOLOGY</span>
+                                        <i class="ph ph-drop hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">CBC + DIFF</div>
+                                        <div class="hwc-label">Complete Blood</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-sero">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">SEROLOGY</span>
+                                        <i class="ph ph-shield-check hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">HIV • RPR • HBsAg</div>
+                                        <div class="hwc-label">Infectious Panel</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-chem">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">CHEMISTRY</span>
+                                        <i class="ph ph-flask hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">FBS • LIPID • ALT</div>
+                                        <div class="hwc-label">Clinical Chem</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <p style="font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.85); margin-top: 14px;">
-                            Secure diagnostic repository and patient laboratory portal serving the municipality of Angono, Rizal.
-                        </p>
                     </div>
 
-                    <div style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: rgba(255,255,255,0.7);">
-                        <span><i class="ph ph-lock-key"></i> 256-Bit Encrypted</span>
-                        <span><i class="ph ph-shield-check"></i> DOH Compliant</span>
+                    <!-- Column B: Scrolls DOWN -->
+                    <div class="hero-wall-col hwcol-b">
+                        <div class="hero-wall-col-track">
+                            <div class="hero-wall-card hwc-dssm">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">MICROSCOPY</span>
+                                        <i class="ph ph-magnifying-glass-plus hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">DSSM / AFB</div>
+                                        <div class="hwc-label">Sputum Smear</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-form">
+                                <div class="hwc-form-inner">
+                                    <div class="hwc-form-header">
+                                        <span class="hwc-form-badge">SPECIMEN #2026</span>
+                                    </div>
+                                    <div class="hwc-form-title">Diagnostic Requisition</div>
+                                    <div class="hwc-bar"></div>
+                                    <div class="hwc-bar short"></div>
+                                    <div class="hwc-status-chip"><span class="chip-dot"></span> EXAMINED</div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-vl">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">VIRAL LOAD</span>
+                                        <i class="ph ph-virus hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">GXVL HIV-1</div>
+                                        <div class="hwc-label">RNA Quantitation</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-ua">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">ROUTINE</span>
+                                        <i class="ph ph-test-tube hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">URINALYSIS</div>
+                                        <div class="hwc-label">Physical & Micro</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Duplicated set for seamless infinite scroll -->
+                            <div class="hero-wall-card hwc-dssm">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">MICROSCOPY</span>
+                                        <i class="ph ph-magnifying-glass-plus hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">DSSM / AFB</div>
+                                        <div class="hwc-label">Sputum Smear</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-form">
+                                <div class="hwc-form-inner">
+                                    <div class="hwc-form-header">
+                                        <span class="hwc-form-badge">SPECIMEN #2026</span>
+                                    </div>
+                                    <div class="hwc-form-title">Diagnostic Requisition</div>
+                                    <div class="hwc-bar"></div>
+                                    <div class="hwc-bar short"></div>
+                                    <div class="hwc-status-chip"><span class="chip-dot"></span> EXAMINED</div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-vl">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">VIRAL LOAD</span>
+                                        <i class="ph ph-virus hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">GXVL HIV-1</div>
+                                        <div class="hwc-label">RNA Quantitation</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-ua">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">ROUTINE</span>
+                                        <i class="ph ph-test-tube hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">URINALYSIS</div>
+                                        <div class="hwc-label">Physical & Micro</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column C: Scrolls UP -->
+                    <div class="hero-wall-col hwcol-c">
+                        <div class="hero-wall-col-track">
+                            <div class="hero-wall-card hwc-dengue">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">IMMUNOLOGY</span>
+                                        <i class="ph ph-bug hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">DENGUE DUO</div>
+                                        <div class="hwc-label">NS1 Ag / IgG-IgM</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-barcode">
+                                <div class="hwc-barcode-inner">
+                                    <div class="hwc-barcode-lines">
+                                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                    </div>
+                                    <div class="hwc-barcode-sub">ANGONO-MHO-LIS</div>
+                                    <div class="hwc-barcode-status"><i class="ph ph-check-circle"></i> VERIFIED</div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-fecal">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">PARASITOLOGY</span>
+                                        <i class="ph ph-crosshair hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">FECALYSIS</div>
+                                        <div class="hwc-label">Stool Examination</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-bloodtype">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">BLOOD BANK</span>
+                                        <i class="ph ph-heartbeat hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">ABO / Rh</div>
+                                        <div class="hwc-label">Typing & Crossmatch</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Duplicated set for seamless infinite scroll -->
+                            <div class="hero-wall-card hwc-dengue">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">IMMUNOLOGY</span>
+                                        <i class="ph ph-bug hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">DENGUE DUO</div>
+                                        <div class="hwc-label">NS1 Ag / IgG-IgM</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-barcode">
+                                <div class="hwc-barcode-inner">
+                                    <div class="hwc-barcode-lines">
+                                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                    </div>
+                                    <div class="hwc-barcode-sub">ANGONO-MHO-LIS</div>
+                                    <div class="hwc-barcode-status"><i class="ph ph-check-circle"></i> VERIFIED</div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-fecal">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">PARASITOLOGY</span>
+                                        <i class="ph ph-crosshair hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">FECALYSIS</div>
+                                        <div class="hwc-label">Stool Examination</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="hero-wall-card hwc-bloodtype">
+                                <div class="hwc-panel">
+                                    <div class="hwc-top">
+                                        <span class="hwc-tag">BLOOD BANK</span>
+                                        <i class="ph ph-heartbeat hwc-icon"></i>
+                                    </div>
+                                    <div class="hwc-bottom">
+                                        <div class="hwc-code">ABO / Rh</div>
+                                        <div class="hwc-label">Typing & Crossmatch</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Right / Main Form Panel -->
-                <div class="login-form-panel">
-                    <div id="login-card" class="auth-card">
-                        <div style="text-align: center; margin-bottom: 16px;">
-                            <div style="width: 48px; height: 48px; border-radius: 14px; background: var(--bg-subtle); color: var(--pri); display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 8px;">
-                                <i class="ph ph-shield-chevron"></i>
-                            </div>
-                            <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">Welcome Back</h2>
-                            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 3px 0 0 0;">Please sign in to access your laboratory records</p>
-                        </div>
+                <!-- Ghost Laboratory Watermark SVG -->
+                <svg class="auth-hero-watermark" viewBox="0 0 64 64" aria-hidden="true">
+                    <path d="M32 6 C26 6, 21 12, 25 19 C15 26, 9 46, 6 58 L20 54 C23 40, 29 28, 32 25 C35 28, 41 40, 44 54 L58 58 C55 46, 49 26, 39 19 C43 12, 38 6, 32 6 Z" />
+                </svg>
 
-                        <!-- Segmented Switcher -->
-                        <div class="login-segmented-tabs">
-                            <div id="tab-staff-login" class="login-seg-tab active" onclick="switchLoginTab('staff')">
-                                <i class="ph ph-shield-check"></i> Staff Login
-                            </div>
-                            <div id="tab-patient-login" class="login-seg-tab" onclick="switchLoginTab('patient')">
-                                <i class="ph ph-user"></i> Patient Portal
-                            </div>
-                        </div>
+                <div class="hero-vignette" aria-hidden="true"></div>
 
-                        <div id="staff-login-form">
-                            <input type="text" id="login_user" class="form-input" placeholder="Username"
-                                style="margin-bottom:12px;">
-                            <div class="pass-wrapper" style="margin-bottom: 16px;">
-                                <input type="password" id="login_pass" class="form-input" placeholder="Password">
+                <!-- Hero Branding & Headline -->
+                <div class="hero-copy">
+                    <div class="hero-brand-row">
+                        <div class="hero-brand-badge">
+                            <i class="ph ph-flask"></i>
+                        </div>
+                        <span class="hero-brand-word">ANGONO MHO LIS</span>
+                        <div class="status-beacon">
+                            <span class="beacon-dot"></span> Live
+                        </div>
+                    </div>
+                    <h2 class="hero-headline">Precision Diagnostics.<br />Trusted Municipal Care.</h2>
+                    <p class="hero-subline">GeneXpert Molecular, DSSM, Hematology, Serology & Blood Chemistry — all unified in one secure municipal laboratory network.</p>
+                    <div class="hero-badges-row">
+                        <span><i class="ph ph-lock-key"></i> 256-Bit SSL Encrypted</span>
+                        <span><i class="ph ph-shield-check"></i> DOH NTP Integrated</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Authentication Form Panel -->
+            <div class="auth-form-panel">
+                <div id="login-card" class="auth-card">
+                    <div class="auth-card-head">
+                        <div class="auth-card-icon">
+                            <i class="ph ph-shield-check"></i>
+                        </div>
+                        <h2 class="auth-card-title">Sign In to Portal</h2>
+                        <p class="auth-card-sub">Access municipal diagnostic archives & patient records</p>
+                    </div>
+
+                    <!-- Segmented Switcher -->
+                    <div class="login-segmented-tabs">
+                        <div id="tab-staff-login" class="login-seg-tab active" onclick="switchLoginTab('staff')">
+                            <i class="ph ph-shield-check"></i> Staff Login
+                        </div>
+                        <div id="tab-patient-login" class="login-seg-tab" onclick="switchLoginTab('patient')">
+                            <i class="ph ph-user"></i> Patient Portal
+                        </div>
+                    </div>
+
+                    <div id="staff-login-form">
+                        <div class="form-group" style="margin-bottom:12px; text-align:left;">
+                            <label class="auth-label">Username</label>
+                            <input type="text" id="login_user" class="form-input" placeholder="Enter staff username">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px; text-align:left;">
+                            <label class="auth-label">Password</label>
+                            <div class="pass-wrapper">
+                                <input type="password" id="login_pass" class="form-input" placeholder="••••••••">
                                 <i class="ph ph-eye" onclick="togglePass('login_pass', this)"></i>
                             </div>
-                            <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">
-                                <i class="ph ph-sign-in"></i> Log In
-                            </button>
-
-                            <div
-                                style="margin-top:14px; font-size:0.75rem; text-align:center; border-top: 1px dashed var(--border-color); padding-top: 12px;">
-                                <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showStaffRegister()"><i
-                                        class="ph ph-user-plus"></i> Create Staff Account</span>
-                            </div>
                         </div>
+                        <button id="btn-login" class="btn btn-primary full-width" onclick="attemptLogin()">
+                            <i class="ph ph-sign-in"></i> Sign In to LIS
+                        </button>
 
-                        <div id="patient-login-form" style="display:none;">
-                            <div
-                                style="background: #fffbeb; color: #b45309; padding: 10px 12px; border-radius: 8px; font-size: 0.72rem; margin-bottom: 14px; border: 1px solid #fef3c7; text-align: left; line-height: 1.4;">
-                                <i class="ph ph-info"></i> <strong>Note:</strong> Enter the registered email provided during your lab test visit.
-                            </div>
-                            <input type="email" id="pat_user" class="form-input" placeholder="Registered Email Address"
-                                style="margin-bottom:12px; width: 100%;" onblur="this.value = this.value.toLowerCase()">
-                            <div class="pass-wrapper" style="margin-bottom: 16px;">
-                                <input type="password" id="pat_pass" class="form-input" placeholder="Password" style="width: 100%;">
+                        <div class="auth-card-footer-link">
+                            <span onclick="showStaffRegister()"><i class="ph ph-user-plus"></i> Request Staff Account</span>
+                        </div>
+                    </div>
+
+                    <div id="patient-login-form" style="display:none;">
+                        <div class="patient-note-box">
+                            <i class="ph ph-info"></i> <strong>Official Notice:</strong> Enter the registered email address provided during your Angono MHO laboratory testing visit.
+                        </div>
+                        <div class="form-group" style="margin-bottom:12px; text-align:left;">
+                            <label class="auth-label">Registered Email Address</label>
+                            <input type="email" id="pat_user" class="form-input" placeholder="e.g. juan.delacruz@email.com" onblur="this.value = this.value.toLowerCase()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px; text-align:left;">
+                            <label class="auth-label">Password</label>
+                            <div class="pass-wrapper">
+                                <input type="password" id="pat_pass" class="form-input" placeholder="••••••••">
                                 <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
                             </div>
-                            <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">
-                                <i class="ph ph-file-text"></i> View My Results
-                            </button>
-
-                            <div
-                                style="margin-top:14px; font-size:0.75rem; display:flex; justify-content:space-between; border-top: 1px dashed var(--border-color); padding-top: 12px;">
-                                <span style="color:var(--pri); cursor:pointer; font-weight:bold;" onclick="showPatientResend()"><i
-                                        class="ph ph-envelope-simple"></i> Resend Password</span>
-                                <span style="color:var(--text-muted); cursor:pointer;" onclick="showPatientInfo()"><i
-                                        class="ph ph-info"></i> New Patient?</span>
-                            </div>
                         </div>
+                        <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">
+                            <i class="ph ph-file-text"></i> View My Results
+                        </button>
 
-                        <p id="login-error"
-                            style="color:var(--danger); margin-top:12px; display:none; font-size:0.8rem; font-weight:bold; text-align:center;"></p>
-                    </div>
-
-                    <div id="staff-register-card" class="auth-card" style="display:none;">
-                        <h2 style="margin-bottom:6px; color:var(--pri); font-size:1.15rem;"><i class="ph ph-user-plus"></i> Request Account</h2>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:12px;">Fill in your details. You will need Admin approval before login.</p>
-                        <div class="form-grid grid-1" style="gap:8px; margin-bottom:12px; text-align:left;">
-                            <input type="text" id="reg_name" class="form-input" placeholder="Full Name (e.g. Juan Cruz)">
-                            <select id="reg_fac" class="form-select">
-                                <option value="ALL">ALL / MAIN</option>
-                            </select>
-                            <select id="reg_role" class="form-select">
-                                <option value="" disabled selected>Select Role</option>
-                                <option value="STAFF">LAB STAFF</option>
-                                <option value="ENCODER">ENCODER</option>
-                                <option value="VIEWER">VIEWER</option>
-                                <option value="DOH_TB">DOH_TB</option>
-                                <option value="NTP_CHECKER">NTP_CHECKER</option>
-                            </select>
-                            <input type="text" id="reg_user" class="form-input" placeholder="Username">
-                            <div class="pass-wrapper" style="margin-bottom:0;">
-                                <input type="password" id="reg_pass" class="form-input" placeholder="Password">
-                                <i class="ph ph-eye" onclick="togglePass('reg_pass', this)"></i>
-                            </div>
-                            <div class="pass-wrapper" style="margin-bottom:0;">
-                                <input type="password" id="reg_pass2" class="form-input" placeholder="Confirm Password">
-                                <i class="ph ph-eye" onclick="togglePass('reg_pass2', this)"></i>
-                            </div>
+                        <div class="patient-card-links">
+                            <span class="link-pri" onclick="showPatientResend()"><i class="ph ph-envelope-simple"></i> Resend Password</span>
+                            <span class="link-muted" onclick="showPatientInfo()"><i class="ph ph-info"></i> New Patient?</span>
                         </div>
-                        <button class="btn btn-primary full-width" onclick="submitStaffRegister()">Submit Request</button>
-                        <div style="margin-top:12px; font-size:0.78rem; color:var(--text-muted); cursor:pointer; text-align:center;"
-                            onclick="backToLoginFromRegister()">Back to Login</div>
                     </div>
 
-                    <div id="patient-resend-card" class="auth-card" style="display:none;">
-                        <h2 style="margin-bottom:6px; color:var(--pri); font-size:1.15rem;"><i class="ph ph-paper-plane-right"></i> Resend Password</h2>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:14px;">Enter your registered email address to receive your password.</p>
-                        <input type="email" id="resend_pat_email" class="form-input" placeholder="Enter your email"
-                            style="margin-bottom:14px;">
-                        <button class="btn btn-primary full-width" onclick="resendPatientPassword()">Send Password</button>
-                        <div style="margin-top:14px; font-size:0.78rem; color:var(--text-muted); cursor:pointer; text-align:center;"
-                            onclick="backToLoginFromPatient()">Back to Login</div>
-                    </div>
+                    <p id="login-error" class="auth-error-msg" style="display:none;"></p>
+                </div>
 
-                    <div id="patient-info-card" class="auth-card" style="display:none;">
-                        <h2 style="margin-bottom:8px; color:var(--pri); font-size:1.15rem;"><i class="ph ph-user-plus"></i> New Patient?</h2>
-                        <p style="font-size:0.75rem; color:var(--text-main); margin-bottom:12px; line-height:1.4;">Patient accounts
-                            are <strong>automatically generated</strong> during your first laboratory visit.</p>
-                        <div
-                            style="background:var(--bg-subtle); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:16px;">
-                            <p
-                                style="margin:0 0 4px 0; font-size:0.7rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">
-                                Need Help?</p>
-                            <p style="margin:0; font-size:0.75rem; color:var(--text-main);">Chat with us on Facebook Messenger:</p>
-                            <div style="margin-top:6px; font-weight:bold; color:#0084FF; font-size:0.85rem;"><i
-                                    class="ph ph-messenger-logo"></i> Angono MHO Laboratory</div>
+                <div id="staff-register-card" class="auth-card" style="display:none;">
+                    <div class="auth-card-head">
+                        <div class="auth-card-icon" style="background: rgba(13, 148, 136, 0.12); color: var(--pri);">
+                            <i class="ph ph-user-plus"></i>
                         </div>
-                        <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
+                        <h2 class="auth-card-title">Request Account</h2>
+                        <p class="auth-card-sub">Staff credentials require Administrator authorization</p>
                     </div>
+                    <div class="form-grid grid-1" style="gap:10px; margin-bottom:14px; text-align:left;">
+                        <input type="text" id="reg_name" class="form-input" placeholder="Full Name (e.g. Juan Cruz, RMT)">
+                        <select id="reg_fac" class="form-select">
+                            <option value="ALL">ALL / MAIN LABORATORY</option>
+                        </select>
+                        <select id="reg_role" class="form-select">
+                            <option value="" disabled selected>Select Role</option>
+                            <option value="STAFF">LAB STAFF</option>
+                            <option value="ENCODER">ENCODER</option>
+                            <option value="VIEWER">VIEWER</option>
+                            <option value="DOH_TB">DOH_TB</option>
+                            <option value="NTP_CHECKER">NTP_CHECKER</option>
+                        </select>
+                        <input type="text" id="reg_user" class="form-input" placeholder="Desired Username">
+                        <div class="pass-wrapper" style="margin-bottom:0;">
+                            <input type="password" id="reg_pass" class="form-input" placeholder="Password">
+                            <i class="ph ph-eye" onclick="togglePass('reg_pass', this)"></i>
+                        </div>
+                        <div class="pass-wrapper" style="margin-bottom:0;">
+                            <input type="password" id="reg_pass2" class="form-input" placeholder="Confirm Password">
+                            <i class="ph ph-eye" onclick="togglePass('reg_pass2', this)"></i>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary full-width" onclick="submitStaffRegister()">Submit Request</button>
+                    <div class="auth-back-link" onclick="backToLoginFromRegister()">
+                        <i class="ph ph-arrow-left"></i> Back to Login
+                    </div>
+                </div>
+
+                <div id="patient-resend-card" class="auth-card" style="display:none;">
+                    <div class="auth-card-head">
+                        <div class="auth-card-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
+                            <i class="ph ph-paper-plane-right"></i>
+                        </div>
+                        <h2 class="auth-card-title">Resend Password</h2>
+                        <p class="auth-card-sub">Enter your registered email to dispatch your access key</p>
+                    </div>
+                    <input type="email" id="resend_pat_email" class="form-input" placeholder="Registered Email Address" style="margin-bottom:14px;">
+                    <button class="btn btn-primary full-width" onclick="resendPatientPassword()">Send Password</button>
+                    <div class="auth-back-link" onclick="backToLoginFromPatient()">
+                        <i class="ph ph-arrow-left"></i> Back to Login
+                    </div>
+                </div>
+
+                <div id="patient-info-card" class="auth-card" style="display:none;">
+                    <div class="auth-card-head">
+                        <div class="auth-card-icon" style="background: rgba(16, 185, 129, 0.12); color: #059669;">
+                            <i class="ph ph-info"></i>
+                        </div>
+                        <h2 class="auth-card-title">Patient Portal Access</h2>
+                        <p class="auth-card-sub">Automatic Account Provisioning</p>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-main); margin-bottom:14px; line-height:1.5;">
+                        Patient accounts are <strong>automatically provisioned</strong> during your laboratory registration at Angono Municipal Health Office. Your login credentials are automatically dispatched to your provided email address.
+                    </p>
+                    <div style="background:var(--bg-subtle); padding:14px; border-radius:12px; border:1px solid var(--border-color); margin-bottom:16px;">
+                        <p style="margin:0 0 4px 0; font-size:0.72rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Need Assistance?</p>
+                        <p style="margin:0; font-size:0.78rem; color:var(--text-main);">Official Municipal Health Support:</p>
+                        <div style="margin-top:6px; font-weight:bold; color:#0084FF; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+                            <i class="ph ph-messenger-logo" style="font-size:1.1rem;"></i> Angono MHO Laboratory
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
                 </div>
             </div>
         </div>
