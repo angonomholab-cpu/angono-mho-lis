@@ -398,7 +398,7 @@ async function apiGet(action, params = {}) {
                 return { status: "success", data: data || [] };
             }
             case "getRegistryDataOptimized": {
-                const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'lab_tests', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
+                const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'lab_tests', 'FA': 'export_fecalysis', 'GXP': 'lab_tests', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'lab_tests', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
 
                 const dateColFilter = (tName === 'lab_tests') ? 'date' : 'Date Examined';
@@ -427,6 +427,62 @@ async function apiGet(action, params = {}) {
                 }
 
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+
+                // 🟢 Map GXP directly from lab_tests details para buo ang lahat ng columns hanggang dulo
+                if (params.type === 'GXP' && tName === 'lab_tests') {
+                    data = data.map(r => {
+                        const d = typeof r.details === 'string' ? JSON.parse(r.details || '{}') : (r.details || {});
+                        return {
+                            "Test Code": r.test_code || r.id,
+                            "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
+                            "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
+                            "Patient Name": r.patient_name || "",
+                            "Age": r.age_at_test || d.Age || d.age || "",
+                            "Sex": r.sex || d.Sex || d.sex || "",
+                            "Facility": r.facility || d.Facility || d.facility || "",
+                            "Reason for Examination": d["Reason for Examination"] || d.reason || "",
+                            "History of Treatment": d["History of Treatment"] || d.history || "",
+                            "Source of Request": d["Source of Request"] || d.physician || "",
+                            "X-Ray Result": d["X-Ray Result"] || d.xray || "",
+                            "Result Code": d.ResultCode || d.resultCode || d.result || "",
+                            "Grade": d.Grade || d.grade || "",
+                            "Repeat": d.Repeat || d.repeat || "",
+                            "Appearance": d.Appearance || d.appearance || "",
+                            "Remarks": d.Remarks || d.remarks || "",
+                            "Performed By": r.encoder || ""
+                        };
+                    });
+                }
+
+                // 🟢 Map DSSM directly from lab_tests details para buo ang lahat ng columns hanggang dulo
+                if (params.type === 'DSSM' && tName === 'lab_tests') {
+                    data = data.map(r => {
+                        const d = typeof r.details === 'string' ? JSON.parse(r.details || '{}') : (r.details || {});
+                        return {
+                            "Test Code": r.test_code || r.id,
+                            "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
+                            "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
+                            "Patient Name": r.patient_name || "",
+                            "Age": r.age_at_test || d.Age || d.age || "",
+                            "Sex": r.sex || d.Sex || d.sex || "",
+                            "Facility": r.facility || d.Facility || d.facility || "",
+                            "TB Case Number": d["TB Case Number"] || d.tb_case || "",
+                            "Reason for Examination": d["Reason for Examination"] || d.reason || "",
+                            "History of Treatment": d["History of Treatment"] || d.history || "",
+                            "Month of Treatment": d["Month of Treatment"] || d.monthTreat || "",
+                            "Smear 1": d.Smear1 || "",
+                            "Smear 1 Count": d.Smear1_Count || d.smear1_count || "",
+                            "Smear 2": d.Smear2 || "",
+                            "Smear 2 Count": d.Smear2_Count || d.smear2_count || "",
+                            "Diagnosis": d.Diagnosis || d.diagnosis || "",
+                            "Appearance": d.Appearance || d.appearance || "",
+                            "Remarks": d.Remarks || d.remarks || "",
+                            "Performed By": r.encoder || ""
+                        };
+                    });
+                }
 
                 // 🟢 Map Serology directly from lab_tests details para lumabas ang Syphilis, HBsAg, at Remarks
                 if (params.type === 'SERO' && tName === 'lab_tests') {
@@ -1338,16 +1394,6 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                         `;
                     }
 
-                    let tbCareNoticeHtml = "";
-                    if (tUpper.includes("GXP") || tUpper.includes("MTB") || tUpper.includes("DSSM") || tUpper.includes("AFB")) {
-                        tbCareNoticeHtml = `
-                            <div style="margin-top:10px; padding:8px 12px; background:rgba(13, 148, 136, 0.06); border:1px solid rgba(13, 148, 136, 0.2); border-radius:8px; font-size:0.73rem; color:var(--text-main); display:flex; align-items:flex-start; gap:8px;">
-                                <i class="ph ph-first-aid" style="color:var(--pri); font-size:1.1rem; flex-shrink:0; margin-top:1px;"></i>
-                                <span style="line-height:1.45;"><strong>TB DOTS Gamutan & Monitoring:</strong> Para sa gamutan, monitoring, at libreng gamot, mangyaring magtungo sa <strong>Health Center ng inyong Barangay</strong> at hanapin ang inyong <strong>assigned Nurse o Midwife</strong>.</span>
-                            </div>
-                        `;
-                    }
-
                     return `
                         <div class="patient-result-card">
                             <div class="prc-header">
@@ -1362,7 +1408,6 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                             <div class="prc-actions" style="flex-wrap: wrap;">
                                 ${actionAreaHtml}
                             </div>
-                            ${tbCareNoticeHtml}
                             <div id="${uniqueId}" class="prc-breakdown-panel">
                                 <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">Official Laboratory Parameters</div>
                                 ${summaryHtml}
@@ -2596,18 +2641,25 @@ async function ensureStaffList() {
 async function printDirect(e, id, testName) {
     if (e) e.stopPropagation();
     const correctCode = getTestCodeFromName(testName);
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    showPrintModal('<div style="font-family:\'Inter\', sans-serif; text-align:center; padding:60px 20px; color:#64748b;"><i class="ph ph-spinner ph-spin" style="font-size:2.8rem; color:#10b981; display:block; margin-bottom:12px;"></i><h3 style="font-size:1.15rem; color:#1e293b; margin:0 0 6px 0; font-weight:700;">Inihahanda ang Opisyal na Resulta...</h3><p style="font-size:0.82rem; color:#64748b; margin:0;">Sandali lamang po habang kinukuha ang inyong verified certificate mula sa laboratory system.</p></div>');
 
-    let item = window.completedData.find(d => String(d.id) === String(id).trim() || String(d.testCode) === String(id).trim()) ||
-        window.pendingData.find(d => String(d.id) === String(id).trim() || String(d.testCode) === String(id).trim());
     try {
-        if (!item) {
-            let { data } = await sb.from('lab_tests').select('*').eq('test_code', id).maybeSingle();
-            if (!data) {
-                const { data: d2 } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle();
+        const cData = Array.isArray(window.completedData) ? window.completedData : (Array.isArray(completedData) ? completedData : []);
+        const pData = Array.isArray(window.pendingData) ? window.pendingData : (Array.isArray(pendingData) ? pendingData : []);
+
+        const cleanId = String(id || '').trim();
+        let item = cData.find(d => String(d.id).trim() === cleanId || String(d.testCode).trim() === cleanId) ||
+            pData.find(d => String(d.id).trim() === cleanId || String(d.testCode).trim() === cleanId);
+
+        if (!item && cleanId) {
+            let { data } = await sb.from('lab_tests').select('*').eq('test_code', cleanId).maybeSingle();
+            if (!data && /^\d+$/.test(cleanId)) {
+                const { data: d2 } = await sb.from('lab_tests').select('*').eq('id', cleanId).maybeSingle();
                 data = d2;
             }
-            if (data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date };
+            if (data) {
+                item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date };
+            }
         }
         if (item) {
             await ensureStaffList();
@@ -2623,11 +2675,11 @@ async function printDirect(e, id, testName) {
             }
             showPrintModal(finalHtml);
         } else {
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found. Test Code: ' + id + '</h2>');
+            showPrintModal('<div style="font-family:\'Inter\', sans-serif; text-align:center; padding:50px 20px;"><i class="ph ph-warning-circle" style="font-size:2.8rem; color:#ef4444; display:block; margin-bottom:12px;"></i><h3 style="font-size:1.15rem; color:#ef4444; margin:0 0 6px 0;">Record Not Found</h3><p style="font-size:0.85rem; color:#64748b;">Hindi natagpuan ang laboratory record para sa Test Code: ' + cleanId + '</p></div>');
         }
     } catch (err) {
         console.error("Print Generation Error:", err);
-        showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`);
+        showPrintModal('<div style="font-family:\'Inter\', sans-serif; text-align:center; padding:50px 20px;"><i class="ph ph-x-circle" style="font-size:2.8rem; color:#ef4444; display:block; margin-bottom:12px;"></i><h3 style="font-size:1.15rem; color:#ef4444; margin:0 0 6px 0;">Print Error</h3><p style="font-size:0.85rem; color:#64748b;">' + err.message + '</p></div>');
     }
 }
 
@@ -2911,14 +2963,9 @@ function showPrintModal(htmlContent) {
 
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
-
-    iframe.src = 'about:blank'; // reset
-    setTimeout(() => {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-    }, 50);
+    if (iframe) {
+        iframe.srcdoc = htmlContent;
+    }
 }
 
 window.triggerDirectPrint = function () {
@@ -2958,6 +3005,6 @@ window.closePrintModal = function () {
     if (modal) {
         modal.style.display = 'none';
         const iframe = document.getElementById('print-iframe');
-        if (iframe) iframe.src = 'about:blank'; // I-clear ang memory
+        if (iframe) iframe.srcdoc = '';
     }
 };
