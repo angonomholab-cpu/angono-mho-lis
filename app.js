@@ -1,5 +1,6 @@
 // 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
+console.log("app.js build: 2026-09-22-fix2 (srcdoc print fix + full patient pagination)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -148,11 +149,18 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                const { data, error } = await sb.from('patients').select('*');
-                if (error) {
-                    console.error("Patient cache error:", error);
-                    return { status: "success", data: [] };
+                // 🟢 FIX: si Supabase/PostgREST ay may default na row cap (karaniwan 1000).
+                // May 2,238 patients ka — kalahati lang dati ang na-lo-load, kaya
+                // "nakita ko sa dashboard pero wala sa search" ang lumalabas.
+                // Dito, sunud-sunod na kinukuha ang LAHAT ng rows, 1000 sa isang pagkuha.
+                let data = [];
+                for (let from = 0; ; from += 1000) {
+                    const { data: chunk, error } = await sb.from('patients').select('*').range(from, from + 999);
+                    if (error) { console.error("Patient cache error:", error); break; }
+                    data = data.concat(chunk || []);
+                    if (!chunk || chunk.length < 1000) break;
                 }
+                console.log(`[patient cache] loaded ${data.length} patients`);
                 return { status: "success", data: (data || []).map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
@@ -675,7 +683,7 @@ function runDirectSearch(q) {
     if(q.length < 2) { box.style.display='none'; return; }
     
     const query = q.toLowerCase();
-    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 8);
+    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 30);
     
     if (results.length > 0) {
         box.style.display = 'block'; 
@@ -697,7 +705,7 @@ function runDirectSearch(q) {
 
 function runQuickSearch(q) {
     const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 15);
+    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 30);
     if (results.length > 0) {
         box.style.display = 'block'; box.innerHTML = '';
         results.forEach(p => {
