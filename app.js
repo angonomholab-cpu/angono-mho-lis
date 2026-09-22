@@ -1975,25 +1975,88 @@ function getResultTemplate(code, safeId, item) {
     }
 }
 
-window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
-    const drawer = document.getElementById(drawerId);
-    if (!drawer) return;
-    const isVisible = drawer.style.display !== 'none';
+let regHoverTimer = null;
+let regPinnedDrawerId = null;
 
-    // Close other drawers to keep table clean and performant
-    document.querySelectorAll('.reg-drawer-row').forEach(d => {
-        if (d.id !== drawerId) d.style.display = 'none';
-    });
-    document.querySelectorAll('#regTableBody tr.reg-data-row').forEach(r => {
-        if (r !== rowEl) r.classList.remove('active-row');
-    });
-
-    if (isVisible) {
-        drawer.style.display = 'none';
-        if (rowEl) rowEl.classList.remove('active-row');
-    } else {
+window.handleRegistryRowHover = function (drawerId, rowEl) {
+    if (regPinnedDrawerId) return; // If locked by click, don't auto-switch
+    clearTimeout(regHoverTimer);
+    regHoverTimer = setTimeout(() => {
+        if (regPinnedDrawerId) return;
+        const drawer = document.getElementById(drawerId);
+        if (!drawer) return;
+        document.querySelectorAll('.reg-drawer-row').forEach(d => {
+            if (d.id !== regPinnedDrawerId && d.id !== drawerId) d.style.display = 'none';
+        });
+        document.querySelectorAll('#regTableBody tr.reg-data-row').forEach(r => {
+            if (!r.classList.contains('pinned-open') && r !== rowEl) r.classList.remove('active-row');
+        });
         drawer.style.display = 'table-row';
         if (rowEl) rowEl.classList.add('active-row');
+    }, 200);
+};
+
+window.handleRegistryRowLeave = function (drawerId, rowEl) {
+    clearTimeout(regHoverTimer);
+    if (regPinnedDrawerId === drawerId) return;
+    regHoverTimer = setTimeout(() => {
+        if (regPinnedDrawerId === drawerId) return;
+        const drawer = document.getElementById(drawerId);
+        if (drawer && !drawer.matches(':hover') && (!rowEl || !rowEl.matches(':hover'))) {
+            drawer.style.display = 'none';
+            if (rowEl) rowEl.classList.remove('active-row');
+        }
+    }, 150);
+};
+
+window.handleRegistryDrawerEnter = function (drawerId) {
+    clearTimeout(regHoverTimer);
+};
+
+window.handleRegistryDrawerLeave = function (drawerId) {
+    clearTimeout(regHoverTimer);
+    if (regPinnedDrawerId === drawerId) return;
+    regHoverTimer = setTimeout(() => {
+        if (regPinnedDrawerId === drawerId) return;
+        const drawer = document.getElementById(drawerId);
+        const rowEl = document.getElementById(`row-${drawerId}`);
+        if (drawer && !drawer.matches(':hover') && (!rowEl || !rowEl.matches(':hover'))) {
+            drawer.style.display = 'none';
+            if (rowEl) rowEl.classList.remove('active-row');
+        }
+    }, 150);
+};
+
+window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
+    clearTimeout(regHoverTimer);
+    const drawer = document.getElementById(drawerId);
+    if (!drawer) return;
+    if (!rowEl) rowEl = document.getElementById(`row-${drawerId}`);
+
+    if (regPinnedDrawerId === drawerId) {
+        // Unpin and close
+        regPinnedDrawerId = null;
+        drawer.style.display = 'none';
+        if (rowEl) {
+            rowEl.classList.remove('active-row');
+            rowEl.classList.remove('pinned-open');
+        }
+    } else {
+        // Close all others and pin this one
+        document.querySelectorAll('.reg-drawer-row').forEach(d => {
+            d.style.display = 'none';
+        });
+        document.querySelectorAll('#regTableBody tr.reg-data-row').forEach(r => {
+            r.classList.remove('active-row');
+            r.classList.remove('pinned-open');
+        });
+
+        regPinnedDrawerId = drawerId;
+        drawer.style.display = 'table-row';
+        if (rowEl) {
+            rowEl.classList.add('active-row');
+            rowEl.classList.add('pinned-open');
+        }
     }
 };
 
@@ -2046,7 +2109,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             const rows = registryData.rows || [];
             window.REGISTRY_ROWS_BY_CODE = {};
             const isAdminEdit = String(currentUser.role).toUpperCase() === 'ADMIN';
-            const totalCols = hMap.length + 2 + (isAdminEdit ? 1 : 0);
+            const totalCols = hMap.length + 1 + (isAdminEdit ? 1 : 0);
 
             const getColClass = (hOriginal) => {
                 const clean = String(hOriginal || '').toUpperCase().replace(/[_\s]+/g, '');
@@ -2059,12 +2122,35 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 return 'reg-col-compact';
             };
 
-            let html = `<table class="data-table"><thead><tr><th style="width:30px; z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th><th style="width:75px; text-align:center; z-index:6;">Print</th>`;
+            const shortenHeader = (fullText) => {
+                if (!fullText) return '';
+                const u = String(fullText).toUpperCase().trim();
+                if (u === 'DATE RECEIVED') return 'Received';
+                if (u === 'DATE EXAMINED') return 'Examined';
+                if (u === 'DATE RELEASED') return 'Released';
+                if (u === 'COLLECTION DATE') return 'Collected';
+                if (u === 'HISTORY OF TREATMENT') return 'History Tx';
+                if (u === 'REASON FOR EXAMINATION' || u === 'REASON FOR EXAM') return 'Reason';
+                if (u === 'TB CASE NUMBER') return 'TB Case #';
+                if (u === 'MONTH OF TREATMENT') return 'Tx Month';
+                if (u === 'SPECIMEN TYPE') return 'Specimen';
+                if (u === 'VISUAL APPEARANCE') return 'Appearance';
+                if (u === 'PERFORMED BY' || u === 'PERFORMED_BY') return 'Encoder';
+                if (u === 'DIAGNOSIS / RESULT' || u === 'RESULT / DIAGNOSIS') return 'Result';
+                if (u === 'PATIENT NAME') return 'Patient Name';
+                if (u === 'TEST CODE') return 'Code';
+                if (u === 'TEST TYPE') return 'Type';
+                if (u === 'X-RAY RESULT' || u === 'XRAY RESULT') return 'X-Ray';
+                if (u === 'F_NAME' || u === 'FACILITY') return 'Facility';
+                return fullText;
+            };
+
+            let html = `<table class="data-table"><thead><tr><th class="reg-col-chk" style="z-index:6;"><input type="checkbox" onclick="document.querySelectorAll('#regTableBody tr:not([style*=\\'display: none\\']) .chk-reg').forEach(c=>c.checked=this.checked); document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></th>`;
             hMap.forEach(c => {
                 const colClass = getColClass(c.original);
-                html += `<th class="${colClass}" title="${c.text}">${c.text}</th>`;
+                html += `<th class="${colClass}" title="${c.text}">${shortenHeader(c.text)}</th>`;
             });
-            if (isAdminEdit) html += '<th style="width:40px;">Edit</th>';
+            if (isAdminEdit) html += '<th class="reg-col-edit" title="Edit Record">Edit</th>';
             html += `</tr></thead><tbody id="regTableBody">`;
 
             rows.forEach((row, rowIdx) => {
@@ -2094,16 +2180,12 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     `;
                 });
 
-                html += `<tr class="reg-data-row" id="row-${rowDrawerId}" onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" title="Click to view full record drawer">
-                    <td onclick="event.stopPropagation()"><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>
-                    <td onclick="event.stopPropagation()" style="text-align:center; white-space:nowrap;">
-                        <button type="button" class="btn-icon" style="color:var(--success); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;" onclick="printDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)" title="Print Official Slip">
-                            <i class="ph ph-printer" style="font-size:1.1rem;"></i>
-                        </button>
-                        <button type="button" class="btn-icon" style="color:var(--pri); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; margin-left:4px;" onclick="downloadDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)" title="Save / Download PDF">
-                            <i class="ph ph-download-simple" style="font-size:1.1rem;"></i>
-                        </button>
-                    </td>`;
+                html += `<tr class="reg-data-row" id="row-${rowDrawerId}" 
+                            onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" 
+                            onmouseenter="handleRegistryRowHover('${rowDrawerId}', this)" 
+                            onmouseleave="handleRegistryRowLeave('${rowDrawerId}', this)" 
+                            title="Click or hover to expand full record details">
+                    <td class="reg-col-chk" onclick="event.stopPropagation()"><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
 
                 let isInitialRow = false;
                 hMap.forEach(c => {
@@ -2132,7 +2214,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; }
                         else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; }
 
-                        html += `<td class="${colClass}" title="${escapedVal}"><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
+                        html += `<td class="${colClass}" title="${escapedVal}"><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:2px 5px; border-radius:4px; font-weight:bold; font-size:0.67rem;` : ''}">${val}</span></td>`;
                     } else if (isPerformedBy && val !== "") {
                         html += `<td class="${colClass}" title="${escapedVal}" style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`;
                     } else {
@@ -2141,20 +2223,22 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 });
 
                 if (isAdminEdit) {
-                    html += `<td onclick="event.stopPropagation()"><button class="btn-icon" title="Edit Record" onclick="openRegistryEditModal('${testCode}')"><i class="ph ph-pencil-simple"></i></button></td>`;
+                    html += `<td class="reg-col-edit" onclick="event.stopPropagation()"><button class="btn-icon" title="Edit Record" onclick="openRegistryEditModal('${testCode}')"><i class="ph ph-pencil-simple"></i></button></td>`;
                 }
                 html += `</tr>`;
 
                 // Interactive row drawer displaying all values
                 html += `
-                    <tr id="${rowDrawerId}" class="reg-drawer-row" style="display:none;">
+                    <tr id="${rowDrawerId}" class="reg-drawer-row" style="display:none;" 
+                        onmouseenter="handleRegistryDrawerEnter('${rowDrawerId}')" 
+                        onmouseleave="handleRegistryDrawerLeave('${rowDrawerId}')">
                         <td colspan="${totalCols}">
                             <div class="reg-drawer-container">
                                 <div class="rdd-header">
                                     <div class="rdd-title">
                                         <span class="rdd-code"><i class="ph ph-barcode"></i> ${testCode || 'LOGBOOK RECORD'}</span>
                                         <span class="rdd-name">${patientName}</span>
-                                        <span style="font-size:0.72rem; color:var(--text-muted);"><i class="ph ph-list-magnifying-glass"></i> Clicked Record Details</span>
+                                        <span style="font-size:0.72rem; color:var(--text-muted);"><i class="ph ph-list-magnifying-glass"></i> Full Patient Record Details</span>
                                     </div>
                                     <div class="rdd-actions">
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" onclick="printDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)"><i class="ph ph-printer"></i> Print</button>
