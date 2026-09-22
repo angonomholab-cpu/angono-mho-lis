@@ -299,8 +299,9 @@ async function apiPost(action, payload) {
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                const { error } = await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest, test_type: payload.updatedTest }).eq('id', payload.testId);
-                if(error) throw new Error("Result Error: " + error.message);
+                // 🔴 TINANGGAL ang update para sa patient_name at test_type kasi wala pala sila sa database mo, status at details lang
+                const { error } = await sb.from('lab_tests').update({ details: details, status: 'COMPLETED', encoder: payload.encodedBy, date_examined: new Date().toISOString() }).eq('id', payload.testId);
+                if(error) throw new Error("Supabase Error saving result: " + error.message);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
@@ -819,12 +820,40 @@ async function finalSubmit() {
   const d = new Date();
   const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
-  Object.keys(labOrders).forEach(key => { 
-      const randNum = String(Math.floor(Math.random() * 900) + 100);
-      const generatedTestCode = `${availableTests[key].testCode}-${dateStr}-${randNum}`;
+  // Kukunin natin ang kasalukuyang bilang ng mga test para sa araw at test na ito upang gumawa ng sequence
+  let sequenceCounters = {};
+
+  // Gagawa tayo ng for...of loop (imbes na forEach) para makagamit tayo ng await nang maayos
+  for (const key of Object.keys(labOrders)) {
+      let tCode = availableTests[key].testCode;
+      
+      // I-check sa database kung pang-ilan na itong test na ito ngayong araw
+      if (sequenceCounters[tCode] === undefined) {
+          try {
+              // Hahanapin natin ang mga existing tests ngayong araw na may ganitong code
+              const { data, error } = await sb.from('lab_tests')
+                  .select('test_code')
+                  .like('test_code', `${tCode}-${dateStr}-%`);
+              
+              if (!error && data) {
+                  sequenceCounters[tCode] = data.length + 1; // Kung may 0, magiging 1. Kung may 5, magiging 6.
+              } else {
+                  sequenceCounters[tCode] = 1; // Fallback kung may error
+              }
+          } catch(e) {
+              sequenceCounters[tCode] = 1; // Fallback kung offline
+          }
+      } else {
+          // Kung nakapag-check na tayo kanina (e.g. dalawang magkaparehong test type sa iisang patient, bihira mangyari), mag-add na lang
+          sequenceCounters[tCode]++;
+      }
+
+      // I-format ang sequence (e.g. 1 magiging 001)
+      const seqStr = String(sequenceCounters[tCode]).padStart(3, '0');
+      const generatedTestCode = `${tCode}-${dateStr}-${seqStr}`;
 
       const entry = { 
-          test_code: generatedTestCode, 
+          test_code: generatedTestCode,  
           name: availableTests[key].testName, 
           code: availableTests[key].testCode, 
           details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value } 
@@ -1014,7 +1043,8 @@ async function saveAndPrintResult(id, safeId, btn) {
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
-    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", "Failed to save and print.", "error"); }
+        else { throw new Error(res.message || "Failed to save result."); } // 🔴 Ilabas ang tunay na mensahe
+    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } // 🔴 Ipakita ang tunay na error sa pop-up
 }
 
 async function moveToPendingRepeat(idStr) {
