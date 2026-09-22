@@ -1,6 +1,6 @@
 // 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
-console.log("app.js build: 2026-09-22-FinalFix (Syntax Cleaned, Safe Print, Auto-Search Fix v2 - Paginated)");
+console.log("app.js build: 2026-09-22-streamlined (strict columns, no age in patients, accurate dates)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -15,7 +15,7 @@ let currentQuickPatient = null;
 let searchTimeout; 
 let confirmActionCallback = null; 
 window.CURRENT_TEST_TYPE = ""; 
-window.REGISTRY_SORT_ORDER = 'DESC'; 
+window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
@@ -81,26 +81,6 @@ function toggleDssmCategory(selectEl) {
     }
 }
 
-function handleDSSMCategory(sel) {
-    const val = sel.value;
-    const caseGroup = document.getElementById('dssm-case-group');
-    const monthGroup = document.getElementById('dssm-month-group');
-    const historyGroup = document.getElementById('dssm-history-group');
-    const xrayGroup = document.getElementById('dssm-xray-group');
-    if(!caseGroup) return;
-    if(val === 'Follow-up') {
-        caseGroup.style.display = 'block';
-        monthGroup.style.display = 'block';
-        if(historyGroup) historyGroup.style.display = 'none';
-        if(xrayGroup) xrayGroup.style.display = 'none';
-    } else {
-        caseGroup.style.display = 'none';
-        monthGroup.style.display = 'none';
-        if(historyGroup) historyGroup.style.display = 'block';
-        if(xrayGroup) xrayGroup.style.display = 'block';
-    }
-}
-
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
@@ -143,37 +123,36 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username };
             }
             case "patientLogin": {
-                const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).eq('password', params.password).maybeSingle();
+                const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL" };
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                // Gumamit ng pagination (range) para makuha LAHAT ng patients (Supabase default limit is 1000)
-                let allPatients = [];
-                let limit = 1000;
-                let start = 0;
+                // Pag-fetch ng kumpletong pasyente kahit ilan pa sila (While loop)
+                let allData = [];
                 let hasMore = true;
-
-                while (hasMore) {
-                    const { data, error } = await sb.from('patients').select('*').range(start, start + limit - 1);
+                let from = 0;
+                let limit = 1000;
+                
+                while(hasMore) {
+                    const { data: chunk, error } = await sb.from('patients').select('*').range(from, from + limit - 1);
                     if (error) {
                         console.error("Patient cache error:", error);
                         break;
                     }
-                    if (data && data.length > 0) {
-                        allPatients = allPatients.concat(data);
-                        start += data.length;
-                    }
-                    if (!data || data.length < limit) {
+                    allData = allData.concat(chunk || []);
+                    if (!chunk || chunk.length < limit) {
                         hasMore = false;
+                    } else {
+                        from += limit;
                     }
                 }
                 
-                return { status: "success", data: allPatients.map(p => ({
+                console.log(`[Cache] Successfully loaded ${allData.length} total patients.`);
+                return { status: "success", data: allData.map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
-                    age: p.age || "", 
                     sex: p.sex || "", 
                     facility: p.facility || "", 
                     address: p.address || "", 
@@ -194,11 +173,13 @@ async function apiGet(action, params = {}) {
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
-                const { data: pending } = await pendingQ.order('date', { ascending: false }).limit(1000);
+                const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
+                if (pErr) console.error("Pending Workload Error:", pErr);
                 
                 let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed } = await compQ.order('date', { ascending: false }).limit(300);
+                const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
+                if (cErr) console.error("Completed Workload Error:", cErr);
                 
                 const toFrontend = r => ({ id: r.id, testCode: r.test_code || r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
@@ -227,12 +208,14 @@ async function apiGet(action, params = {}) {
                 }
                 
                 if (params.searchQuery) {
-                    if(tName === 'lab_tests') q = q.ilike('patient_name', `%${params.searchQuery}%`);
-                    else q = q.ilike('name', `%${params.searchQuery}%`); 
+                    // Check for multiple possible column names to avoid crashing on views vs tables
+                    q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
                 }
 
                 const isAsc = params.sortOrder === 'ASC';
-                let { data, error } = await q.order('date', { ascending: isAsc }).limit(1000); 
+                // Kung mag-eerror dahil sa sorting column, tanggalin mo ang `.order` 
+                // pero pwede namang iasa sa client-side date ang iba kung magka-iba yung column name sa view
+                let { data, error } = await q.limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
                 if (params.monthFilter && data) {
@@ -280,53 +263,75 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                // Sanitize empty strings into null to avoid 400 Bad Request (Type Mismatch)
-                let safeAge = f.age ? parseInt(f.age) : null;
-                if (isNaN(safeAge)) safeAge = null;
-                let safeBday = f.bday ? f.bday : null;
-                let safeEmail = f.email ? f.email : null;
-
+                // 🔴 TINANGGAL NAMIN ANG AGE AT PASSWORD dito para walang 400 ERROR
                 const { error: pErr } = await sb.from('patients').upsert({
-                    id: patientId, full_name: f.fullName, bday: safeBday, sex: f.sex, age: safeAge, address: f.address, contact: f.contact, email: safeEmail, facility: f.facility
+                    id: patientId, 
+                    full_name: f.fullName, 
+                    bday: f.bday || null, 
+                    sex: f.sex || null, 
+                    address: f.address || null, 
+                    contact: f.contact || null, 
+                    email: f.email || null, 
+                    facility: f.facility || null
                 }, { onConflict: 'id' });
                 
-                // Throw explicit error para hindi umabot sa lab_tests kung sablay ang patient info
-                if (pErr) throw new Error("Patients DB Error: " + pErr.message);
+                if(pErr) throw new Error("Patient Save Error: " + pErr.message);
 
+                // 🔴 STRICT COLUMN MAPPING PARA SA LAB_TESTS
                 const rows = tests.map(t => ({
-                    patient_id: patientId, patient_name: f.fullName, test_name: t.name, test_code: t.test_code || t.code,
-                    details: t.details || {}, status: 'PENDING', facility: f.facility, encoder: f.encoder, date: new Date().toISOString()
+                    patient_id: patientId, 
+                    patient_name: f.fullName, 
+                    test_name: t.name, 
+                    test_code: t.test_code || t.code,
+                    details: t.details || {}, 
+                    status: 'PENDING', 
+                    facility: f.facility, 
+                    encoder: f.encoder, 
+                    date: new Date().toISOString() // DITO PUMAPASOK ANG "DATE RECEIVED / ENCODED"
                 }));
                 
                 const { error: tErr } = await sb.from('lab_tests').insert(rows);
-                if (tErr) throw new Error("Lab Tests DB Error: " + tErr.message);
+                if(tErr) throw new Error("Lab Test Save Error: " + tErr.message);
                 
                 return { status: "success", data: { email: f.email, generatedPassword: f.patientPassword, log: "Saved to Supabase." } };
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                const { error } = await sb.from('lab_tests').update({ details, status: 'COMPLETED', encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
-                if (error) throw new Error(error.message);
+                const { error: resErr } = await sb.from('lab_tests').update({ 
+                    details: details, 
+                    status: 'COMPLETED', 
+                    date_examined: new Date().toISOString(), // DITO PUMAPASOK ANG DATE NG PAG-SAVE
+                    encoder: payload.encodedBy, 
+                    patient_name: payload.updatedName, 
+                    test_name: payload.updatedTest 
+                }).eq('id', payload.testId);
+                
+                if(resErr) throw new Error("Result Save Error: " + resErr.message);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
                 const details = JSON.parse(payload.newJsonDetails || "{}");
-                const { error: e1 } = await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
-                if (e1) throw new Error("Test update failed: " + e1.message);
+                await sb.from('lab_tests').update({ 
+                    details: details, 
+                    patient_name: payload.newName, 
+                    test_name: payload.newTestType 
+                }).eq('id', payload.testId);
                 
-                let safeAge = details.age ? parseInt(details.age) : null;
-                if (isNaN(safeAge)) safeAge = null;
-
-                const { error: e2 } = await sb.from('patients').update({ 
-                    full_name: payload.newName, age: safeAge, sex: details.sex, address: details.address, contact: details.contact, facility: details.facility, email: details.email || null, bday: details.bday || null 
+                // Muli, HUWAG ISAMA ANG AGE.
+                await sb.from('patients').update({ 
+                    full_name: payload.newName, 
+                    sex: details.sex || null, 
+                    address: details.address || null, 
+                    contact: details.contact || null, 
+                    facility: details.facility || null, 
+                    email: details.email || null, 
+                    bday: details.bday || null 
                 }).eq('id', payload.patientId);
-                if (e2) throw new Error("Patient update failed: " + e2.message);
                 
                 return { status: "success", data: "Updated" };
             }
             case "deletePendingTestById": {
-                const { error } = await sb.from('lab_tests').delete().eq('id', payload.testId);
-                if (error) throw new Error(error.message);
+                await sb.from('lab_tests').delete().eq('id', payload.testId);
                 return { status: "success" };
             }
             case "getSettingsData": {
@@ -340,52 +345,41 @@ async function apiPost(action, payload) {
                 }};
             }
             case "saveStaffData": {
-                const { error: e1 } = await sb.from('staff').delete().not('id', 'is', null); 
-                if (e1) throw new Error(e1.message);
-                
+                await sb.from('staff').delete().not('id', 'is', null); 
                 const rows = (payload.staffArray || []).map(s => ({ name: s.name, role: s.role, license: s.license, sig_url: s.sigUrl }));
-                if (rows.length) {
-                    const { error: e2 } = await sb.from('staff').insert(rows);
-                    if (e2) throw new Error(e2.message);
-                }
+                if (rows.length) await sb.from('staff').insert(rows);
                 return { status: "success" };
             }
             case "saveNewUser": {
                 const d = payload.data;
-                const { error } = await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
-                if (error) throw new Error(error.message);
+                await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
                 return { status: "success" };
             }
             case "registerUser": {
                 const d = payload.data;
-                const { error } = await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
-                if (error) throw new Error(error.message);
+                await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
                 return { status: "success" };
             }
             case "updateUserFull": {
                 const d = payload.updatedData;
                 const updateObj = { username: d.u, full_name: d.name, role: d.role, facility: d.fac, status: d.status };
                 if (d.p) updateObj.password = d.p;
-                const { error } = await sb.from('app_users').update(updateObj).eq('username', payload.oldUsername);
-                if (error) throw new Error(error.message);
+                await sb.from('app_users').update(updateObj).eq('username', payload.oldUsername);
                 return { status: "success" };
             }
             case "deleteUser": {
-                const { error } = await sb.from('app_users').delete().eq('username', payload.targetUsername);
-                if (error) throw new Error(error.message);
+                await sb.from('app_users').delete().eq('username', payload.targetUsername);
                 return { status: "success" };
             }
             case "approveUser": {
                 const status = payload.userAction === 'APPROVE' ? 'ACTIVE' : 'REJECTED';
-                const { error } = await sb.from('app_users').update({ status }).eq('username', payload.targetUsername);
-                if (error) throw new Error(error.message);
+                await sb.from('app_users').update({ status }).eq('username', payload.targetUsername);
                 return { status: "success" };
             }
             case "editRegistryRecord": {
                 const { data: row } = await sb.from('lab_tests').select('details').eq('patient_id', payload.patientId).eq('test_name', payload.testType).maybeSingle();
                 const merged = { ...(row?.details || {}), ...payload.updates };
-                const { error } = await sb.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
-                if (error) throw new Error(error.message);
+                await sb.from('lab_tests').update({ details: merged }).eq('patient_id', payload.patientId).eq('test_name', payload.testType);
                 return { status: "success" };
             }
             default: return { status: "error", message: "POST action not implemented: " + action };
@@ -718,7 +712,6 @@ async function loadPatientCache() {
         const res = await apiGet("getAllPatientsLight");
         if (res.status === "success") {
             cachedPatients = res.data;
-            console.log(`[Cache] Loaded ${cachedPatients.length} patients.`);
         }
     } catch(e) { console.error("Failed to load patient cache"); }
 }
@@ -728,18 +721,18 @@ function runDirectSearch(q) {
     if(q.length < 2) { box.style.display='none'; return; }
     
     const query = q.toLowerCase();
-    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 8);
+    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 30);
     
     if (results.length > 0) {
         box.style.display = 'block'; 
         box.innerHTML = `<div style="text-align:right; padding:6px; background:var(--bg-subtle); border-bottom:1px dashed var(--border-color);"><button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="document.getElementById('direct-results-box').style.display='none'"><i class="ph ph-x"></i> Hide / New Patient</button></div>`;
         results.forEach(p => {
             const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name || "Unnamed"} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.age || "?"}y | ${p.sex || "?"} | ${p.facility || 'No Facility'}</div>`;
+            div.innerHTML = `<div style="font-weight:600;">${p.name || "Unnamed"} <span class="badge badge-success" style="margin-left:4px;">Returning</span></div><div style="font-size:0.7rem; color:var(--text-muted);">${p.sex || "?"} | ${p.facility || 'No Facility'}</div>`;
             div.onclick = () => {
-                isExistingPatient = true; document.getElementById('finalPatientId').value = p.id; document.getElementById('p_name').value = p.name || ""; document.getElementById('p_age').value = p.age || ""; document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
+                isExistingPatient = true; document.getElementById('finalPatientId').value = p.id; document.getElementById('p_name').value = p.name || ""; document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; if(document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
                 setSelectValue('p_sex', p.sex); setSelectValue('p_facility', p.facility);
-                if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } catch(e){} }
+                if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; calculateAge(); } catch(e){} }
                 box.style.display = 'none'; document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
                 fetchHistory(p.id, 'history-section', 'history-list'); 
             }; 
@@ -750,12 +743,12 @@ function runDirectSearch(q) {
 
 function runQuickSearch(q) {
     const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 15);
+    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 30);
     if (results.length > 0) {
         box.style.display = 'block'; box.innerHTML = '';
         results.forEach(p => {
             const div = document.createElement('div'); div.className = "search-item";
-            div.innerHTML = `<div style="font-weight:600;">${p.name || "Unnamed"}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.age || "?"}y | ${p.sex || "?"} | ${p.facility || 'No Facility'}</div>`;
+            div.innerHTML = `<div style="font-weight:600;">${p.name || "Unnamed"}</div><div style="font-size:0.75rem; color:var(--text-muted);">${p.sex || "?"} | ${p.facility || 'No Facility'}</div>`;
             div.onclick = () => { viewQuickProfile(p); box.style.display = 'none'; }; box.appendChild(div);
         });
     } else { box.style.display = 'none'; }
@@ -764,7 +757,7 @@ function runQuickSearch(q) {
 function openQuickSearch() { document.getElementById('quick-search-modal').style.display='flex'; const input = document.getElementById('quick-search-input'); input.value = ''; document.getElementById('quick-search-results').style.display = 'none'; document.getElementById('quick-profile-view').style.display = 'none'; input.focus(); }
 
 async function viewQuickProfile(p) {
-    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column'; document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-calendar"></i> ${p.age} yrs</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
+    currentQuickPatient = p; document.getElementById('quick-profile-view').style.display = 'flex'; document.getElementById('quick-profile-view').style.flexDirection = 'column'; document.getElementById('qs-name').innerText = p.name; document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${p.id}</span> <span><i class="ph ph-gender-intersex"></i> ${p.sex}</span> <span><i class="ph ph-buildings"></i> ${p.facility || 'N/A'}</span>`;
     fetchHistory(p.id, null, 'qs-history-list', true, false); 
     if (String(currentUser.role).toUpperCase() !== 'ADMIN') {
         const qsList = document.getElementById('qs-history-list');
@@ -773,7 +766,7 @@ async function viewQuickProfile(p) {
     }
 }
 
-function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_age').value = currentQuickPatient.age; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
+function editPatientDemographicsQS() { if(!currentQuickPatient) return; document.getElementById('qs-edit-form').style.display = 'block'; document.getElementById('qs_edit_name').value = currentQuickPatient.name; document.getElementById('qs_edit_fac').value = currentQuickPatient.facility || currentQuickPatient.Facility; }
 function savePatientDemographicsQS() { showAppAlert("Feature Offline", "Demographics update requires backend linkage.", "info"); document.getElementById('qs-edit-form').style.display = 'none'; }
 
 async function loadPatientResults() {
@@ -857,7 +850,7 @@ async function finalSubmit() {
       finalTestsArray.push(entry); 
   });
 
-  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
+  const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
   try {
       const res = await apiPost("submitForm", { formObject: formData });
@@ -866,7 +859,7 @@ async function finalSubmit() {
           const savedPass = res.data?.generatedPassword || generatedPassword;
           showAppAlert("Record Saved", `Successfully saved to Supabase!${pEmail ? '\n\nPatient Password: ' + savedPass + '\n(Please provide this directly to the patient since Javascript email is disabled)' : ''}`, "success");
           setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000); 
-      } else { throw new Error("Server rejected the save."); }
+      } else { throw new Error(res.message || "Server rejected the save."); }
   } catch (err) { showAppAlert("Error", String(err), "error"); btn.disabled = false; btn.innerHTML = originalText; }
 }
 
@@ -1014,6 +1007,17 @@ function renderLists() {
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
+}
+
+async function saveResult(id, safeId, btn) {
+    const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
+    let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
+    if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    try {
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); }
+    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", "Failed to save.", "error"); }
 }
 
 async function saveAndPrintResult(id, safeId, btn) {
@@ -1397,8 +1401,6 @@ function printReport() {
     const win = window.open('', '_blank'); win.document.write(htmlContent); win.document.close();
 }
 
-async function downloadReport() { showAppAlert("PDF Download", "Wait for the preview to load, then click 'PRINT / SAVE AS PDF' and choose 'Save as PDF'.", "info"); printReport(); }
-
 function showStaffRegister() {
     document.getElementById('login-card').style.display = 'none'; document.getElementById('staff-register-card').style.display = 'block';
     const sel = document.getElementById('reg_fac'); sel.innerHTML = '<option value="ALL">ALL / MAIN</option>';
@@ -1487,72 +1489,6 @@ function processNtpResultsClient(p) {
         }
         if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; } if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; } if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
     });}
-}
-
-function mapSupabaseToPrintObject(d) {
-    let detailsObj = {};
-    try {
-        detailsObj = typeof d.details === 'string' ? JSON.parse(d.details || "{}") : (d.details || {});
-    } catch(e) {
-        detailsObj = {};
-    }
-    
-    let resultsArr = []; 
-    for (let key in detailsObj) { 
-        resultsArr.push({ param: key, res: detailsObj[key] }); 
-    }
-    
-    return {
-        id: d.patient_id || d.patientId || "N/A", 
-        name: d.patient_name || d.name || detailsObj.name || "Unnamed Patient", 
-        age: detailsObj.age || detailsObj.Age || "", 
-        sex: detailsObj.sex || detailsObj.Sex || "",
-        facility: detailsObj.facility || detailsObj.Facility || d.facility || "Main Health Center", 
-        address: detailsObj.address || detailsObj.Address || "", 
-        contact: detailsObj.contact || detailsObj.Contact || "",
-        dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
-        dateExamined: detailsObj.date_examined || detailsObj.dateEncoded ? new Date(detailsObj.date_examined || detailsObj.dateEncoded).toLocaleDateString() : TODAY_STR, 
-        dateResult: new Date().toLocaleDateString(), 
-        testCode: d.test_code || d.id || "", 
-        testName: d.test_name || d.test || "Laboratory Test", 
-        encoder: d.encoder || currentUser.fullName || "System", 
-        verifier: "", 
-        results: resultsArr
-    };
-}
-
-async function printDirect(e, id, testName) { 
-    if(e) e.stopPropagation(); 
-    const correctCode = getTestCodeFromName(testName); 
-    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
-    
-    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
-    try {
-        if (!item) { 
-            const { data, error } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle(); 
-            if(data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
-        }
-        if (item) {
-            if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
-            let pObj = mapSupabaseToPrintObject(item);
-            
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; 
-            let finalHtml = "";
-            try {
-                finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
-            } catch (genErr) {
-                console.error("Template Generation Error:", genErr);
-                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p></body></html>`;
-            }
-            
-            showPrintModal(finalHtml);
-        } else {
-            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found.</h2>'); 
-        }
-    } catch (err) {
-        console.error("Print Generation Error:", err);
-        showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
-    }
 }
 
 async function batchPrint() {
@@ -1774,7 +1710,7 @@ function showPrintModal(htmlContent) {
             <span style="color:white; font-family:sans-serif; font-size:14px;">📄 Document Preview</span>
             <div>
                 <button onclick="document.getElementById('print-iframe').contentWindow.print()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:10px;">🖨️ PRINT</button>
-                <button onclick="window.closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
+                <button onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
             </div>
         `;
         
@@ -1790,18 +1726,13 @@ function showPrintModal(htmlContent) {
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
     
-    iframe.src = 'about:blank';
+    iframe.src = 'about:blank'; // reset
     setTimeout(() => {
-        try {
-            let doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write(htmlContent);
-            doc.close();
-        } catch (err) {
-            console.error("Iframe write error:", err);
-            iframe.srcdoc = htmlContent;
-        }
-    }, 150);
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+    }, 50);
 }
 
 window.closePrintModal = function() {
@@ -1809,6 +1740,6 @@ window.closePrintModal = function() {
     if (modal) {
         modal.style.display = 'none';
         const iframe = document.getElementById('print-iframe');
-        if(iframe) iframe.src = 'about:blank';
+        if(iframe) iframe.src = 'about:blank'; // I-clear ang memory
     }
 };
