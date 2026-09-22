@@ -264,7 +264,6 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
-                // 🔴 TINANGGAL: 'age' at 'password' para maiwasan ang 400 Bad Request
                 const { error: pErr } = await sb.from('patients').upsert({
                     id: patientId, 
                     full_name: f.fullName, 
@@ -272,18 +271,19 @@ async function apiPost(action, payload) {
                     sex: f.sex || null, 
                     address: f.address || null, 
                     contact: f.contact || null, 
+                    email: f.email || null,
                     facility: f.facility || null
                 }, { onConflict: 'id' });
                 
                 if(pErr) throw new Error("Patient Error: " + pErr.message);
 
-                // 🔴 FIX SA "NULL ID": Ipapasa natin ang test_code bilang 'id'!
-                // Tinanggal din natin ang 'encoder_full_name' na nagko-cause ng error
+                // 🔴 FIX: Dinagdag na natin ang 'test_type' na hinahanap ng Supabase mo!
                 const rows = tests.map(t => ({
-                    id: t.test_code || t.code, // <-- ITO ANG MAG-AAYOS SA NULL ID ERROR
+                    id: t.test_code || t.code,
                     patient_id: patientId, 
                     patient_name: f.fullName, 
                     test_name: t.name, 
+                    test_type: t.name, // <--- ITO ANG SAGOT SA ERROR MO!
                     test_code: t.test_code || t.code,
                     details: t.details || {}, 
                     status: 'PENDING', 
@@ -299,17 +299,16 @@ async function apiPost(action, payload) {
             }
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
-                const { error } = await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest }).eq('id', payload.testId);
+                const { error } = await sb.from('lab_tests').update({ details, status: 'COMPLETED', date_examined: new Date().toISOString(), encoder: payload.encodedBy, patient_name: payload.updatedName, test_name: payload.updatedTest, test_type: payload.updatedTest }).eq('id', payload.testId);
                 if(error) throw new Error("Result Error: " + error.message);
                 return { status: "success" };
             }
             case "updatePatientAndTestDetails": {
                 const details = JSON.parse(payload.newJsonDetails || "{}");
-                const { error: tErr } = await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType }).eq('id', payload.testId);
+                const { error: tErr } = await sb.from('lab_tests').update({ details, patient_name: payload.newName, test_name: payload.newTestType, test_type: payload.newTestType }).eq('id', payload.testId);
                 if(tErr) throw new Error("Update Test Error: " + tErr.message);
                 
-                // 🔴 TINANGGAL DIN ANG 'age' DITO
-                const { error: pErr } = await sb.from('patients').update({ full_name: payload.newName, sex: details.sex || null, address: details.address || null, contact: details.contact || null, facility: details.facility || null, bday: details.bday || null }).eq('id', payload.patientId);
+                const { error: pErr } = await sb.from('patients').update({ full_name: payload.newName, address: details.address || null, contact: details.contact || null, facility: details.facility || null, bday: details.bday || null }).eq('id', payload.patientId);
                 if(pErr) throw new Error("Update Patient Error: " + pErr.message);
                 
                 return { status: "success", data: "Updated" };
