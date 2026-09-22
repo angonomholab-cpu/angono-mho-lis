@@ -537,6 +537,7 @@ function confirmLogout() {
     localStorage.removeItem('labUser'); 
     window.location.reload(); 
 }
+
 function showRegistrySelectionModal() { document.getElementById('registry-selection-modal').style.display = 'flex'; }
 
 function showPage(targetId) {
@@ -1067,10 +1068,6 @@ async function moveToPendingRepeat(idStr) {
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 
-// 🟢 BAGO: Registry edit modal — para sa ADMIN, direktang maayos ang mga
-// resulta (hal. maling Syphilis value) nang hindi kailangan pumunta sa SQL Editor.
-// Editable lang ang mga field na tunay na resulta ng test (hindi ang Test Code,
-// Patient ID, Name, Facility atbp. — doon gamitin ang "Edit Full Profile").
 const REGISTRY_EDIT_EXCLUDE = ['Test Code', 'Patient ID', 'Name', 'Age', 'Sex', 'Facility', 'Date Received', 'Date Examined', 'Date Released', 'Performed By', 'Verified By'];
 
 function openRegistryEditModal(testCode) {
@@ -1129,7 +1126,6 @@ async function saveRegistryEdit(testCode) {
 }
 
 
-// 🟢 ADMIN EDIT FUNCTION MULA SA REGISTRY
 async function editFromRegistry(testId) {
     try {
         showAppAlert("Loading", "Fetching full record for edit...", "info");
@@ -1602,7 +1598,8 @@ async function batchSaveResults(isPrint) {
             const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
             let printContent = [];
             for(let r of printRequests) {
-                const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle();
+                // 🔴 FIX: Inayos ang paghahanap kapag batch print gamit either test_code or id
+                const { data } = await sb.from('lab_tests').select('*').or(`id.eq.${r.testCode},test_code.eq.${r.testCode}`).maybeSingle();
                 if(data) printContent.push(mapSupabaseToPrintObject(data));
             }
             let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent);
@@ -1618,6 +1615,8 @@ function processNtpResultsClient(p) {
     const tName = (p.testName || "").toUpperCase(); p.isDSSM = tName.includes("DSSM") || tName.includes("AFB"); p.isGXP = tName.includes("GXP") || tName.includes("GEN");
     const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)"; const findRes = (key) => p.results?.find(r => r.param && r.param.toUpperCase() === key.toUpperCase())?.res || "";
     const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
+    // 🔴 FIX: Idinagdag ang TB Case No para lumabas sa mismong form
+    p.tbCase = findRes("TB Case Number") || "";
     p.history = findRes("History of Treatment"); let phys = findRes("Source of Request") || p.physician || ""; p.physician = (phys === "undefined") ? "" : phys; p.xray = findRes("X-Ray Result"); p.monthTreat = findRes("Month of Treatment"); p.reason = findRes("Reason for Examination") || "Diagnosis";
     if(p.results) { p.results.forEach(r => {
         const k = String(r.param).trim(); const v = String(r.res || "").trim(); const vUpper = v.toUpperCase();
@@ -1669,7 +1668,8 @@ async function printDirect(e, id, testName) {
     let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
     try {
         if (!item) { 
-            const { data, error } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle(); 
+            // 🔴 FIX: Dinagdag ang test_code bilang alternative fallback kapag ID ang nawala
+            const { data, error } = await sb.from('lab_tests').select('*').or(`id.eq.${id},test_code.eq.${id}`).maybeSingle(); 
             if(data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
         }
         if (item) {
