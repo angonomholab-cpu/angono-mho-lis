@@ -183,13 +183,20 @@ async function apiGet(action, params = {}) {
                 const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
                 if (error) throw error;
                 let rows = data || [];
-                // Allow STAFF to view viral load in history as well. 
-                if (String(params.role).toUpperCase() !== 'ADMIN' && String(params.role).toUpperCase() !== 'STAFF' && String(params.role).toUpperCase() !== 'ENCODER') {
-                    rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
-                }
-                return { status: "success", data: rows.map(r => ({
-                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.test_code || r.id }
-                }))};
+                if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
+                return { status: "success", data: rows.map(r => {
+                    let roleCheck = String(params.role).toUpperCase();
+                    let fData = { ...r.details, "Test Code": r.test_code || r.id };
+                    
+                    // 🔴 MASKING SA PATIENT HISTORY KUNG ENCODER O VIEWER ANG NAKA-LOGIN
+                    if (String(r.test_name).toUpperCase().includes('SERO')) {
+                        if ((roleCheck === 'ENCODER' || roleCheck === 'VIEWER') && fData.HIV && fData.HIV !== '-') {
+                            fData.HIV = 'CONFIDENTIAL';
+                        }
+                    }
+                    
+                    return { date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: fData };
+                })};
             }
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
@@ -261,7 +268,20 @@ async function apiGet(action, params = {}) {
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
                 
                 const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
-                const rows = data.map(row => headers.map(h => row[h]));
+                const rows = data.map(row => headers.map(h => {
+                    let val = row[h];
+                    
+                    // 🔴 MASKING SA REGISTRY: Hihingiin ang role ng nagv-view. Kapag Encoder o Viewer, 'CONFIDENTIAL' ang ipapakita sa HIV column.
+                    if (params.type === 'SERO' && String(h).toUpperCase() === 'HIV') {
+                        let roleCheck = String(params.role).toUpperCase();
+                        if (roleCheck === 'ENCODER' || roleCheck === 'VIEWER') {
+                            if (val && String(val).trim() !== '' && String(val).trim() !== '-') {
+                                return 'CONFIDENTIAL';
+                            }
+                        }
+                    }
+                    return val;
+                }));
                 return { status: "success", data: { headers, rows, totalPages: 1, currentPage: 1, totalRows: data.length } };
             }
             default: return { status: "error", message: "GET action not implemented: " + action };
@@ -1438,10 +1458,8 @@ function renderWorkload(w) { let html = ""; for (const [key, val] of Object.entr
 
 function printReport() {
     let activeTab = ""; document.querySelectorAll('.tab-view').forEach(tab => { if (tab.style.display === 'block') activeTab = tab.outerHTML; });
-    const lguLogo = "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000";
-    const mhoLogo = "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000";
-    const labLogo = "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000";
-    const headerHtml = `<table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;"><tr><td style="width: 70px; text-align: left; vertical-align: middle;"><img src="${lguLogo}" style="width: 50px; height: 50px; object-fit:contain;"></td><td style="text-align: center; vertical-align: middle;"><img src="${labLogo}" style="width: 30px; height: 30px; margin-bottom: 2px;"><h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1><h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3><p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></td><td style="width: 70px; text-align: right; vertical-align: middle;"><img src="${mhoLogo}" style="width: 50px; height: 50px; object-fit:contain;"></td></tr></table>`;
+    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
+    const headerHtml = `<table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 5px;"><tr><td style="width: 70px; text-align: left; vertical-align: middle;"><img src="${logos.left}" style="width: 50px; height: 50px; object-fit:contain;"></td><td style="text-align: center; vertical-align: middle;"><img src="${logos.lab}" style="width: 30px; height: 30px; margin-bottom: 2px;"><h1 style="font-size: 15px; margin: 2px 0; color: #00695C;">MUNICIPAL HEALTH OFFICE</h1><h3 style="font-size: 11px; margin: 2px 0; color: #555;">Republic of the Philippines<br>Province of Rizal | Municipality of Angono</h3><p style="font-size: 9px; margin: 2px 0; color: #555;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></td><td style="width: 70px; text-align: right; vertical-align: middle;"><img src="${logos.right}" style="width: 50px; height: 50px; object-fit:contain;"></td></tr></table>`;
     const footerHtml = document.querySelector('.rep-footer').outerHTML;
     const htmlContent = `<html><head><title>Print Report</title><link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display"><style>@page { size: A4 landscape; margin: 10mm; } body { font-family: 'SF Pro Display', sans-serif; padding: 0; color: #333; margin: 0; -webkit-print-color-adjust: exact; background: white;} table.main-layout { width: 100%; border-collapse: collapse; } .data-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: auto; margin-top: 15px; } .data-table th, .data-table td { border: 1px solid #000; padding: 6px; text-align: left; word-wrap: break-word; } .data-table th { background-color: #f0f0f0 !important; } .text-center { text-align: center; } .rep-footer { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px dashed #000; padding-top: 10px; margin-top: 20px; } .rep-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #00695C; } thead { display: table-header-group; } tfoot { display: table-footer-group; } .controls-area, .chip-group, button { display: none !important; }</style></head><body><table class="main-layout"><thead><tr><td>${headerHtml}</td></tr></thead><tbody><tr><td>${activeTab}</td></tr></tbody><tfoot><tr><td>${footerHtml}</td></tr></tfoot></table><script>window.onload = function() { setTimeout(function(){ window.print(); window.close(); }, 800); };</script></html>`;
     const win = window.open('', '_blank'); win.document.write(htmlContent); win.document.close();
@@ -1627,11 +1645,7 @@ async function batchPrint() {
 }
 
 function localGenerateNTPHtml(patientsArray) {
-    const logos = { 
-        left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000",
-        lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", 
-        right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000"
-    };
+    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
     const getStaff = (name) => { if(!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length-1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
     let combinedHtml = "";
     patientsArray.forEach((p, index) => {
@@ -1780,10 +1794,10 @@ function localGenerateA5Html(patientsArray) {
             </div>
         </div>`;
 
-        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : '';
-        combinedHtml += pageHtml + breakTag;
+        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : ''; combinedHtml += pageHtml + breakTag;
     });
 
+    return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title><style>
     return `<!DOCTYPE html><html><head><title>Batch Print</title>
     <style>
         @page { size: A5 landscape; margin: 0; }
@@ -1820,15 +1834,15 @@ function localGenerateA5Html(patientsArray) {
             @page { size: 210mm 148mm; margin: 0; } 
             .page-container { width: 210mm !important; max-width: 210mm !important; height: 148mm !important; max-height: 148mm !important; margin: 0 auto !important; padding: 4mm 10mm !important; border: none !important; box-shadow: none !important; zoom: 1.05 !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; } 
             .page-break { display: none !important; } 
-        }
-    </style>
-    </head><body>
-    <div class="no-print">
-        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
-        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
-        <button class="btn-close" onclick="window.parent.closePrintModal()">❌ CLOSE</button>
-    </div>
-    ${combinedHtml}</body></html>`;
+        } 
+    </style></head><body>${combinedHtml}</body></html>`;
+}
+
+function localGenerateA5Html(patientsArray) {
+    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
+    let combinedHtml = "";
+    
+    const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
 }
 
 function showPrintModal(htmlContent) {
