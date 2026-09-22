@@ -1,6 +1,5 @@
 // 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
-console.log("app.js build: 2026-09-22-fix2 (srcdoc print fix + full patient pagination)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -149,18 +148,13 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                // 🟢 FIX: si Supabase/PostgREST ay may default na row cap (karaniwan 1000).
-                // May 2,238 patients ka — kalahati lang dati ang na-lo-load, kaya
-                // "nakita ko sa dashboard pero wala sa search" ang lumalabas.
-                // Dito, sunud-sunod na kinukuha ang LAHAT ng rows, 1000 sa isang pagkuha.
-                let data = [];
-                for (let from = 0; ; from += 1000) {
-                    const { data: chunk, error } = await sb.from('patients').select('*').range(from, from + 999);
-                    if (error) { console.error("Patient cache error:", error); break; }
-                    data = data.concat(chunk || []);
-                    if (!chunk || chunk.length < 1000) break;
+                // Simplified fetch to prevent 400 errors from strict pagination.
+                // Fetching up to 5000 records safely to populate auto-search cache.
+                const { data, error } = await sb.from('patients').select('*').limit(5000);
+                if (error) {
+                    console.error("Patient cache error:", error);
+                    return { status: "success", data: [] };
                 }
-                console.log(`[patient cache] loaded ${data.length} patients`);
                 return { status: "success", data: (data || []).map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
@@ -185,11 +179,13 @@ async function apiGet(action, params = {}) {
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
-                const { data: pending } = await pendingQ.order('date', { ascending: false });
+                const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
+                if (pErr) console.error("Pending Workload Error:", pErr);
                 
                 let compQ = sb.from('lab_tests').select('*').eq('status', 'COMPLETED');
                 if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
-                const { data: completed } = await compQ.order('date_examined', { ascending: false }).limit(300);
+                const { data: completed, error: cErr } = await compQ.order('date', { ascending: false }).limit(300);
+                if (cErr) console.error("Completed Workload Error:", cErr);
                 
                 const toFrontend = r => ({ id: r.id, testCode: r.test_code || r.id, patientId: r.patient_id, name: r.patient_name, test: r.test_name, date: r.date, details: r.details, encoder: r.encoder, status: r.status, facility: r.facility });
                 return { pending: (pending || []).map(toFrontend), encoded: (completed || []).map(toFrontend) };
@@ -674,7 +670,10 @@ function generateSmartID() { if(isExistingPatient) return; const bday = document
 async function loadPatientCache() {
     try {
         const res = await apiGet("getAllPatientsLight");
-        if (res.status === "success") cachedPatients = res.data;
+        if (res.status === "success") {
+            cachedPatients = res.data;
+            console.log(`[Cache] Loaded ${cachedPatients.length} patients.`);
+        }
     } catch(e) { console.error("Failed to load patient cache"); }
 }
 
@@ -683,7 +682,7 @@ function runDirectSearch(q) {
     if(q.length < 2) { box.style.display='none'; return; }
     
     const query = q.toLowerCase();
-    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 30);
+    const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 8);
     
     if (results.length > 0) {
         box.style.display = 'block'; 
@@ -705,7 +704,7 @@ function runDirectSearch(q) {
 
 function runQuickSearch(q) {
     const box = document.getElementById('quick-search-results'); if(q.length < 2) { box.style.display='none'; return; }
-    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 30);
+    const query = q.toLowerCase(); const results = cachedPatients.filter(p => (p.name || "").toLowerCase().includes(query)).slice(0, 15);
     if (results.length > 0) {
         box.style.display = 'block'; box.innerHTML = '';
         results.forEach(p => {
@@ -946,7 +945,6 @@ function renderLists() {
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         }
         
-        // Display full test_code (e.g. GXP-20260921-123)
         const displaySerial = item.testCode || item.id;
 
         return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${displaySerial}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
@@ -1498,7 +1496,7 @@ async function printDirect(e, id, testName) {
                 finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
             } catch (genErr) {
                 console.error("Template Generation Error:", genErr);
-                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p><pre style="background:#f1f5f9; padding:10px; font-size:11px;">${JSON.stringify(pObj, null, 2)}</pre></body></html>`;
+                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p></body></html>`;
             }
             
             showPrintModal(finalHtml);
@@ -1538,7 +1536,46 @@ function localGenerateNTPHtml(patientsArray) {
         const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : ''; combinedHtml += pageHtml + breakTag;
     });
 
-    return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title><style>@page { size: portrait; margin: 5mm; } body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; } body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; } .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; } .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; } .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-left: auto; margin-right: auto; } .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; } .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; } .logo-lab { width: 35px; height: 35px; background: #fff; border-radius: 50%; border: 1px solid #ddd; margin-bottom: 2px; } .header-center { flex-grow: 1; text-align: center; } .header h1 { font-size: 15pt; margin: 0; } .header h2 { font-size: 11pt; margin: 0; } .header h3 { font-size: 9pt; margin: 0; } .header p { font-size: 8px; margin: 2px 0 0 0; font-weight: bold; color: #000; } .form-title { text-align: center; font-weight: bold; font-size: 11px; margin: 8px 0 4px 0; } .main-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 2px; } .main-table td { padding: 3px 5px; border: 1px solid #000; } .line { border-bottom: 1px solid #000; display: inline-block; padding-left: 5px; font-weight: bold; min-height: 13px; } .chk-item { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 9px; } input[type="checkbox"] { margin: 0; width: 11px; height: 11px; } .res-table-inner { width: 100%; border-collapse: collapse; } .res-table-inner th, .res-table-inner td { border: 1px solid #000; text-align: center; padding: 4px; font-size: 9px; } .section-bar { background: #d9d9d9; font-size: 9px; text-align: center; border: 1px solid #000; padding: 3px; font-weight: bold; } .res-n { background-color: #C8E6C9 !important; color: #1B5E20 !important; } .res-t { background-color: #FFCDD2 !important; color: #B71C1C !important; } .res-rr { background-color: #B71C1C !important; color: white !important; } .res-ti { background-color: #FFE0B2 !important; color: #E65100 !important; } .res-tt { background-color: #FFF9C4 !important; color: #827717 !important; } .res-i { background-color: #000000 !important; color: white !important; } .res-init { background-color: #EEEEEE !important; color: #757575 !important; } .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; } .content-spacer { flex-grow: 1; } .sig-container { display: flex; justify-content: space-between; margin-top: 5px; } .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 90px; } .sig-label { font-size: 9px; margin-bottom: 2px; text-align: left; } .sig-visual-area { position: relative; width: 100%; height: 40px; display: flex; align-items: flex-end; } .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; } .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; } .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; } @media print { body { background: white; padding-top: 0 !important; display: block; margin: 0; } @page { size: auto; margin: 5mm; } .page-container { width: 200mm !important; min-height: 275mm !important; margin: 0 auto !important; padding: 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; zoom: 0.96 !important; } .page-break { display: none !important; } } @media print and (max-width: 160mm) { .page-container { zoom: 0.65 !important; } } </style></head><body>${combinedHtml}</body></html>`;
+    return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title><style>
+        @page { size: portrait; margin: 5mm; } 
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; margin: 0; padding: 0; -webkit-print-color-adjust: exact; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 20px; } 
+        body, table, td, th, .line, div, span { font-size: 9pt !important; font-family: 'Inter', Arial, sans-serif !important; } 
+        .smear-reading-box { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-align: center !important; } 
+        .diagnosis-text-large { height: 25px !important; vertical-align: middle !important; font-weight: bold !important; font-size: 10pt !important; text-transform: uppercase; text-align: center !important; } 
+        .page-container { width: 100%; max-width: 210mm; height: auto; min-height: 275mm; padding: 10mm; box-sizing: border-box; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-left: auto; margin-right: auto; } 
+        .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 10px 5px; height: auto; min-height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; } 
+        .logo-side { width: 80px; height: 80px; background: #fff; border-radius: 50%; object-fit: contain; } 
+        .logo-lab { width: 35px; height: 35px; background: #fff; border-radius: 50%; border: 1px solid #ddd; margin-bottom: 2px; } 
+        .header-center { flex-grow: 1; text-align: center; } 
+        .header h1 { font-size: 15pt; margin: 0; } .header h2 { font-size: 11pt; margin: 0; } .header h3 { font-size: 9pt; margin: 0; } 
+        .header p { font-size: 8px; margin: 2px 0 0 0; font-weight: bold; color: #000; } 
+        .form-title { text-align: center; font-weight: bold; font-size: 11px; margin: 8px 0 4px 0; } 
+        .main-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 2px; } 
+        .main-table td { padding: 3px 5px; border: 1px solid #000; } 
+        .line { border-bottom: 1px solid #000; display: inline-block; padding-left: 5px; font-weight: bold; min-height: 13px; } 
+        .chk-item { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 9px; } 
+        input[type="checkbox"] { margin: 0; width: 11px; height: 11px; } 
+        .res-table-inner { width: 100%; border-collapse: collapse; } 
+        .res-table-inner th, .res-table-inner td { border: 1px solid #000; text-align: center; padding: 4px; font-size: 9px; } 
+        .section-bar { background: #d9d9d9; font-size: 9px; text-align: center; border: 1px solid #000; padding: 3px; font-weight: bold; } 
+        .res-n { background-color: #C8E6C9 !important; color: #1B5E20 !important; } .res-t { background-color: #FFCDD2 !important; color: #B71C1C !important; } .res-rr { background-color: #B71C1C !important; color: white !important; } .res-ti { background-color: #FFE0B2 !important; color: #E65100 !important; } .res-tt { background-color: #FFF9C4 !important; color: #827717 !important; } .res-i { background-color: #000000 !important; color: white !important; } .res-init { background-color: #EEEEEE !important; color: #757575 !important; } 
+        .footer-section { width: 100%; margin-top: auto; padding-bottom: 5px; flex-shrink: 0; } 
+        .content-spacer { flex-grow: 1; } 
+        .sig-container { display: flex; justify-content: space-between; margin-top: 5px; } 
+        .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 90px; } 
+        .sig-label { font-size: 9px; margin-bottom: 2px; text-align: left; } 
+        .sig-visual-area { position: relative; width: 100%; height: 40px; display: flex; align-items: flex-end; } 
+        .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; } 
+        .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; } 
+        .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } 
+        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; } 
+        @media print { 
+            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
+            @page { size: auto; margin: 5mm; } 
+            .page-container { width: 200mm !important; min-height: 275mm !important; margin: 0 auto !important; padding: 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; zoom: 0.96 !important; } 
+            .page-break { display: none !important; } 
+        } 
+    </style></head><body>${combinedHtml}</body></html>`;
 }
 
 function localGenerateA5Html(patientsArray) {
@@ -1642,7 +1679,7 @@ function localGenerateA5Html(patientsArray) {
     return `<!DOCTYPE html><html><head><title>Batch Print</title>
     <style>
         @page { size: A5 landscape; margin: 0; }
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 70px; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
         .page-container { width: 210mm; height: 148mm; background: white; padding: 5mm 10mm; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; break-after: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;}
         .header { background: linear-gradient(to bottom, #ff0000 0%, #ffb6c1 100%); border: 2px solid #000; padding: 5px; height: 90px; display: flex; align-items: center; justify-content: space-between; -webkit-print-color-adjust: exact; flex-shrink: 0; }
         .header-center { text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -1668,6 +1705,7 @@ function localGenerateA5Html(patientsArray) {
         .sig-info { font-size: 9px; }
         .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
         .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
+        
         @media print { 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             @page { size: 210mm 148mm; margin: 0; } 
@@ -1707,10 +1745,72 @@ function showPrintModal(htmlContent) {
     
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
-    // 🟢 FIX: bumalik sa srcdoc — ang data: URI approach ay walang praktikal na
-    // limitasyon sa laki, kaya blangko lumalabas ang mahahabang result form
-    // (GXP/DSSM ~10k+ characters bago pa i-encode).
-    iframe.srcdoc = htmlContent;
+    
+    // 🟢 FIX: Clean document write fallback. Ito ang pinaka-reliable para sa lahat ng browsers (kasama ang Safari).
+    iframe.src = 'about:blank';
+    setTimeout(() => {
+        try {
+            let doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+        } catch (err) {
+            console.error("Iframe write error:", err);
+            iframe.srcdoc = htmlContent; // Fallback kung may mahigpit na security restriction
+        }
+    }, 150);
+}
+
+window.closePrintModal = function() {
+    const modal = document.getElementById('print-modal-overlay');
+    if (modal) {
+        modal.style.display = 'none';
+        const iframe = document.getElementById('print-iframe');
+        if(iframe) iframe.src = 'about:blank'; // I-clear ang memory
+    }
+};
+    </head><body>
+    ${combinedHtml}</body></html>`;
+}
+
+function showPrintModal(htmlContent) {
+    let modal = document.getElementById('print-modal-overlay');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'print-modal-overlay';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.75); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
+        
+        // Gawa ng sariling Top Bar sa labas ng iframe
+        const topBar = document.createElement('div');
+        topBar.style.cssText = 'width:90%; max-width:1100px; background:#1e293b; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box;';
+        topBar.innerHTML = `
+            <span style="color:white; font-family:sans-serif; font-size:14px;">📄 Document Preview</span>
+            <div>
+                <button onclick="document.getElementById('print-iframe').contentWindow.print()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:10px;">🖨️ PRINT</button>
+                <button onclick="closePrintModal()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:4px; font-weight:bold; cursor:pointer;">❌ CLOSE</button>
+            </div>
+        `;
+        
+        const iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.cssText = 'width:90%; max-width:1100px; height:85%; border:none; border-radius:0 0 12px 12px; background-color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+        
+        modal.appendChild(topBar);
+        modal.appendChild(iframe);
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'flex';
+    const iframe = document.getElementById('print-iframe');
+    
+    // 🟢 FIX: Use document.write to guarantee rendering of large HTML payloads across all browsers.
+    iframe.src = 'about:blank'; // reset
+    setTimeout(() => {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+    }, 50);
 }
 
 window.closePrintModal = function() {
