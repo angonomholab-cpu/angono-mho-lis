@@ -694,7 +694,33 @@ function applyLimitedMode(isLimited) {
     document.querySelectorAll('#registry-selection-modal .test-card-big').forEach(card => { const onclickAttr = card.getAttribute('onclick'); if(onclickAttr) { let isHidden = hiddenRegistries.some(r => onclickAttr.includes(r)); if(isLimited && isHidden) card.classList.add('disabled-test'); else card.classList.remove('disabled-test'); } });
 }
 function toggleFab() { const menu = document.getElementById('fab-menu'); const icon = document.getElementById('fab-main-icon'); if (menu.classList.contains('show')) { menu.classList.remove('show'); icon.classList.replace('ph-caret-right', 'ph-caret-left'); } else { menu.classList.add('show'); icon.classList.replace('ph-caret-left', 'ph-caret-right'); } }
-function toggleDarkMode() { document.body.classList.toggle('dark-mode'); const icon = document.getElementById('fab-theme-icon'); if (document.body.classList.contains('dark-mode')) { localStorage.setItem('mho-theme', 'dark'); if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); } else { localStorage.setItem('mho-theme', 'light'); if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); } }
+function toggleDarkMode() { 
+    document.body.classList.toggle('dark-mode'); 
+    const isDark = document.body.classList.contains('dark-mode');
+    const icon = document.getElementById('fab-theme-icon'); 
+    const mahIcon = document.getElementById('mah-theme-icon');
+    if (isDark) { 
+        localStorage.setItem('mho-theme', 'dark'); 
+        if(icon) icon.classList.replace('ph-moon-stars', 'ph-sun'); 
+        if(mahIcon) mahIcon.classList.replace('ph-moon-stars', 'ph-sun'); 
+    } else { 
+        localStorage.setItem('mho-theme', 'light'); 
+        if(icon) icon.classList.replace('ph-sun', 'ph-moon-stars'); 
+        if(mahIcon) mahIcon.classList.replace('ph-sun', 'ph-moon-stars'); 
+    } 
+}
+
+function switchMobileWorkspaceTab(tabId) {
+    const grid = document.getElementById('workspace-grid-container');
+    if (!grid) return;
+    grid.setAttribute('data-mobile-tab', tabId);
+    document.querySelectorAll('.mwn-tab').forEach(t => t.classList.remove('active'));
+    const btn = document.getElementById('mwn-btn-' + tabId);
+    if (btn) btn.classList.add('active');
+    if (tabId === 'entry') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
 
 function switchLoginTab(type) {
     const tabStaff = document.getElementById('tab-staff-login');
@@ -815,6 +841,14 @@ function applyPermissions() {
     
     if(navWork) navWork.style.display = 'none'; if(navReg) navReg.style.display = 'none'; if(navRep) navRep.style.display = 'none'; if(navSet) navSet.style.display = 'none';
     if(colEntry) colEntry.style.display = 'none'; if(colPending) colPending.style.display = 'none'; if(colCompleted) colCompleted.style.display = 'none'; if(colRepeat) colRepeat.style.display = 'none';
+    const mwnEntry = document.getElementById('mwn-btn-entry');
+    if (mwnEntry) {
+        if (role === 'VIEWER' || role === 'NTP_CHECKER' || role === 'DOH_TB' || role === 'PATIENT') {
+            mwnEntry.style.display = 'none';
+        } else {
+            mwnEntry.style.display = 'inline-flex';
+        }
+    }
 
     if (role === 'PATIENT') { const fabMain = document.getElementById('fab-main-btn'); if(fabMain) fabMain.style.display = 'none'; }
     else if (role === 'ADMIN' || role === 'STAFF') {
@@ -1193,6 +1227,7 @@ async function finalSubmit() {
       const res = await apiPost("submitForm", { formObject: formData });
       if (res.status === "success") { 
           btn.style.background = "var(--success)"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; clearForm(); await loadPendingData(); 
+          if (typeof switchMobileWorkspaceTab === 'function') switchMobileWorkspaceTab('pending');
           const savedPass = res.data?.generatedPassword || generatedPassword;
           
           let emailStatusNote = "";
@@ -1223,6 +1258,7 @@ async function finalSubmit() {
 
 function editPendingFull(id) {
     const item = window.pendingData.find(i => String(i.id) === String(id).trim()); if(!item) return;
+    if (typeof switchMobileWorkspaceTab === 'function') switchMobileWorkspaceTab('entry');
     editingPendingId = item.id; isExistingPatient = true; 
     document.getElementById('col-entry').classList.add('edit-mode-pane'); const header = document.getElementById('entry-main-header');
     if (header) { header.classList.add('edit-mode-header'); header.innerHTML = `<h2><i class="ph ph-pencil-simple"></i> Editing Pending Record</h2><button class="btn-icon" onclick="cancelEditPending()" style="color:white;"><i class="ph ph-x"></i></button>`; }
@@ -1254,7 +1290,10 @@ function editPendingFull(id) {
     const saveBtn = document.getElementById('save-btn-action'); if (saveBtn) { saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> Update Pending Record'; saveBtn.onclick = submitPendingUpdate; saveBtn.style.background = 'var(--warning)'; saveBtn.style.color = 'white'; }
 }
 
-function cancelEditPending() { clearForm(); } 
+function cancelEditPending() { 
+    clearForm(); 
+    if (typeof switchMobileWorkspaceTab === 'function') switchMobileWorkspaceTab('pending'); 
+} 
 async function submitPendingUpdate() {
     if(!editingPendingId) return; const item = window.pendingData.find(i => String(i.id) === String(editingPendingId).trim()); if(!item) return;
     const btn = document.getElementById('save-btn-action'); const oldTxt = btn ? btn.innerHTML : 'Update'; if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Updating...'; btn.disabled = true; }
@@ -1393,6 +1432,7 @@ function renderLists() {
             return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div></div>${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}</div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if(cRep) cRep.innerText = `(${fRepeat.length})`;
+        const mwnRep = document.getElementById('mwn-badge-repeat'); if(mwnRep) mwnRep.innerText = fRepeat.length;
     }
 
     cList.innerHTML = fComp.map(item => {
@@ -1406,6 +1446,7 @@ function renderLists() {
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if(cPend) cPend.innerText = `(${fPending.length})`;
+    const mwnPend = document.getElementById('mwn-badge-pending'); if(mwnPend) mwnPend.innerText = fPending.length;
 }
 
 async function saveResult(id, safeId, btn) {
