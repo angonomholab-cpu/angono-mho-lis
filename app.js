@@ -13,7 +13,7 @@ let currentQuickPatient = null;
 let searchTimeout; 
 let confirmActionCallback = null; 
 window.CURRENT_TEST_TYPE = ""; 
-window.REGISTRY_SORT_ORDER = 'DESC'; // Default sorting
+window.REGISTRY_SORT_ORDER = 'DESC';
 const ALL_PAGES = ['page-workspace', 'page-registry', 'page-reports', 'page-settings', 'page-patient'];
 const TODAY_STR = new Date().toLocaleDateString(); 
 
@@ -79,26 +79,6 @@ function toggleDssmCategory(selectEl) {
     }
 }
 
-function handleDSSMCategory(sel) {
-    const val = sel.value;
-    const caseGroup = document.getElementById('dssm-case-group');
-    const monthGroup = document.getElementById('dssm-month-group');
-    const historyGroup = document.getElementById('dssm-history-group');
-    const xrayGroup = document.getElementById('dssm-xray-group');
-    if(!caseGroup) return;
-    if(val === 'Follow-up') {
-        caseGroup.style.display = 'block';
-        monthGroup.style.display = 'block';
-        if(historyGroup) historyGroup.style.display = 'none';
-        if(xrayGroup) xrayGroup.style.display = 'none';
-    } else {
-        caseGroup.style.display = 'none';
-        monthGroup.style.display = 'none';
-        if(historyGroup) historyGroup.style.display = 'block';
-        if(xrayGroup) xrayGroup.style.display = 'block';
-    }
-}
-
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
@@ -147,7 +127,6 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
-                // Pag-fetch ng kumpletong pasyente kahit ilan pa sila (While loop)
                 let allData = [];
                 let hasMore = true;
                 let from = 0;
@@ -167,7 +146,6 @@ async function apiGet(action, params = {}) {
                     }
                 }
                 
-                console.log(`[Cache] Successfully loaded ${allData.length} total patients.`);
                 return { status: "success", data: allData.map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
@@ -184,29 +162,16 @@ async function apiGet(action, params = {}) {
                 if (error) throw error;
                 let rows = data || [];
                 if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
-                return { status: "success", data: rows.map(r => {
-                    let roleCheck = String(params.role).toUpperCase();
-                    let fData = { ...r.details, "Test Code": r.test_code || r.id };
-                    
-                    // 🔴 MASKING SA PATIENT HISTORY KUNG ENCODER O VIEWER ANG NAKA-LOGIN
-                    if (String(r.test_name).toUpperCase().includes('SERO')) {
-                        if ((roleCheck === 'ENCODER' || roleCheck === 'VIEWER') && fData.HIV && fData.HIV !== '-') {
-                            fData.HIV = 'CONFIDENTIAL';
-                        }
-                    }
-                    
-                    return { date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: fData };
-                })};
+                return { status: "success", data: rows.map(r => ({
+                    date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.test_code || r.id }
+                }))};
             }
             case "getPendingWorkload": {
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
-                if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
                 
-                // 🟢 FIXED: Fetch based on ENCODED (and COMPLETED if needed for backward compatibility)
                 let compQ = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
-                if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
                 
@@ -225,7 +190,6 @@ async function apiGet(action, params = {}) {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
                 
-                // 🔴 FIX PARA MABASA KAHIT HIGIT SA 1000 RECORDS (LOOPING FETCH)
                 let allData = [];
                 let hasMore = true;
                 let from = 0;
@@ -239,24 +203,19 @@ async function apiGet(action, params = {}) {
                          q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
                     }
 
-                    if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
-                        if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
-                    }
-                    
                     if (params.searchQuery) {
                         q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
                     }
 
-                    // Kumukuha ng chunks per 1000 records
                     let { data: chunk, error } = await q.range(from, from + fetchLimit - 1); 
                     if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                     
                     allData = allData.concat(chunk || []);
                     
                     if (!chunk || chunk.length < fetchLimit) {
-                        hasMore = false; // Tigil na kung kulang na sa 1000 ang kinuha
+                        hasMore = false;
                     } else {
-                        from += fetchLimit; // Next batch
+                        from += fetchLimit;
                     }
                 }
                 
@@ -287,8 +246,6 @@ async function apiGet(action, params = {}) {
                 const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
                 const rows = data.map(row => headers.map(h => {
                     let val = row[h];
-                    
-                    // 🔴 MASKING SA REGISTRY: Kapag Encoder o Viewer, 'CONFIDENTIAL' ang ipapakita sa HIV column.
                     if (params.type === 'SERO' && String(h).toUpperCase() === 'HIV') {
                         let roleCheck = String(params.role).toUpperCase();
                         if (roleCheck === 'ENCODER' || roleCheck === 'VIEWER') {
@@ -310,7 +267,6 @@ async function apiPost(action, payload) {
     try {
         switch (action) {
             case "logAudit": {
-                // Pinapagaan ang pag-save ng logs para iwas 401
                 try {
                     await sb.from('audit_logs').insert({ username: payload.username, action: payload.action, details: payload.details });
                 } catch(e) {}
@@ -342,7 +298,7 @@ async function apiPost(action, payload) {
                     test_type: t.name, 
                     test_code: t.test_code || t.code,
                     details: t.details || {}, 
-                    status: 'PENDING', // 🟢 Explicit PENDING state
+                    status: 'PENDING', 
                     facility: f.facility, 
                     encoder: f.encoder, 
                     date: new Date().toISOString()
@@ -356,7 +312,6 @@ async function apiPost(action, payload) {
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
                 
-                // 🟢 Determine Status based on repeat details or set to ENCODED
                 let testStatus = 'ENCODED';
                 let repeatTag = String(details.Repeat || details["Test Type"] || "").toUpperCase();
                 if (repeatTag.includes('INITIAL')) {
@@ -649,13 +604,10 @@ function applyPermissions() {
         setTimeout(() => { if(typeof openRegistryTab === 'function') openRegistryTab('GXP', 1); }, 800);
     }
 
-    // 🟢 UPDATED HIV PERMISSION: ADMIN AND STAFF CAN VIEW HIV.
     if (role !== 'ADMIN') {
         document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn').forEach(card => { const attr = card.getAttribute('onclick') || ''; if(attr.includes('GXVL')) card.style.display = 'none'; });
         const btnViral = document.getElementById('btn-viral'); if(btnViral) btnViral.style.display = 'none';
     }
-    // 🟢 FIX: Inallow na natin ang STAFF at ENCODER na makapag-click at makapag-encode ng Serology
-    if (role !== 'ADMIN' && role !== 'STAFF' && role !== 'ENCODER') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
 }
 
 async function checkNewNotifs() {
@@ -1107,8 +1059,8 @@ async function saveAndPrintResult(id, safeId, btn) {
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
-        else { throw new Error(res.message || "Failed to save result."); } // 🔴 Ilabas ang tunay na mensahe
-    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } // 🔴 Ipakita ang tunay na error sa pop-up
+        else { throw new Error(res.message || "Failed to save result."); } 
+    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } 
 }
 
 async function moveToPendingRepeat(idStr) {
@@ -1196,7 +1148,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED_BY';
                     if (isResCol && val !== "") {
                         let vU = String(val).toUpperCase().trim(); let bg = "transparent", col = "inherit"; 
-                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "$dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
+                        if (vU === "CONFIDENTIAL" || isInitialRow) { bg = "#f1f5f9"; col = "#64748b"; } else if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; } else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; } else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; } else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; } else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; } else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; } 
                         html += `<td><span class="res-badge" style="${bg !== 'transparent' ? `background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.75rem;` : ''}">${val}</span></td>`;
                     } else if (isPerformedBy && val !== "") { html += `<td style="font-size:0.65rem; color:var(--text-muted);">${val}</td>`; } else { html += `<td>${val}</td>`; }
                 }); html += `</tr>`;
@@ -1522,44 +1474,6 @@ async function submitStaffRegister() {
     } catch(e) { showAppAlert("Error", e.message || "Server error.", "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; }
 }
 
-async function batchSaveResults(isPrint) {
-    const checked = document.querySelectorAll('.chk-pending:checked');
-    if(checked.length === 0) return showAppAlert("Required", "Select at least one record to batch process.", "error");
-    const btnSave = document.querySelector('button[onclick="batchSaveResults(false)"]'); const btnPrint = document.querySelector('button[onclick="batchSaveResults(true)"]');
-    if(btnSave) { btnSave.disabled = true; btnSave.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; } if(btnPrint) { btnPrint.disabled = true; btnPrint.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...'; }
-    let successCount = 0; let printRequests = [];
-    for (let chk of checked) {
-        const id = chk.value; const item = window.pendingData.find(d => String(d.id) === String(id).trim()); if(!item) continue;
-        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); const inputs = document.querySelectorAll('.res-' + safeId);
-        let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
-        let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
-        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, date_examined: new Date().toISOString() };
-        
-        let batchStatus = 'ENCODED';
-        let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
-        if (rptTag.includes('INITIAL')) batchStatus = 'FOR REPEAT';
-
-        try { const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus }).eq('id', id); if (!error) { successCount++; if (isPrint) printRequests.push({testCode: id, testName: tCodePrint}); } } catch(e) {}
-    }
-    await apiPost("logAudit", { username: currentUser.fullName || currentUser.username, action: "BATCH SAVE", details: `Batch processed ${successCount} records.` });
-    showAppAlert("Batch Complete", `Successfully saved ${successCount} records.`, "success"); await loadPendingData();
-    if (isPrint && printRequests.length > 0) {
-        showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
-        try {
-            const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
-            let printContent = [];
-            for(let r of printRequests) {
-                const { data } = await sb.from('lab_tests').select('*').eq('id', r.testCode).maybeSingle();
-                if(data) printContent.push(mapSupabaseToPrintObject(data));
-            }
-            let finalHtml = isNTP ? localGenerateNTPHtml(printContent) : localGenerateA5Html(printContent);
-            showPrintModal(finalHtml);
-        } catch(e) { showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Print Error. Please try again.</h2>'); }
-    }
-    if(btnSave) { btnSave.disabled = false; btnSave.innerHTML = '<i class="ph ph-floppy-disk"></i> Batch Save'; } if(btnPrint) { btnPrint.disabled = false; btnPrint.innerHTML = '<i class="ph ph-printer"></i> Save & Print'; }
-}
-
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
     p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
@@ -1590,7 +1504,6 @@ function mapSupabaseToPrintObject(d) {
         resultsArr.push({ param: key, res: detailsObj[key] }); 
     }
     
-    // GUMAGAMIT NA TAYO NG LIGTAS NA FALLBACKS DITO
     return {
         id: d.patient_id || d.patientId || "N/A", 
         name: d.patient_name || d.name || detailsObj.name || "Unnamed Patient", 
@@ -1714,11 +1627,7 @@ function localGenerateNTPHtml(patientsArray) {
 }
 
 function localGenerateA5Html(patientsArray) {
-    const logos = { 
-        left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000",
-        lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", 
-        right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000"
-    };
+    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
     let combinedHtml = "";
     
     const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
@@ -1811,10 +1720,10 @@ function localGenerateA5Html(patientsArray) {
             </div>
         </div>`;
 
-        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : ''; combinedHtml += pageHtml + breakTag;
+        const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : '';
+        combinedHtml += pageHtml + breakTag;
     });
 
-    return `<!DOCTYPE html><html><head><title>NTP Form 2A Batch</title><style>
     return `<!DOCTYPE html><html><head><title>Batch Print</title>
     <style>
         @page { size: A5 landscape; margin: 0; }
@@ -1844,22 +1753,14 @@ function localGenerateA5Html(patientsArray) {
         .sig-info { font-size: 9px; }
         .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
         .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
-        
         @media print { 
-            .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             @page { size: 210mm 148mm; margin: 0; } 
             .page-container { width: 210mm !important; max-width: 210mm !important; height: 148mm !important; max-height: 148mm !important; margin: 0 auto !important; padding: 4mm 10mm !important; border: none !important; box-shadow: none !important; zoom: 1.05 !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; } 
             .page-break { display: none !important; } 
-        } 
-    </style></head><body>${combinedHtml}</body></html>`;
-}
-
-function localGenerateA5Html(patientsArray) {
-    const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
-    let combinedHtml = "";
-    
-    const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
+        }
+    </style>
+    </head><body>${combinedHtml}</body></html>`;
 }
 
 function showPrintModal(htmlContent) {
@@ -1869,7 +1770,6 @@ function showPrintModal(htmlContent) {
         modal.id = 'print-modal-overlay';
         modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.75); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
         
-        // Gawa ng sariling Top Bar sa labas ng iframe para siguradong nakikita ang buttons
         const topBar = document.createElement('div');
         topBar.style.cssText = 'width:90%; max-width:1100px; background:#1e293b; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box;';
         topBar.innerHTML = `
@@ -1892,18 +1792,13 @@ function showPrintModal(htmlContent) {
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
     
-    // 🟢 SAFARI ULTIMATE FIX: Gagamitin natin ang document.write para pwersahang ilagay ang HTML
-    iframe.src = 'about:blank';
+    iframe.src = 'about:blank'; // reset
     setTimeout(() => {
-        try {
-            let doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write(htmlContent);
-            doc.close();
-        } catch (err) {
-            console.error("Iframe write failed", err);
-        }
-    }, 100);
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+    }, 50);
 }
 
 window.closePrintModal = function() {
