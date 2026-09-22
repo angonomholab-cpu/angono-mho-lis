@@ -1433,20 +1433,28 @@ body.dark-mode .auth-card p {
 }
 
 .workspace-col {
-    background: var(--bg-surface);
+    background: rgba(255, 255, 255, 0.88);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
+    box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(226, 232, 240, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.95);
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.dark-mode .workspace-col {
+    background: rgba(19, 29, 51, 0.82);
+    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
 }
 
 .workspace-col:hover {
-    border-color: rgba(13, 148, 136, 0.25);
-    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.08);
+    border-color: rgba(13, 148, 136, 0.4);
+    box-shadow: 0 16px 36px -6px rgba(13, 148, 136, 0.1), 0 0 0 1px rgba(13, 148, 136, 0.25);
 }
 
 .workspace-header {
@@ -1455,8 +1463,15 @@ body.dark-mode .auth-card p {
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--border-color);
-    background: var(--bg-surface);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     z-index: 2;
+}
+
+body.dark-mode .workspace-header {
+    background: rgba(19, 29, 51, 0.7);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 .workspace-header h2 {
@@ -1768,20 +1783,20 @@ body.dark-mode .auth-card p {
         border-radius: 18px !important;
     }
 
-    /* Controlled visibility via data-mobile-tab */
+    /* Controlled visibility via data-mobile-tab (Default: Entry) */
+    #workspace-grid-container:not([data-mobile-tab]) #col-entry,
     #workspace-grid-container[data-mobile-tab="entry"] #col-entry { display: flex !important; }
+    #workspace-grid-container:not([data-mobile-tab]) #col-pending,
     #workspace-grid-container[data-mobile-tab="entry"] #col-pending { display: none !important; }
+    #workspace-grid-container:not([data-mobile-tab]) #col-stacked-wrapper,
     #workspace-grid-container[data-mobile-tab="entry"] #col-stacked-wrapper { display: none !important; }
 
-    #workspace-grid-container:not([data-mobile-tab]) #col-pending,
     #workspace-grid-container[data-mobile-tab="pending"] #col-pending { 
         display: flex !important; 
         height: calc(100vh - 140px) !important;
         max-height: none !important;
     }
-    #workspace-grid-container:not([data-mobile-tab]) #col-entry,
     #workspace-grid-container[data-mobile-tab="pending"] #col-entry { display: none !important; }
-    #workspace-grid-container:not([data-mobile-tab]) #col-stacked-wrapper,
     #workspace-grid-container[data-mobile-tab="pending"] #col-stacked-wrapper { display: none !important; }
 
     #workspace-grid-container[data-mobile-tab="repeat"] #col-entry { display: none !important; }
@@ -1824,7 +1839,7 @@ body.dark-mode .auth-card p {
         padding-bottom: 20px;
     }
 
-    /* Entry Form Layout on Phone */
+    /* Entry Form Layout on Phone (Ultra-Compact) */
     .ap-split {
         flex-direction: column !important;
         height: auto !important;
@@ -1834,72 +1849,139 @@ body.dark-mode .auth-card p {
     .ap-left {
         border-right: none !important;
         border-bottom: 1px solid var(--border-color) !important;
-        padding: 16px 14px 20px 14px !important;
+        padding: 12px 10px 16px 10px !important;
+    }
+
+    #regForm .field-group {
+        margin-bottom: 0 !important;
+    }
+
+    #regForm .field-label {
+        font-size: 0.68rem !important;
+        margin-bottom: 2px !important;
+    }
+
+    #regForm .form-input,
+    #regForm .form-select {
+        font-size: 15px !important;
+        height: 38px !important;
+        padding: 6px 10px !important;
+        border-radius: 8px !important;
     }
 
     .ap-right {
-        padding: 16px 14px 80px 14px !important;
+        padding: 12px 10px 80px 10px !important;
     }
 
     .sticky-footer {
         position: sticky !important;
         bottom: 0 !important;
-        padding: 12px 14px !important;
+        padding: 8px 12px !important;
         background: var(--bg-surface) !important;
         border-top: 1px solid var(--border-color) !important;
-        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08) !important;
+        box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.08) !important;
         z-index: 10;
+    }
+
+    #save-btn-action {
+        min-height: 38px !important;
+        font-size: 0.88rem !important;
+        border-radius: 10px !important;
     }
 
     /* Test buttons grid on phone */
     .vertical-test-list {
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
+        gap: 6px !important;
     }
 
     .test-btn-vert {
-        min-height: 56px !important;
-        padding: 10px 8px !important;
-        border-radius: 12px !important;
+        min-height: 48px !important;
+        padding: 6px 4px !important;
+        border-radius: 10px !important;
+        gap: 3px !important;
     }
 
     .test-btn-vert i {
-        font-size: 1.35rem !important;
+        font-size: 1.15rem !important;
     }
 
     .test-btn-vert span {
-        font-size: 0.72rem !important;
+        font-size: 0.68rem !important;
     }
 
-    /* Touch targets on inputs */
-    .form-input,
-    .form-select {
-        font-size: 16px !important; /* Prevents iPhone Safari zoom */
-        height: 44px !important;
-        border-radius: 10px !important;
-    }
-
-    /* Patient Card Touch Ergonomics */
+    /* 🌟 Ultra-Compact Pending & Completed Cards for Rapid Result Entry without scrolling */
     .pending-card,
     .completed-card {
-        padding: 12px 14px !important;
-        border-radius: 14px !important;
-        margin-bottom: 9px !important;
+        padding: 7px 10px !important;
+        border-radius: 11px !important;
+        margin-bottom: 6px !important;
+        border-left-width: 3px !important;
     }
 
     .pc-name {
-        font-size: 0.92rem !important;
+        font-size: 0.82rem !important;
+        line-height: 1.25 !important;
+        font-weight: 700 !important;
     }
 
     .pc-meta {
-        font-size: 0.75rem !important;
+        font-size: 0.67rem !important;
+        margin-top: 2px !important;
+        gap: 4px !important;
+    }
+
+    .pc-expand-area {
+        margin-top: 6px !important;
+        padding-top: 6px !important;
+    }
+
+    .pc-expand-area .btn {
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 3px 8px !important;
+        font-size: 0.74rem !important;
+        border-radius: 8px !important;
+    }
+
+    .pc-expand-area .field-group {
+        margin-bottom: 3px !important;
+    }
+
+    .pc-expand-area .field-label {
+        font-size: 0.65rem !important;
+        margin-bottom: 1px !important;
+        font-weight: 700 !important;
+        color: var(--text-muted) !important;
+    }
+
+    .pc-expand-area .form-input,
+    .pc-expand-area .form-select {
+        font-size: 13px !important;
+        height: 30px !important;
+        min-height: 30px !important;
+        padding: 2px 6px !important;
+        border-radius: 6px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .pc-expand-area .form-grid {
+        gap: 5px !important;
+    }
+
+    .pc-expand-area .form-grid.grid-2 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .pc-expand-area .form-grid.grid-3 {
+        grid-template-columns: repeat(3, 1fr) !important;
     }
 
     .btn-icon {
-        width: 38px !important;
-        height: 38px !important;
-        border-radius: 10px !important;
-        font-size: 1.15rem !important;
+        width: 30px !important;
+        height: 30px !important;
+        border-radius: 8px !important;
+        font-size: 1rem !important;
     }
 
     /* Adjust FAB Menu on mobile */
@@ -1913,7 +1995,7 @@ body.dark-mode .auth-card p {
     }
 
     .fab-profile-pill {
-        display: none !important; /* Hide long profile text on narrow screens to prevent screen cutoff */
+        display: none !important;
     }
 
     .fab-btn {
@@ -1930,9 +2012,13 @@ body.dark-mode .auth-card p {
 }
 
 @media screen and (max-width: 600px) {
-    .form-grid.grid-2,
-    .form-grid.grid-3 {
-        grid-template-columns: 1fr !important;
+    #page-workspace .form-grid.grid-2,
+    #page-workspace .form-grid.grid-3 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .pc-expand-area .form-grid.grid-3 {
+        grid-template-columns: repeat(3, 1fr) !important;
     }
 
     .content-area {
