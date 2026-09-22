@@ -860,7 +860,7 @@ async function finalSubmit() {
       }; 
       if(labOrders[key].subTests && labOrders[key].subTests.length > 0) { entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); } 
       finalTestsArray.push(entry); 
-  });
+  }
 
   const formData = { patientId: document.getElementById('finalPatientId').value, fullName: document.getElementById('p_name').value, bday: document.getElementById('p_bday').value, sex: pSex, age: pAge, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, email: pEmail, patientPassword: generatedPassword, facility: pFacility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify(finalTestsArray) };
 
