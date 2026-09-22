@@ -194,64 +194,57 @@ async function apiGet(action, params = {}) {
             case "getRegistryDataOptimized": {
                 const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'export_dssm', 'FA': 'export_fecalysis', 'GXP': 'export_genexpert', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'export_serology', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
-                
-                let q = sb.from(tName).select('*'); 
-                
-                if (tName === 'lab_tests') {
-                     const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                     q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
-                }
-
-                if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
-                    if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
-                }
-                
-                // 🔴 FIX PARA SA 42703 ERROR (Views alias their columns, Tables don't)
-                if (params.searchQuery) {
-                    if (tName === 'lab_tests') {
-                        q = q.or(`patient_name.ilike.%${params.searchQuery}%`);
-                    } else {
-                        // Sa export_ views, "Patient Name" ang alias natin
-                        q = q.or(`"Patient Name".ilike.%${params.searchQuery}%`);
-                    }
-                }
-
+                const dateCol = (tName === 'lab_tests') ? 'date' : '"Date Received"';
                 const isAsc = params.sortOrder === 'ASC';
-                let { data, error } = await q.limit(1000); 
-                if (error) throw new Error(`View/Table '${tName}': ` + error.message);
-                
-                if (params.monthFilter && data) {
-                    let fVal = String(params.monthFilter).toLowerCase().trim();
-                    data = data.filter(row => {
-                        let rDate = row.date || row.date_received || row.Date || row["Date Received"] || row.date_examined || row.created_at;
-                        const d = parseAnyDate(rDate);
-                        if (!d) return false;
-                        
-                        let mNum = d.getMonth() + 1;
-                        let mName = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"][mNum - 1];
-                        let sName = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"][mNum - 1];
-                        let yNum = String(d.getFullYear());
 
-                        return fVal === String(mNum) || 
-                               fVal === String(mNum).padStart(2, '0') || 
-                               fVal === mName || 
-                               fVal === sName || 
-                               fVal === `${yNum}-${String(mNum).padStart(2, '0')}`;
-                    });
+                // Ginawang function ito dahil ang isang query builder ay pang-isang-gamit lang
+                // sa Supabase JS client — kailangan nating gumawa ng bago bawat .range() na tawag.
+                function buildQuery() {
+                    let q = sb.from(tName).select('*');
+                    if (tName === 'lab_tests') {
+                        const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
+                        q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']);
+                    }
+                    if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
+                        if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                    }
+                    if (params.searchQuery) {
+                        q = (tName === 'lab_tests')
+                            ? q.or(`patient_name.ilike.%${params.searchQuery}%`)
+                            : q.or(`"Patient Name".ilike.%${params.searchQuery}%`);
+                    }
+                    // 🟢 FIX: month filter na server-side na, gamit ang ILIKE wildcard sa
+                    // taning na posisyon ng buwan sa ISO date string ("____-09-%" = kahit
+                    // anong taon, basta Setyembre). Gumagana ito para sa lahat ng taon,
+                    // hindi lang sa data na nasa unang 1000 rows.
+                    if (params.monthFilter) {
+                        const mNum = String(parseInt(params.monthFilter, 10)).padStart(2, '0');
+                        if (mNum !== 'NaN') q = q.ilike(dateCol, `____-${mNum}-%`);
+                    }
+                    return q.order(dateCol, { ascending: isAsc });
+                }
+
+                // 🟢 FIX: 1000-row cap. Sunud-sunod na kinukuha LAHAT ng tumutugmang
+                // rows (1000 sa isang pagkuha), hindi lang ang unang 1000.
+                let data = [];
+                for (let from = 0; ; from += 1000) {
+                    const { data: chunk, error } = await buildQuery().range(from, from + 999);
+                    if (error) throw new Error(`View/Table '${tName}': ` + error.message);
+                    data = data.concat(chunk || []);
+                    if (!chunk || chunk.length < 1000) break;
                 }
 
                 if (!data || data.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No records found"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
-                
+
                 const headers = Object.keys(data[0]).filter(h => !['details', 'count'].includes(h));
+                // 🟢 FIX: nakadagdag na ang SYPHILIS at HBSAG sa masking — dati'y HIV lang.
+                const SERO_MASK_COLS = ['HIV', 'SYPHILIS', 'HBSAG'];
+                const SERO_PRIVILEGED = ['ADMIN', 'STAFF', 'NTP_CHECKER'];
+                const roleCheck = String(params.role).toUpperCase();
                 const rows = data.map(row => headers.map(h => {
                     let val = row[h];
-                    if (params.type === 'SERO' && String(h).toUpperCase() === 'HIV') {
-                        let roleCheck = String(params.role).toUpperCase();
-                        if (roleCheck === 'ENCODER' || roleCheck === 'VIEWER') {
-                            if (val && String(val).trim() !== '' && String(val).trim() !== '-') {
-                                return 'CONFIDENTIAL';
-                            }
-                        }
+                    if (params.type === 'SERO' && SERO_MASK_COLS.includes(String(h).toUpperCase()) && !SERO_PRIVILEGED.includes(roleCheck)) {
+                        if (val && String(val).trim() !== '' && String(val).trim() !== '-') return 'CONFIDENTIAL';
                     }
                     return val;
                 }));
@@ -1216,7 +1209,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 }); html += `</tr>`;
             });
             html += `</tbody></table>`;
-            cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing Top ${registryData.totalRows} Records</span>`;
+            cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing All ${registryData.totalRows} Records</span>`;
         } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
     } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; if(document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
 }
