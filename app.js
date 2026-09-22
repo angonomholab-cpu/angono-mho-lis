@@ -79,6 +79,26 @@ function toggleDssmCategory(selectEl) {
     }
 }
 
+function handleDSSMCategory(sel) {
+    const val = sel.value;
+    const caseGroup = document.getElementById('dssm-case-group');
+    const monthGroup = document.getElementById('dssm-month-group');
+    const historyGroup = document.getElementById('dssm-history-group');
+    const xrayGroup = document.getElementById('dssm-xray-group');
+    if(!caseGroup) return;
+    if(val === 'Follow-up') {
+        caseGroup.style.display = 'block';
+        monthGroup.style.display = 'block';
+        if(historyGroup) historyGroup.style.display = 'none';
+        if(xrayGroup) xrayGroup.style.display = 'none';
+    } else {
+        caseGroup.style.display = 'none';
+        monthGroup.style.display = 'none';
+        if(historyGroup) historyGroup.style.display = 'block';
+        if(xrayGroup) xrayGroup.style.display = 'block';
+    }
+}
+
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
     const modal = document.getElementById('custom-alert');
@@ -127,6 +147,7 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
+                // Pag-fetch ng kumpletong pasyente kahit ilan pa sila (While loop)
                 let allData = [];
                 let hasMore = true;
                 let from = 0;
@@ -146,6 +167,7 @@ async function apiGet(action, params = {}) {
                     }
                 }
                 
+                console.log(`[Cache] Successfully loaded ${allData.length} total patients.`);
                 return { status: "success", data: allData.map(p => ({
                     id: p.id, 
                     name: p.full_name || p.name || "", 
@@ -161,18 +183,23 @@ async function apiGet(action, params = {}) {
                 const { data, error } = await sb.from('lab_tests').select('*').eq('patient_id', params.patientId).order('date', { ascending: false });
                 if (error) throw error;
                 let rows = data || [];
-                if (String(params.role).toUpperCase() !== 'ADMIN') rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
+                // Allow STAFF to view viral load in history as well. 
+                if (String(params.role).toUpperCase() !== 'ADMIN' && String(params.role).toUpperCase() !== 'STAFF' && String(params.role).toUpperCase() !== 'ENCODER') {
+                    rows = rows.filter(r => !String(r.test_name).toUpperCase().includes('VIRAL'));
+                }
                 return { status: "success", data: rows.map(r => ({
                     date: r.date, test: r.test_name, result: (r.details?.ResultCode || r.details?.Diagnosis || r.details?.VL_Choice || r.details?.Dengue_Result || "Recorded"), fullData: { ...r.details, "Test Code": r.test_code || r.id }
                 }))};
             }
             case "getPendingWorkload": {
-                // 🟢 Staff / Lab Staff ay makikita ang LAHAT ng pending, o naka-filter depende sa role
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
+                if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
                 
+                // 🟢 FIXED: Fetch based on ENCODED (and COMPLETED if needed for backward compatibility)
                 let compQ = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
+                if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
                 
@@ -195,13 +222,19 @@ async function apiGet(action, params = {}) {
                 
                 if (tName === 'lab_tests') {
                      const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
+                     // Fetch ENCODED records for registry if using lab_tests fallback
                      q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']); 
                 }
 
+                if (params.role !== 'ADMIN' && params.role !== 'STAFF' && params.role !== 'NTP_CHECKER' && params.role !== 'DOH_TB') {
+                    if (params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                }
+                
                 if (params.searchQuery) {
                     q = q.or(`patient_name.ilike.%${params.searchQuery}%,full_name.ilike.%${params.searchQuery}%`);
                 }
 
+                const isAsc = params.sortOrder === 'ASC';
                 let { data, error } = await q.limit(1000); 
                 if (error) throw new Error(`View/Table '${tName}': ` + error.message);
                 
@@ -240,6 +273,7 @@ async function apiPost(action, payload) {
     try {
         switch (action) {
             case "logAudit": {
+                // Pinapagaan ang pag-save ng logs para iwas 401
                 try {
                     await sb.from('audit_logs').insert({ username: payload.username, action: payload.action, details: payload.details });
                 } catch(e) {}
@@ -271,7 +305,7 @@ async function apiPost(action, payload) {
                     test_type: t.name, 
                     test_code: t.test_code || t.code,
                     details: t.details || {}, 
-                    status: 'PENDING', // 🟢 Sakto sa check constraint ng SQL ('PENDING', 'ENCODED', 'FOR REPEAT', 'COMPLETED')
+                    status: 'PENDING', // 🟢 Explicit PENDING state
                     facility: f.facility, 
                     encoder: f.encoder, 
                     date: new Date().toISOString()
@@ -285,7 +319,7 @@ async function apiPost(action, payload) {
             case "saveLabResult": {
                 const details = JSON.parse(payload.jsonDetails || "{}");
                 
-                // 🟢 Tignan kung Initial Result ba ito para maging 'FOR REPEAT', kung hindi ay 'ENCODED' (o COMPLETED)
+                // 🟢 Determine Status based on repeat details or set to ENCODED
                 let testStatus = 'ENCODED';
                 let repeatTag = String(details.Repeat || details["Test Type"] || "").toUpperCase();
                 if (repeatTag.includes('INITIAL')) {
@@ -578,11 +612,13 @@ function applyPermissions() {
         setTimeout(() => { if(typeof openRegistryTab === 'function') openRegistryTab('GXP', 1); }, 800);
     }
 
-    if (role !== 'ADMIN') {
+    // 🟢 UPDATED HIV PERMISSION: ADMIN AND STAFF CAN VIEW HIV.
+    if (role !== 'ADMIN' && role !== 'STAFF') {
         document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn').forEach(card => { const attr = card.getAttribute('onclick') || ''; if(attr.includes('GXVL')) card.style.display = 'none'; });
         const btnViral = document.getElementById('btn-viral'); if(btnViral) btnViral.style.display = 'none';
     }
-    if (role !== 'ADMIN' && role !== 'STAFF') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
+    // 🟢 UPDATED SERO PERMISSION:
+    if (role !== 'ADMIN' && role !== 'STAFF' && role !== 'ENCODER') { const btnSero = document.getElementById('btn-sero'); if(btnSero) btnSero.style.display = 'none'; }
 }
 
 async function checkNewNotifs() {
@@ -1034,8 +1070,8 @@ async function saveAndPrintResult(id, safeId, btn) {
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") { btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved'; await loadPendingData(); printDirect(null, id, tCodePrint); }
-        else { throw new Error(res.message || "Failed to save result."); }
-    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); }
+        else { throw new Error(res.message || "Failed to save result."); } // 🔴 Ilabas ang tunay na mensahe
+    } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); } // 🔴 Ipakita ang tunay na error sa pop-up
 }
 
 async function moveToPendingRepeat(idStr) {
@@ -1503,6 +1539,73 @@ function processNtpResultsClient(p) {
     });}
 }
 
+function mapSupabaseToPrintObject(d) {
+    let detailsObj = {};
+    try {
+        detailsObj = typeof d.details === 'string' ? JSON.parse(d.details || "{}") : (d.details || {});
+    } catch(e) {
+        detailsObj = {};
+    }
+    
+    let resultsArr = []; 
+    for (let key in detailsObj) { 
+        resultsArr.push({ param: key, res: detailsObj[key] }); 
+    }
+    
+    // GUMAGAMIT NA TAYO NG LIGTAS NA FALLBACKS DITO
+    return {
+        id: d.patient_id || d.patientId || "N/A", 
+        name: d.patient_name || d.name || detailsObj.name || "Unnamed Patient", 
+        age: detailsObj.age || detailsObj.Age || "", 
+        sex: detailsObj.sex || detailsObj.Sex || "",
+        facility: detailsObj.facility || detailsObj.Facility || d.facility || "Main Health Center", 
+        address: detailsObj.address || detailsObj.Address || "", 
+        contact: detailsObj.contact || detailsObj.Contact || "",
+        dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR, 
+        dateExamined: detailsObj.date_examined || detailsObj.dateEncoded || d.date ? new Date(detailsObj.date_examined || detailsObj.dateEncoded || d.date).toLocaleDateString() : TODAY_STR, 
+        dateResult: new Date().toLocaleDateString(), 
+        testCode: d.test_code || d.id || "", 
+        testName: d.test_name || d.test || "Laboratory Test", 
+        encoder: d.encoder || currentUser.fullName || "System", 
+        verifier: "", 
+        results: resultsArr
+    };
+}
+
+async function printDirect(e, id, testName) { 
+    if(e) e.stopPropagation(); 
+    const correctCode = getTestCodeFromName(testName); 
+    showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Document...</h2>');
+    
+    let item = window.completedData.find(d => String(d.id) === String(id).trim()) || window.pendingData.find(d => String(d.id) === String(id).trim());
+    try {
+        if (!item) { 
+            const { data, error } = await sb.from('lab_tests').select('*').eq('id', id).maybeSingle(); 
+            if(data) item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date }; 
+        }
+        if (item) {
+            if (!globalStaffList || globalStaffList.length === 0) await loadSettingsData();
+            let pObj = mapSupabaseToPrintObject(item);
+            
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM"; 
+            let finalHtml = "";
+            try {
+                finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
+            } catch (genErr) {
+                console.error("Template Generation Error:", genErr);
+                finalHtml = `<html><body style="font-family:sans-serif; padding:20px; color:#b91c1c;"><h2>⚠️ Print Template Error</h2><p>${genErr.message}</p></body></html>`;
+            }
+            
+            showPrintModal(finalHtml);
+        } else {
+            showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Document not found.</h2>'); 
+        }
+    } catch (err) {
+        console.error("Print Generation Error:", err); 
+        showPrintModal(`<h2 style="font-family:'Poppins', sans-serif; text-align:center; margin-top:50px; color: #ef4444;">Error: ${err.message}</h2>`); 
+    }
+}
+
 async function batchPrint() {
     const checked = document.querySelectorAll('.chk-reg:checked'); if (checked.length === 0) { showAppAlert("Required", "Select at least one record.", "error"); return; }
     let requests = []; checked.forEach(chk => { const rowData = JSON.parse(decodeURIComponent(chk.value)); const codeCol = window.CURRENT_REGISTRY_HEADERS.findIndex(h => h.toUpperCase().includes('TEST CODE') || h.toUpperCase() === 'ID'); requests.push({ testCode: rowData[codeCol] || rowData[0], testName: window.CURRENT_TEST_TYPE }); });
@@ -1699,14 +1802,22 @@ function localGenerateA5Html(patientsArray) {
         .sig-info { font-size: 9px; }
         .system-footer { font-size: 7px; text-align: center; color: #555; margin-top: 4px; font-style: italic; }
         .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; font-size: 10px; padding: 3px; border: 1px solid black; margin-top: 2px; -webkit-print-color-adjust: exact; }
+        
         @media print { 
+            .no-print { display: none !important; } 
             body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
             @page { size: 210mm 148mm; margin: 0; } 
             .page-container { width: 210mm !important; max-width: 210mm !important; height: 148mm !important; max-height: 148mm !important; margin: 0 auto !important; padding: 4mm 10mm !important; border: none !important; box-shadow: none !important; zoom: 1.05 !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; } 
             .page-break { display: none !important; } 
         }
     </style>
-    </head><body>${combinedHtml}</body></html>`;
+    </head><body>
+    <div class="no-print">
+        <span class="preview-text">⏳ PREVIEW: Wait for logos to load before printing or saving</span>
+        <button class="btn-print" onclick="window.print()">🖨️ PRINT / SAVE AS PDF</button>
+        <button class="btn-close" onclick="window.parent.closePrintModal()">❌ CLOSE</button>
+    </div>
+    ${combinedHtml}</body></html>`;
 }
 
 function showPrintModal(htmlContent) {
@@ -1716,6 +1827,7 @@ function showPrintModal(htmlContent) {
         modal.id = 'print-modal-overlay';
         modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.75); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
         
+        // Gawa ng sariling Top Bar sa labas ng iframe para siguradong nakikita ang buttons
         const topBar = document.createElement('div');
         topBar.style.cssText = 'width:90%; max-width:1100px; background:#1e293b; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0; box-sizing:border-box;';
         topBar.innerHTML = `
@@ -1738,13 +1850,18 @@ function showPrintModal(htmlContent) {
     modal.style.display = 'flex';
     const iframe = document.getElementById('print-iframe');
     
-    iframe.src = 'about:blank'; // reset
+    // 🟢 SAFARI ULTIMATE FIX: Gagamitin natin ang document.write para pwersahang ilagay ang HTML
+    iframe.src = 'about:blank';
     setTimeout(() => {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-    }, 50);
+        try {
+            let doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+        } catch (err) {
+            console.error("Iframe write failed", err);
+        }
+    }, 100);
 }
 
 window.closePrintModal = function() {
