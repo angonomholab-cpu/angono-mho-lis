@@ -279,7 +279,8 @@ async function apiGet(action, params = {}) {
                 if (!data) return { status: "FAIL" };
                 if (data.status === "PENDING") return { status: "PENDING" };
                 if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
-                return { status: "SUCCESS", username: data.username, facility: data.facility, role: data.role, fullName: data.full_name || data.username };
+                const effectiveFacility = (data.role === 'STAFF' || data.role === 'ADMIN') ? 'ALL' : (data.facility || 'ALL');
+                return { status: "SUCCESS", username: data.username, facility: effectiveFacility, role: data.role, fullName: data.full_name || data.username };
             }
             case "patientLogin": {
                 const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).maybeSingle();
@@ -349,13 +350,20 @@ async function apiGet(action, params = {}) {
                 };
             }
             case "getPendingWorkload": {
+                const uRole = String(params.role || '').toUpperCase();
+                const canSeeAllFacilities = uRole === 'ADMIN' || uRole === 'STAFF' || params.facility === 'ALL';
+
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
-                if (params.facility && params.facility !== 'ALL') pendingQ = pendingQ.eq('facility', params.facility);
+                if (!canSeeAllFacilities && params.facility && params.facility !== 'ALL') {
+                    pendingQ = pendingQ.eq('facility', params.facility);
+                }
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
 
                 let compQ = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
-                if (params.facility && params.facility !== 'ALL') compQ = compQ.eq('facility', params.facility);
+                if (!canSeeAllFacilities && params.facility && params.facility !== 'ALL') {
+                    compQ = compQ.eq('facility', params.facility);
+                }
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
 
@@ -834,6 +842,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedUser) {
             currentUser = JSON.parse(savedUser);
             if (!currentUser.username) throw new Error("Invalid User format");
+            if (currentUser.role === 'STAFF' || currentUser.role === 'ADMIN') {
+                currentUser.facility = 'ALL';
+            }
 
             document.getElementById('login-overlay').style.display = 'none';
 
@@ -847,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
 
             applyPermissions();
+            ensureStaffList();
             const r = String(currentUser.role).toUpperCase().replace(/\s+/g, '_');
             if (r === 'ADMIN' || r === 'STAFF' || r === 'ENCODER') {
                 loadPatientCache();
@@ -1035,23 +1047,21 @@ function applyPermissions() {
     if (role === 'PATIENT') { const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; }
     else if (role === 'ADMIN' || role === 'STAFF') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
-        if (role === 'ADMIN' && navSet) navSet.style.display = 'flex';
+        if (navSet) navSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
 
-        if (role === 'ADMIN') {
-            let bell = document.getElementById('notif-bell');
-            if (!bell) {
-                bell = document.createElement('div');
-                bell.id = 'notif-bell';
-                bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot" style="display:none; position:absolute; top:-5px; right:-5px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red;"></span>';
-                bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
-                bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
-                bell.onmouseout = () => bell.style.transform = 'scale(1)';
-                bell.onclick = toggleAuditLogs;
-                document.body.appendChild(bell);
-            }
-            if (typeof checkNewNotifs === 'function') checkNewNotifs();
+        let bell = document.getElementById('notif-bell');
+        if (!bell) {
+            bell = document.createElement('div');
+            bell.id = 'notif-bell';
+            bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot" style="display:none; position:absolute; top:-5px; right:-5px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red;"></span>';
+            bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
+            bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
+            bell.onmouseout = () => bell.style.transform = 'scale(1)';
+            bell.onclick = toggleAuditLogs;
+            document.body.appendChild(bell);
         }
+        if (typeof checkNewNotifs === 'function') checkNewNotifs();
 
     } else if (role === 'ENCODER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
@@ -1794,9 +1804,11 @@ async function saveResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    const performerName = currentUser.fullName || currentUser.username;
+    newResults["Performed By"] = performerName;
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
-        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: performerName, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
@@ -1812,9 +1824,11 @@ async function saveAndPrintResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    const performerName = currentUser.fullName || currentUser.username;
+    newResults["Performed By"] = performerName;
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
-        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: currentUser.fullName || currentUser.username, updatedName: item.name, updatedTest: item.test });
+        const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: performerName, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
@@ -2108,7 +2122,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
             const rows = registryData.rows || [];
             window.REGISTRY_ROWS_BY_CODE = {};
-            const isAdminEdit = String(currentUser.role).toUpperCase() === 'ADMIN';
+            const isAdminEdit = ['ADMIN', 'STAFF'].includes(String(currentUser.role).toUpperCase());
             const totalCols = hMap.length + 1 + (isAdminEdit ? 1 : 0);
 
             const getColClass = (hOriginal) => {
@@ -2397,7 +2411,14 @@ function editFacility(index) { const f = globalFacilityList[index]; document.get
 function deleteFacility(index) { globalFacilityList.splice(index, 1); renderFacilityList(); }
 function clearFacilityForm() { document.getElementById('f_name').value = ""; document.getElementById('f_address').value = ""; document.getElementById('f_person').value = ""; document.getElementById('f_number').value = ""; editingFacilityIndex = -1; }
 
-let globalStaffList = []; let editingStaffIndex = -1;
+let globalStaffList = [
+    { name: "ROSE SIENNA T. BLANCO, RMT", role: "Medical Technologist", license: "61943", sigUrl: "https://drive.google.com/thumbnail?id=14QeL04-7a3_Uuh7v62q1jL2995hE-x3y&sz=w1000" },
+    { name: "CHRISTINE JACEY C. CONCEPCION, RMT", role: "Medical Technologist", license: "66272", sigUrl: "" },
+    { name: "ARTURO G. URBANO, RMT", role: "Medical Technologist", license: "45491", sigUrl: "" },
+    { name: "AIMIEL YVONNE C. DE LAS ALAS, RMT", role: "Medical Technologist", license: "135248", sigUrl: "" },
+    { name: "CRISSIA MAE L. BAGORIO, RMT", role: "Medical Technologist", license: "110587", sigUrl: "" },
+    { name: "KOLENE MAYNE C. SINDAC,RMT", role: "Medical Technologist", license: "69758", sigUrl: "" }
+]; let editingStaffIndex = -1;
 function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove staff?', () => deleteStaff(${index}))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); }
 function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; }
 async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch (e) { } finally { btn.innerText = oldText; btn.disabled = false; } }
@@ -2682,14 +2703,16 @@ async function batchSaveResults(isPrint) {
         let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
         let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
         if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let finalStr = { ...detailsObj, ...newResults, "Performed By": currentUser.fullName || currentUser.username, date_examined: new Date().toISOString() };
+        let performerName = currentUser.fullName || currentUser.username;
+        newResults["Performed By"] = performerName;
+        let finalStr = { ...detailsObj, ...newResults, "Performed By": performerName, date_examined: new Date().toISOString() };
 
         let batchStatus = 'ENCODED';
         let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
         if (rptTag.includes('INITIAL')) batchStatus = 'FOR REPEAT';
 
         try {
-            const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus }).eq('id', id);
+            const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus, encoder: performerName, date_examined: new Date().toISOString() }).eq('id', id);
             if (!error) {
                 successCount++;
                 if (isPrint) printRequests.push({ testCode: id, testName: tCodePrint });
@@ -2703,6 +2726,7 @@ async function batchSaveResults(isPrint) {
     if (isPrint && printRequests.length > 0) {
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
         try {
+            await ensureStaffList();
             const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
             let printContent = [];
             for (let r of printRequests) {
@@ -2774,27 +2798,142 @@ function mapSupabaseToPrintObject(d) {
         testCode: d.test_code || d.id || "",
         testName: d.test_name || d.test || "Laboratory Test",
         encoder: d.encoder || currentUser.fullName || "System",
-        verifier: "",
+        performedBy: detailsObj["Performed By"] || detailsObj.performedBy || d.encoder || currentUser.fullName || "",
+        preparedBy: detailsObj["Prepared By"] || detailsObj.preparedBy || d.encoder || currentUser.fullName || "",
+        verifier: detailsObj["Verified By"] || detailsObj.verifier || "",
         results: resultsArr
     };
 }
 
+let globalUsersMap = {};
+
 async function ensureStaffList() {
-    if (globalStaffList && globalStaffList.length > 0) return globalStaffList;
     try {
-        const { data, error } = await sb.from('staff').select('*');
-        if (!error && data && data.length > 0) {
-            globalStaffList = data.map(s => ({
-                name: s.name,
-                role: s.role,
-                license: s.license,
-                sigUrl: s.sig_url
-            }));
+        if (!globalStaffList || globalStaffList.length === 0) {
+            const { data, error } = await sb.from('staff').select('*');
+            if (!error && data && data.length > 0) {
+                globalStaffList = data.map(s => ({
+                    name: s.name,
+                    role: s.role || 'Medical Technologist',
+                    license: s.license || '',
+                    sigUrl: s.sig_url || ''
+                }));
+            }
+        }
+        if (!globalUsersMap || Object.keys(globalUsersMap).length === 0) {
+            const { data: uData, error: uErr } = await sb.from('app_users').select('username, full_name');
+            if (!uErr && uData) {
+                uData.forEach(u => {
+                    if (u.username && u.full_name) {
+                        globalUsersMap[u.username.toLowerCase().trim()] = u.full_name.trim();
+                    }
+                });
+            }
         }
     } catch (e) {
         console.warn("Could not load staff list directly:", e);
     }
     return globalStaffList || [];
+}
+
+function resolveFullName(input) {
+    if (!input) return "";
+    const clean = String(input).trim();
+    const lower = clean.toLowerCase();
+
+    if (currentUser && currentUser.username && currentUser.username.toLowerCase() === lower && currentUser.fullName) {
+        return currentUser.fullName;
+    }
+    if (globalUsersMap && globalUsersMap[lower]) {
+        return globalUsersMap[lower];
+    }
+    if (globalStaffList && globalStaffList.length > 0) {
+        const staffMatch = globalStaffList.find(s => s.name && s.name.toLowerCase() === lower);
+        if (staffMatch) return staffMatch.name;
+    }
+    const knownMap = {
+        "ameeeeeeeng": "AIMIEL YVONNE C. DE LAS ALAS, RMT",
+        "aimiel": "AIMIEL YVONNE C. DE LAS ALAS, RMT",
+        "sien": "ROSE SIENNA T. BLANCO, RMT",
+        "sienna": "ROSE SIENNA T. BLANCO, RMT",
+        "jaceyco": "CHRISTINE JACEY C. CONCEPCION, RMT",
+        "jacey": "CHRISTINE JACEY C. CONCEPCION, RMT",
+        "arturo g. urbano": "ARTURO G. URBANO, RMT",
+        "arturo": "ARTURO G. URBANO, RMT",
+        "crsbgr28": "CRISSIA MAE L. BAGORIO, RMT",
+        "bagorio": "CRISSIA MAE L. BAGORIO, RMT",
+        "ksindac": "KOLENE MAYNE C. SINDAC,RMT",
+        "sindac": "KOLENE MAYNE C. SINDAC,RMT",
+        "jasperconde11": "JASPER CONDE",
+        "heybogs": "BOGS",
+        "jhayjay": "JHAYJAY",
+        "nurse jeff": "NURSE JEFF"
+    };
+    if (knownMap[lower]) {
+        return knownMap[lower];
+    }
+    return clean;
+}
+
+function getStaff(rawName) {
+    if (!rawName) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" };
+
+    const resolved = resolveFullName(rawName);
+    const nLower = String(resolved).trim().toLowerCase();
+
+    if (globalStaffList && globalStaffList.length > 0) {
+        // 1. Exact match (case-insensitive)
+        let found = globalStaffList.find(s => s.name && s.name.toLowerCase() === nLower);
+        if (found) return { name: found.name, role: found.role || "Medical Technologist", license: found.license || "", sigUrl: found.sigUrl || "" };
+
+        // 2. Specific surname / keyword mapping
+        const keywords = [
+            { key: "blanco", staffKey: "blanco" },
+            { key: "sienna", staffKey: "blanco" },
+            { key: "concepcion", staffKey: "concepcion" },
+            { key: "jacey", staffKey: "concepcion" },
+            { key: "urbano", staffKey: "urbano" },
+            { key: "arturo", staffKey: "urbano" },
+            { key: "alas", staffKey: "alas" },
+            { key: "aimiel", staffKey: "alas" },
+            { key: "yvonne", staffKey: "alas" },
+            { key: "bagorio", staffKey: "bagorio" },
+            { key: "crissia", staffKey: "bagorio" },
+            { key: "sindac", staffKey: "sindac" },
+            { key: "kolene", staffKey: "sindac" }
+        ];
+        for (const kw of keywords) {
+            if (nLower.includes(kw.key)) {
+                found = globalStaffList.find(s => s.name && s.name.toLowerCase().includes(kw.staffKey));
+                if (found) return { name: found.name, role: found.role || "Medical Technologist", license: found.license || "", sigUrl: found.sigUrl || "" };
+            }
+        }
+
+        // 3. Substring matching
+        const words = nLower.replace(/[^a-z0-9\s]/gi, '').split(/\s+/).filter(w => w.length > 2 && w !== 'rmt' && w !== 'medtech');
+        found = globalStaffList.find(s => {
+            const sLower = s.name.toLowerCase();
+            return words.some(w => sLower.includes(w));
+        });
+        if (found) return { name: found.name, role: found.role || "Medical Technologist", license: found.license || "", sigUrl: found.sigUrl || "" };
+    }
+
+    const fallbackStaff = {
+        "AIMIEL YVONNE C. DE LAS ALAS, RMT": { license: "135248", role: "Medical Technologist", sigUrl: "" },
+        "ROSE SIENNA T. BLANCO, RMT": { license: "61943", role: "Medical Technologist", sigUrl: "https://drive.google.com/thumbnail?id=14QeL04-7a3_Uuh7v62q1jL2995hE-x3y&sz=w1000" },
+        "CHRISTINE JACEY C. CONCEPCION, RMT": { license: "66272", role: "Medical Technologist", sigUrl: "" },
+        "ARTURO G. URBANO, RMT": { license: "45491", role: "Medical Technologist", sigUrl: "" },
+        "CRISSIA MAE L. BAGORIO, RMT": { license: "110587", role: "Medical Technologist", sigUrl: "" },
+        "KOLENE MAYNE C. SINDAC,RMT": { license: "69758", role: "Medical Technologist", sigUrl: "" }
+    };
+    for (const [sName, sData] of Object.entries(fallbackStaff)) {
+        const sLower = sName.toLowerCase();
+        if (sLower === nLower || nLower.includes(sLower) || sLower.includes(nLower)) {
+            return { name: sName, role: sData.role || "Medical Technologist", license: sData.license || "", sigUrl: sData.sigUrl || "" };
+        }
+    }
+
+    return { name: resolved, role: "Medical Technologist", license: "", sigUrl: "" };
 }
 
 // 🟢 LATEST FIX: Inayos ang UUID Crash at nawawalang print generator
@@ -2899,11 +3038,12 @@ function batchDownload() {
 
 function localGenerateNTPHtml(patientsArray) {
     const logos = { left: "https://drive.google.com/thumbnail?id=1ZX23SKg3CAe8JYPoaJbF5HHCT4UUZjQG&sz=w1000", lab: "https://drive.google.com/thumbnail?id=1xYN202dyNGl7cO1E8qokOkX8m6mepXyK&sz=w1000", right: "https://drive.google.com/thumbnail?id=1BqWTCHhIrJXMNDC4juCEC8FmxWtC3iBs&sz=w1000" };
-    const getStaff = (name) => { if (!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length - 1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
     let combinedHtml = "";
     patientsArray.forEach((p, index) => {
-        processNtpResultsClient(p); const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || ""); let phys = p.physician || ""; p.physician = (phys === "undefined") ? "" : phys; let performer = getStaff(p.encoder);
-        const pageHtml = `<div class="page-container"><div class="header"><img src="${logos.left}" class="logo-side" onerror="this.style.display='none'"><div class="header-center"><img src="${logos.lab}" class="logo-lab" onerror="this.style.display='none'"><h3 style="font-size:8px; margin:0;">REPUBLIC OF THE PHILIPPINES</h3><h3 style="font-size:8px; margin:0;">PROVINCE OF RIZAL</h3><h2 style="font-size:10px; margin:1px 0;">Municipality of ANGONO</h2><h1 style="font-size:14px; margin:1px 0;">Municipal Health Office</h1><p style="font-size:8px; margin:0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></div><img src="${logos.right}" class="logo-side" onerror="this.style.display='none'"></div><div class="form-title">FORM 2A. LABORATORY REQUEST AND RESULT FORM</div><div class="content-spacer"></div><div class="section-bar">To be filled out by the requesting facility health care worker</div><table class="main-table"><tr><td width="60%">Name of Requesting Facility/Unit: <span class="line" style="width:200px;">${p.facility}</span></td><td width="40%">Date of Request: <span class="line" style="width:140px;">${p.dateRequest}</span></td></tr><tr><td>Facility Contact Information: <span class="line" style="width:220px;">&nbsp;</span></td><td>Requesting Physician: <span class="line" style="width:150px;">${p.physician}</span></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Patient's Full Name: <span class="line" style="width:300px; text-transform:uppercase;">${p.name}</span></span><span>Age: <span class="line" style="width:30px; text-align:center;">${p.age}</span></span><span>Sex: <span class="line" style="width:50px; text-align:center;">${p.sex}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Address: <span class="line" style="width:420px; font-size:9px;">${p.address}</span></span><span>Patient's Contact No.: <span class="line" style="width:120px;">${p.contact}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Reason for Examination:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(p.reason == 'Diagnosis' || (p.isDSSM && (p.smear1 || p.smear2) && p.reason !== 'Follow-up' && p.reason !== 'Baseline')) ? 'checked' : ''}> Diagnosis</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Baseline') ? 'checked' : ''}> Baseline</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Follow-up' || (p.isDSSM && !p.smear1 && !p.smear2 && p.reason !== 'Diagnosis')) ? 'checked' : ''}> Follow-up</span></div><span style="margin-left:auto;">TB Case No.: <span class="line" style="width:70px;">${p.tbCase || ''}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; align-items:center;"><strong style="width:130px;">History of Treatment:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(String(p.history).toUpperCase() == 'NEW' || (p.isDSSM && (p.smear1 || p.smear2) && String(p.history).toUpperCase() !== 'RETREATMENT' && String(p.history).toUpperCase() !== 'RETREAT')) ? 'checked' : ''}> New</span><span class="chk-item"><input type="checkbox" ${(String(p.history).toUpperCase() == 'RETREATMENT' || String(p.history).toUpperCase() == 'RETREAT') ? 'checked' : ''}> Retreatment</span></div><span style="margin-left:auto;">Month of Treatment: <span class="line" style="width:70px;">${p.monthTreat || ''}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Test Requested:</strong><table style="width:100%; border:none; margin:0;"><tr><td style="border:none; padding:0; vertical-align:top; width:50%;"><div class="chk-item"><input type="checkbox" ${(p.isGXP && !p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/RIF Ultra</div><br><div class="chk-item"><input type="checkbox" ${(p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/XDR</div><br><div class="chk-item"><input type="checkbox"> Line Probe Assay</div></td><td style="border:none; padding:0; vertical-align:top; width:50%;"><div style="display: flex; justify-content: space-between;"><div><div class="chk-item"><input type="checkbox"> TB LAMP</div><br><div class="chk-item"><input type="checkbox"> Truenat MTB-RIF</div><br><div class="chk-item"><input type="checkbox" ${(p.isDSSM) ? 'checked' : ''}> Smear Microscopy</div></div><div><div class="chk-item"><input type="checkbox"> TB Culture</div><br><div class="chk-item"><input type="checkbox"> Phenotypic DST</div></div></div></td></tr></table></div></td></tr><tr><td colspan="2" class="pad-top-lg">Type of Specimen: <span class="line" style="width:200px; text-align:center;">Sputum</span></td></tr></table><table class="res-table-inner" style="margin-bottom:5px;"><tr style="background:#ccc;"><th width="20%">Specimen</th><th width="40%">Date Collected</th><th width="40%">Date Dispatched to Laboratory</th></tr><tr><td>1</td><td>${p.dateCollected}</td><td>${p.dateCollected}</td></tr><tr><td>2</td><td></td><td></td></tr></table><div style="margin-bottom:15px;"><strong>Remarks:</strong><div style="border-bottom:1px solid #000; width:100%; height:18px; line-height:18px; font-weight:bold; font-size:9px; text-align:center;">${p.remarks}</div><div style="text-align:center; font-size:8px; font-style:italic;">(i.e. precollection details, existing medical conditions, medications...)</div></div><div style="border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px;"><div style="display:flex; justify-content:space-between; align-items:flex-end;"><div style="width: 50%;"><strong>Prepared By:</strong><span class="line" style="width:200px; text-align:center; text-transform:uppercase;">${p.encoder}</span></div><div style="width: 50%;"><strong>Designation:</strong><span class="line" style="width:200px;">&nbsp;</span></div></div><div style="font-size:8px; margin-left:100px;">Signature over Printed Name</div></div><div class="section-bar">To be filled out by the receiving Medical Technologist/Microscopist/Xpert Technician</div><table class="main-table"><tr><td width="60%" style="padding: 8px;">Name of Laboratory: <strong>ANGONO RTDL</strong></td><td width="40%" style="padding: 8px;"><div style="display:flex; justify-content:space-between;"><span>Date Specimen Received:</span><strong>${p.dateCollected}</strong></div></td></tr><tr><td colspan="2"><div style="display:flex; gap:10px; align-items: center; padding: 5px 0;"><span>Specimen Volume and Quality: <span class="line" style="width:150px;">${p.appearance || ''}</span></span><span class="chk-item"><input type="checkbox" checked> Accepted</span><span class="chk-item"><input type="checkbox"> Rejected, reason: <span class="line" style="width:100px;"></span></span></div></td></tr><tr><td colspan="2" style="padding-top:10px; padding-bottom:5px;"><div style="display:flex; justify-content:space-between;"><div>Laboratory Serial Number: <span class="line" style="width:180px; font-weight:bold;">${p.labSerialNumber}</span></div><div>Date Specimen Examined: <strong>${p.dateResult || p.dateExaminedStr || ''}</strong></div></div></td></tr></table><table class="res-table-inner"><tr style="background:#d9d9d9;"><th width="40%">DIAGNOSTIC TESTS</th><th width="60%">RESULTS</th></tr><tr><td style="text-align:left; padding-left:20px; height:50px; vertical-align:middle; width:40%;">Xpert MTB/RIF Ultra</td><td class="${p.gxpClass}" style="font-weight:bold; font-size:9.5pt; vertical-align:middle; text-align:center; padding: 8px; line-height: 1.3;">${p.gxpText}</td></tr><tr><td style="padding:0; vertical-align:middle;"><div style="padding:10px;">Smear Microscopy</div></td><td style="padding:0;"><table style="width:100%; border:none; margin:0;" cellspacing="0"><tr><td rowspan="2" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:25%; vertical-align:middle;">Reading</td><td style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:37.5%;">1</td><td style="border:none; border-bottom:1px solid #000; width:37.5%;">2</td></tr><tr><td class="smear-reading-box" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000;">${p.smear1}</td><td class="smear-reading-box" style="border:none; border-bottom:1px solid #000;">${p.smear2}</td></tr><tr><td style="border:none; border-right:1px solid #000; font-size:8.5pt; vertical-align:middle;">Laboratory Diagnosis</td><td class="${p.dssmClass} diagnosis-text-large" colspan="2" style="border:none;">${p.dssmText}</td></tr></table></td></tr></table><div class="content-spacer"></div><div class="footer-section"><div class="sig-container"><div class="sig-block" style="text-align:left;"><div class="sig-label">Performed By:</div><div class="sig-visual-area" style="justify-content: flex-start;">${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}<div class="sig-name" style="text-align:left;">${p.encoder}</div></div><div class="sig-info" style="text-align:left;">${performer.role}<br>Lic No. ${performer.license || "__________"}</div></div><div class="sig-block" style="text-align:right;"><div class="sig-label" style="text-align:right;">Noted By:</div><div class="sig-visual-area" style="justify-content: flex-end;"><div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div></div><div class="sig-info" style="font-weight:bold; text-transform:uppercase; text-align:right;">Municipal Health Officer</div></div></div><div style="margin-top:8px; font-size:8px;">Date and Time Released: <span class="line" style="width:200px;">${new Date().toLocaleString()}</span></div><div style="padding-top:2px; border-top:1px solid #ddd; text-align:center; margin-top:5px;"><div style="font-size:4px; color:#555; font-style:italic;">This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.<br>Any alteration to this document renders it invalid.</div></div><div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div></div></div>`;
+        processNtpResultsClient(p); const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || ""); let phys = p.physician || ""; p.physician = (phys === "undefined") ? "" : phys;
+        let performer = getStaff(p.performedBy || p.encoder);
+        let preparedByName = resolveFullName(p.preparedBy || p.encoder);
+        const pageHtml = `<div class="page-container"><div class="header"><img src="${logos.left}" class="logo-side" onerror="this.style.display='none'"><div class="header-center"><img src="${logos.lab}" class="logo-lab" onerror="this.style.display='none'"><h3 style="font-size:8px; margin:0;">REPUBLIC OF THE PHILIPPINES</h3><h3 style="font-size:8px; margin:0;">PROVINCE OF RIZAL</h3><h2 style="font-size:10px; margin:1px 0;">Municipality of ANGONO</h2><h1 style="font-size:14px; margin:1px 0;">Municipal Health Office</h1><p style="font-size:8px; margin:0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></div><img src="${logos.right}" class="logo-side" onerror="this.style.display='none'"></div><div class="form-title">FORM 2A. LABORATORY REQUEST AND RESULT FORM</div><div class="content-spacer"></div><div class="section-bar">To be filled out by the requesting facility health care worker</div><table class="main-table"><tr><td width="60%">Name of Requesting Facility/Unit: <span class="line" style="width:200px;">${p.facility}</span></td><td width="40%">Date of Request: <span class="line" style="width:140px;">${p.dateRequest}</span></td></tr><tr><td>Facility Contact Information: <span class="line" style="width:220px;">&nbsp;</span></td><td>Requesting Physician: <span class="line" style="width:150px;">${p.physician}</span></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Patient's Full Name: <span class="line" style="width:300px; text-transform:uppercase;">${p.name}</span></span><span>Age: <span class="line" style="width:30px; text-align:center;">${p.age}</span></span><span>Sex: <span class="line" style="width:50px; text-align:center;">${p.sex}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Address: <span class="line" style="width:420px; font-size:9px;">${p.address}</span></span><span>Patient's Contact No.: <span class="line" style="width:120px;">${p.contact}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Reason for Examination:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(p.reason == 'Diagnosis' || (p.isDSSM && (p.smear1 || p.smear2) && p.reason !== 'Follow-up' && p.reason !== 'Baseline')) ? 'checked' : ''}> Diagnosis</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Baseline') ? 'checked' : ''}> Baseline</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Follow-up' || (p.isDSSM && !p.smear1 && !p.smear2 && p.reason !== 'Diagnosis')) ? 'checked' : ''}> Follow-up</span></div><span style="margin-left:auto;">TB Case No.: <span class="line" style="width:70px;">${p.tbCase || ''}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; align-items:center;"><strong style="width:130px;">History of Treatment:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(String(p.history).toUpperCase() == 'NEW' || (p.isDSSM && (p.smear1 || p.smear2) && String(p.history).toUpperCase() !== 'RETREATMENT' && String(p.history).toUpperCase() !== 'RETREAT')) ? 'checked' : ''}> New</span><span class="chk-item"><input type="checkbox" ${(String(p.history).toUpperCase() == 'RETREATMENT' || String(p.history).toUpperCase() == 'RETREAT') ? 'checked' : ''}> Retreatment</span></div><span style="margin-left:auto;">Month of Treatment: <span class="line" style="width:70px;">${p.monthTreat || ''}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Test Requested:</strong><table style="width:100%; border:none; margin:0;"><tr><td style="border:none; padding:0; vertical-align:top; width:50%;"><div class="chk-item"><input type="checkbox" ${(p.isGXP && !p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/RIF Ultra</div><br><div class="chk-item"><input type="checkbox" ${(p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/XDR</div><br><div class="chk-item"><input type="checkbox"> Line Probe Assay</div></td><td style="border:none; padding:0; vertical-align:top; width:50%;"><div style="display: flex; justify-content: space-between;"><div><div class="chk-item"><input type="checkbox"> TB LAMP</div><br><div class="chk-item"><input type="checkbox"> Truenat MTB-RIF</div><br><div class="chk-item"><input type="checkbox" ${(p.isDSSM) ? 'checked' : ''}> Smear Microscopy</div></div><div><div class="chk-item"><input type="checkbox"> TB Culture</div><br><div class="chk-item"><input type="checkbox"> Phenotypic DST</div></div></div></td></tr></table></div></td></tr><tr><td colspan="2" class="pad-top-lg">Type of Specimen: <span class="line" style="width:200px; text-align:center;">Sputum</span></td></tr></table><table class="res-table-inner" style="margin-bottom:5px;"><tr style="background:#ccc;"><th width="20%">Specimen</th><th width="40%">Date Collected</th><th width="40%">Date Dispatched to Laboratory</th></tr><tr><td>1</td><td>${p.dateCollected}</td><td>${p.dateCollected}</td></tr><tr><td>2</td><td></td><td></td></tr></table><div style="margin-bottom:15px;"><strong>Remarks:</strong><div style="border-bottom:1px solid #000; width:100%; height:18px; line-height:18px; font-weight:bold; font-size:9px; text-align:center;">${p.remarks}</div><div style="text-align:center; font-size:8px; font-style:italic;">(i.e. precollection details, existing medical conditions, medications...)</div></div><div style="border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px;"><div style="display:flex; justify-content:space-between; align-items:flex-end;"><div style="width: 50%;"><strong>Prepared By:</strong><span class="line" style="width:200px; text-align:center; text-transform:uppercase;">${preparedByName}</span></div><div style="width: 50%;"><strong>Designation:</strong><span class="line" style="width:200px;">&nbsp;</span></div></div><div style="font-size:8px; margin-left:100px;">Signature over Printed Name</div></div><div class="section-bar">To be filled out by the receiving Medical Technologist/Microscopist/Xpert Technician</div><table class="main-table"><tr><td width="60%" style="padding: 8px;">Name of Laboratory: <strong>ANGONO RTDL</strong></td><td width="40%" style="padding: 8px;"><div style="display:flex; justify-content:space-between;"><span>Date Specimen Received:</span><strong>${p.dateCollected}</strong></div></td></tr><tr><td colspan="2"><div style="display:flex; gap:10px; align-items: center; padding: 5px 0;"><span>Specimen Volume and Quality: <span class="line" style="width:150px;">${p.appearance || ''}</span></span><span class="chk-item"><input type="checkbox" checked> Accepted</span><span class="chk-item"><input type="checkbox"> Rejected, reason: <span class="line" style="width:100px;"></span></span></div></td></tr><tr><td colspan="2" style="padding-top:10px; padding-bottom:5px;"><div style="display:flex; justify-content:space-between;"><div>Laboratory Serial Number: <span class="line" style="width:180px; font-weight:bold;">${p.labSerialNumber}</span></div><div>Date Specimen Examined: <strong>${p.dateResult || p.dateExaminedStr || ''}</strong></div></div></td></tr></table><table class="res-table-inner"><tr style="background:#d9d9d9;"><th width="40%">DIAGNOSTIC TESTS</th><th width="60%">RESULTS</th></tr><tr><td style="text-align:left; padding-left:20px; height:50px; vertical-align:middle; width:40%;">Xpert MTB/RIF Ultra</td><td class="${p.gxpClass}" style="font-weight:bold; font-size:9.5pt; vertical-align:middle; text-align:center; padding: 8px; line-height: 1.3;">${p.gxpText}</td></tr><tr><td style="padding:0; vertical-align:middle;"><div style="padding:10px;">Smear Microscopy</div></td><td style="padding:0;"><table style="width:100%; border:none; margin:0;" cellspacing="0"><tr><td rowspan="2" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:25%; vertical-align:middle;">Reading</td><td style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:37.5%;">1</td><td style="border:none; border-bottom:1px solid #000; width:37.5%;">2</td></tr><tr><td class="smear-reading-box" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000;">${p.smear1}</td><td class="smear-reading-box" style="border:none; border-bottom:1px solid #000;">${p.smear2}</td></tr><tr><td style="border:none; border-right:1px solid #000; font-size:8.5pt; vertical-align:middle;">Laboratory Diagnosis</td><td class="${p.dssmClass} diagnosis-text-large" colspan="2" style="border:none;">${p.dssmText}</td></tr></table></td></tr></table><div class="content-spacer"></div><div class="footer-section"><div class="sig-container"><div class="sig-block" style="text-align:left;"><div class="sig-label">Performed By:</div><div class="sig-visual-area" style="justify-content: flex-start;">${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}<div class="sig-name" style="text-align:left;">${performer.name || preparedByName}</div></div><div class="sig-info" style="text-align:left;">${performer.role}<br>Lic No. ${performer.license || "__________"}</div></div><div class="sig-block" style="text-align:right;"><div class="sig-label" style="text-align:right;">Noted By:</div><div class="sig-visual-area" style="justify-content: flex-end;"><div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div></div><div class="sig-info" style="font-weight:bold; text-transform:uppercase; text-align:right;">Municipal Health Officer</div></div></div><div style="margin-top:8px; font-size:8px;">Date and Time Released: <span class="line" style="width:200px;">${new Date().toLocaleString()}</span></div><div style="padding-top:2px; border-top:1px solid #ddd; text-align:center; margin-top:5px;"><div style="font-size:4px; color:#555; font-style:italic;">This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.<br>Any alteration to this document renders it invalid.</div></div><div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div></div></div>`;
         const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : ''; combinedHtml += pageHtml + breakTag;
     });
 
@@ -2956,10 +3096,9 @@ function localGenerateA5Html(patientsArray) {
     const getUnit = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "g/L"; if (n.includes("HEMATOCRIT")) return "L/L"; if (n.includes("WBC") || n.includes("PLATELET")) return "x10⁹/L"; if (n.includes("RBC")) return "x10¹²/L"; if (n.includes("NEUTROPHIL") || n.includes("LYMPHOCYTE") || n.includes("MONOCYTE") || n.includes("EOSINOPHIL") || n.includes("BASOPHIL")) return "Frac"; if (n.includes("HBA1C")) return "%"; if (n.includes("GLUCOSE") || n.includes("FBS") || n.includes("RBS") || n.includes("OG")) return "mmol/L"; if (n.includes("CHOLESTEROL") || n.includes("TRIG") || n.includes("HDL") || n.includes("LDL")) return "mmol/L"; if (n.includes("URIC") || n.includes("BUA")) return "mmol/L"; if (n.includes("BUN") || n.includes("UREA")) return "mmol/L"; if (n.includes("CREATININE")) return "µmol/L"; if (n.includes("SGPT") || n.includes("ALT")) return "U/L"; if (n.includes("SGOT") || n.includes("AST")) return "U/L"; return ""; };
     const getNormal = (pName) => { const n = String(pName).toUpperCase(); if (n.includes("HEMOGLOBIN")) return "M:140-170 F:120-150"; if (n.includes("HEMATOCRIT")) return "M:0.40-0.54 F:0.37-0.47"; if (n.includes("WBC")) return "4.5 - 11.0"; if (n.includes("RBC")) return "4.0 - 6.0"; if (n.includes("PLATELET")) return "150 - 450"; if (n.includes("NEUTROPHIL")) return "0.50 - 0.70"; if (n.includes("LYMPHOCYTE")) return "0.20 - 0.40"; if (n.includes("MONOCYTE")) return "0.02 - 0.08"; if (n.includes("EOSINOPHIL")) return "0.01 - 0.04"; if (n.includes("BASOPHIL")) return "0.00 - 0.01"; if (n.includes("HBA1C")) return "4.0 - 6.0"; if (n.includes("RBS")) return "< 7.8"; if (n.includes("OG0") || n.includes("FASTING")) return "< 5.1"; if (n.includes("OG1") || n.includes("1 HR")) return "< 10.0"; if (n.includes("OG2") || n.includes("2 HR")) return "< 8.5"; if (n.includes("GLUCOSE") || n.includes("FBS")) return "3.89 - 6.11"; if (n.includes("CHOLESTEROL")) return "< 5.17"; if (n.includes("TRIGLYCERIDE")) return "< 2.2"; if (n.includes("HDL")) return "> 0.9"; if (n.includes("LDL")) return "< 3.3"; if (n.includes("CREATININE")) return "M:62-106 F:44-80"; if (n.includes("URIC") || n.includes("BUA")) return "M:0.21-0.42 F:0.16-0.36"; if (n.includes("BUN")) return "2.5 - 7.1"; if (n.includes("SGPT") || n.includes("ALT")) return "M:<41 F:<31"; if (n.includes("SGOT") || n.includes("AST")) return "M:<40 F:<32"; return ""; };
 
-    const getStaff = (name) => { if (!name) return { name: "", role: "Medical Technologist", license: "", sigUrl: "" }; const nLower = String(name).trim().toLowerCase(); const words = nLower.replace(/\./g, '').split(/\s+/); const found = (globalStaffList || []).find(s => { const sLower = s.name.toLowerCase(); if (sLower === nLower) return true; if (words.length > 1 && sLower.includes(words[0]) && sLower.includes(words[words.length - 1])) return true; return sLower.includes(nLower) || nLower.includes(sLower); }); return found || { name: name, role: "Medical Technologist", license: "", sigUrl: "" }; };
-
     patientsArray.forEach((p, index) => {
-        let verifier = getStaff(p.verifier); let performer = getStaff(p.encoder);
+        let verifier = getStaff(p.verifier);
+        let performer = getStaff(p.performedBy || p.encoder);
         const tName = (p.testName || "").toUpperCase();
         const isDengue = tName.includes("DENGUE") || tName.includes("NS1");
         const isGram = tName.includes("GRAM");
@@ -3026,9 +3165,9 @@ function localGenerateA5Html(patientsArray) {
                         <div class="sig-label">Performed By:</div>
                         <div class="sig-visual-area" style="justify-content: flex-start;">
                             ${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}
-                            <div class="sig-name" style="text-align:left;">${p.encoder}</div>
+                            <div class="sig-name" style="text-align:left;">${performer.name || resolveFullName(p.performedBy || p.encoder)}</div>
                         </div>
-                        <div class="sig-info">${performer.role}<br>Lic No. ${performer.license}</div>
+                        <div class="sig-info">${performer.role}<br>Lic No. ${performer.license || "__________"}</div>
                     </div>
                     <div class="sig-block" style="text-align:right;">
                         <div class="sig-label" style="text-align:right;">Noted By:</div>
