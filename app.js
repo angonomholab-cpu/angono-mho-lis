@@ -680,19 +680,25 @@ async function apiPost(action, payload) {
 
                 if (pErr) throw new Error("Patient Error: " + pErr.message);
 
-                const rows = tests.map(t => ({
-                    id: t.test_code || t.code,
-                    patient_id: patientId,
-                    patient_name: f.fullName,
-                    test_name: t.name,
-                    test_type: t.name,
-                    test_code: t.test_code || t.code,
-                    details: t.details || {},
-                    status: 'PENDING',
-                    facility: f.facility,
-                    encoder: f.encoder,
-                    date: new Date().toISOString()
-                }));
+                const rows = tests.map(t => {
+                    let d = typeof t.details === 'string' ? JSON.parse(t.details || "{}") : (t.details || {});
+                    if (!d["Prepared By"]) {
+                        d["Prepared By"] = f.encoderFullName || f.encoder || (currentUser ? (currentUser.fullName || currentUser.username) : "System");
+                    }
+                    return {
+                        id: t.test_code || t.code,
+                        patient_id: patientId,
+                        patient_name: f.fullName,
+                        test_name: t.name,
+                        test_type: t.name,
+                        test_code: t.test_code || t.code,
+                        details: d,
+                        status: 'PENDING',
+                        facility: f.facility,
+                        encoder: f.encoder,
+                        date: new Date().toISOString()
+                    };
+                });
 
                 const { error: tErr } = await sb.from('lab_tests').insert(rows);
                 if (tErr) throw new Error("Lab Test Error: " + tErr.message);
@@ -1016,8 +1022,7 @@ function showRegistrySelectionModal() { document.getElementById('registry-select
 
 function showPage(targetId) {
     const elId = 'page-' + targetId; const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
-    if (role === 'VIEWER' && targetId === 'settings') return;
-    if (role === 'ENCODER' && targetId === 'settings') return;
+    if (role !== 'ADMIN' && targetId === 'settings') return;
     if (role === 'PATIENT' && targetId !== 'patient') return;
     if ((role === 'NTP_CHECKER' || role === 'DOH_TB') && (targetId !== 'registry' && targetId !== 'reports')) return;
 
@@ -1045,7 +1050,7 @@ function applyPermissions() {
     }
 
     if (role === 'PATIENT') { const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; }
-    else if (role === 'ADMIN' || role === 'STAFF') {
+    else if (role === 'ADMIN') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
         if (navSet) navSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
@@ -1060,8 +1065,17 @@ function applyPermissions() {
             bell.onmouseout = () => bell.style.transform = 'scale(1)';
             bell.onclick = toggleAuditLogs;
             document.body.appendChild(bell);
+        } else {
+            bell.style.display = 'flex';
         }
         if (typeof checkNewNotifs === 'function') checkNewNotifs();
+
+    } else if (role === 'STAFF') {
+        if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
+        if (navSet) navSet.style.display = 'none';
+        if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
+        const bell = document.getElementById('notif-bell');
+        if (bell) bell.style.display = 'none';
 
     } else if (role === 'ENCODER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
@@ -1098,6 +1112,8 @@ async function checkNewNotifs() {
 }
 
 async function toggleAuditLogs() {
+    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
+    if (role !== 'ADMIN') return;
     let dropdown = document.getElementById('audit-dropdown');
     if (dropdown && dropdown.style.display === 'block') {
         dropdown.style.display = 'none';
@@ -1804,9 +1820,11 @@ async function saveResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-    const performerName = currentUser.fullName || currentUser.username;
+    const performerName = newResults["Performed By"] || currentUser.fullName || currentUser.username;
+    const preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
     newResults["Performed By"] = performerName;
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    newResults["Prepared By"] = preparedByName;
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: performerName, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") {
@@ -1824,9 +1842,11 @@ async function saveAndPrintResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-    const performerName = currentUser.fullName || currentUser.username;
+    const performerName = newResults["Performed By"] || currentUser.fullName || currentUser.username;
+    const preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
     newResults["Performed By"] = performerName;
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    newResults["Prepared By"] = preparedByName;
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: performerName, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") {
@@ -1970,23 +1990,62 @@ async function deleteEntry(id) {
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if (sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if (box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
     const gradings = ["Negative", "Trace", "1+", "2+", "3+", "4+"]; const apps = ["Watery", "Salivary", "Mucosalivary", "Mucopurulent", "Purulent", "Blood-Streaked"];
-    let req = ""; try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; req = (d["Requested Tests"] || "").toUpperCase(); } catch (e) { }
+    let req = "";
+    let itemDetails = {};
+    try {
+        itemDetails = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+        req = (itemDetails["Requested Tests"] || "").toUpperCase();
+    } catch (e) { }
     const input = (key, lbl, keys = []) => (req === "" || keys.length === 0 || keys.some(k => req.includes(k))) ? `<div class="field-group"><label class="field-label">${lbl}</label><input type="text" class="res-${safeId} form-input" data-key="${key}"></div>` : '';
     const select = (key, lbl, opts, keys = []) => (req === "" || keys.length === 0 || keys.some(k => req.includes(k))) ? `<div class="field-group"><label class="field-label">${lbl}</label><select class="res-${safeId} form-select" data-key="${key}">${opts.map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>` : '';
     const rem = `<div class="field-group full-width" style="margin-top:10px;"><label class="field-label">Remarks</label><input type="text" class="res-${safeId} form-input" data-key="Remarks"></div>`;
-    switch (code) {
-        case 'GXP': return `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`;
-        case 'GXVL': return `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`;
-        case 'DSSM': return `<div class="form-grid grid-2">${[1, 2].map(n => `<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
-        case 'CHEM': return `<div class="form-grid grid-3">${input('FBS', 'FBS', ['FBS', 'GLUCOSE'])}${input('RBS', 'RBS', ['RBS'])}${input('HbA1c', 'HbA1c', ['HBA1C'])}${input('Cholesterol', 'Chol', ['CHOLESTEROL', 'LIPID'])}${input('Triglycerides', 'Trig', ['TRIGLYCERIDES', 'LIPID'])}${input('HDL', 'HDL', ['HDL', 'LIPID'])}${input('LDL', 'LDL', ['LDL', 'LIPID'])}${input('BUN', 'BUN', ['BUN'])}${input('Creatinine', 'Crea', ['CREA'])}${input('Uric Acid', 'Uric', ['URIC'])}${input('SGOT', 'SGOT', ['SGOT', 'AST'])}${input('SGPT', 'SGPT', ['SGPT', 'ALT'])}</div>${rem}`;
-        case 'HEMA': return `<div class="form-grid grid-3">${input('Hemoglobin', 'Hb', ['CBC'])}${input('Hematocrit', 'Hct', ['CBC'])}${input('WBC_Count', 'WBC', ['CBC'])}${input('RBC_Count', 'RBC', ['CBC'])}${input('Platelet', 'Plt', ['CBC', 'PLATELET'])}${input('Neutrophils', 'Neut', ['CBC'])}${input('Lymphocytes', 'Lym', ['CBC'])}${input('Monocytes', 'Mono', ['CBC'])}${input('Eosinophils', 'Eos', ['CBC'])}${input('Basophils', 'Baso', ['CBC'])}${select('ABO', 'ABO', ['A', 'B', 'AB', 'O'], ['TYPING'])}${select('Rh', 'Rh', ['Positive', 'Negative'], ['TYPING'])}</div>${rem}`;
-        case 'UA': return `<div class="form-grid grid-3">${input('Color', 'Color')}${input('Transparency', 'Transp')}${input('pH', 'pH')}${input('SG', 'Sp.Grav')}${select('Protein', 'Protein', gradings)}${select('Glucose', 'Glucose', gradings)}${input('RBC', 'RBC')}${input('WBC', 'WBC')}${input('Bacteria', 'Bact.')}${input('Epithelial', 'Epith.')}${input('Cast', 'Casts')}${input('Crystals', 'Crys.')}${input('Amorphous', 'Amorph')}${input('Mucus', 'Mucus')}</div>${rem}`;
-        case 'FA': return `<div class="form-grid grid-2">${select('Color', 'Color', ['Brown', 'Yellow', 'Green', 'Black', 'Red'])}${select('Consistency', 'Consistency', ['Formed', 'Soft', 'Loose', 'Watery'])}<div class="full-width">${input('parasite', 'Parasite')}</div>${input('RBC', 'RBC')}${input('WBC', 'WBC')}</div>${rem}`;
-        case 'GRAM': return `<div class="form-grid grid-2"><div class="full-width font-bold" style="color:var(--pri);">Gram Positive</div>${input('GP_Quantity', 'Qty')}${input('GP_Morphology', 'Morph')}${input('GP_Arrangement', 'Arrange')}<div class="full-width font-bold" style="color:var(--sec); margin-top:8px;">Gram Negative</div>${input('GN_Quantity', 'Qty')}${input('GN_Morphology', 'Morph')}${input('GN_Arrangement', 'Arrange')}</div>${rem}`;
-        case 'SERO': return `<div class="form-grid grid-3">${select('HIV', 'HIV', ['NONREACTIVE', 'REACTIVE'], ['HIV', 'SERO'])}${select('HBSAG', 'HBsAg', ['NONREACTIVE', 'REACTIVE'], ['HBSAG', 'SERO'])}${select('SYPHILIS', 'Syphilis', ['NONREACTIVE', 'REACTIVE'], ['SYPHILIS', 'SERO'])}</div>${rem}`;
-        case 'DENGUE': { let showDuo = req.includes('DUO'); return `<div class="form-grid grid-3">${select('Dengue_Result', 'Dengue NS1', ['', 'Negative', 'Positive'])}${showDuo ? select('Dengue_IgG', 'Dengue IgG', ['', 'Negative', 'Positive']) : ''}${showDuo ? select('Dengue_IgM', 'Dengue IgM', ['', 'Negative', 'Positive']) : ''}</div>${rem}`; }
-        default: return `<div class="form-grid grid-1">${input('Result', 'Result')}</div>${rem}`;
+
+    const defaultPreparedBy = resolveFullName(itemDetails["Prepared By"] || itemDetails.preparedBy || item.encoder || "");
+    const currentMedTech = currentUser.fullName || currentUser.username || "";
+    const defaultPerformedBy = resolveFullName(itemDetails["Performed By"] || itemDetails.performedBy || currentMedTech);
+
+    let staffOpts = (globalStaffList || []).map(s => {
+        const isSel = (s.name.toLowerCase() === defaultPerformedBy.toLowerCase() || (currentMedTech && s.name.toLowerCase() === currentMedTech.toLowerCase())) ? 'selected' : '';
+        return `<option value="${s.name}" ${isSel}>${s.name}</option>`;
+    }).join('');
+    if (defaultPerformedBy && !staffOpts.toLowerCase().includes(defaultPerformedBy.toLowerCase())) {
+        staffOpts = `<option value="${defaultPerformedBy}" selected>${defaultPerformedBy}</option>` + staffOpts;
     }
+
+    const sigBlock = `
+    <div style="margin-top:12px; padding:10px 12px; background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:6px;">
+        <div style="font-size:0.75rem; font-weight:700; color:var(--pri); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i class="ph ph-identification-badge"></i> Signatures & Officers
+        </div>
+        <div class="form-grid grid-2">
+            <div class="field-group">
+                <label class="field-label" style="font-size:0.75rem;">Prepared By (Requester / Encoder)</label>
+                <input type="text" class="res-${safeId} form-input" data-key="Prepared By" value="${defaultPreparedBy}" placeholder="Encoder / Nurse Full Name">
+            </div>
+            <div class="field-group">
+                <label class="field-label" style="font-size:0.75rem;">Performed By (Medical Technologist)</label>
+                <select class="res-${safeId} form-select" data-key="Performed By">
+                    ${staffOpts}
+                </select>
+            </div>
+        </div>
+    </div>`;
+
+    let formHtml = "";
+    switch (code) {
+        case 'GXP': formHtml = `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`; break;
+        case 'GXVL': formHtml = `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`; break;
+        case 'DSSM': formHtml = `<div class="form-grid grid-2">${[1, 2].map(n => `<div class="field-group"><label class="field-label">Smear ${n}</label><select class="res-${safeId} form-select" data-key="Smear${n}" onchange="handleDSSM(this,'${safeId}','${n}')"><option value=""></option><option value="0">0</option><option value="+N">+N</option><option value="1+">1+</option><option value="2+">2+</option><option value="3+">3+</option></select></div><div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label">Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div>`).join('')}<div class="full-width">${select('Appearance', 'Appearance', apps)}</div><div class="full-width">${select('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`; break;
+        case 'CHEM': formHtml = `<div class="form-grid grid-3">${input('FBS', 'FBS', ['FBS', 'GLUCOSE'])}${input('RBS', 'RBS', ['RBS'])}${input('HbA1c', 'HbA1c', ['HBA1C'])}${input('Cholesterol', 'Chol', ['CHOLESTEROL', 'LIPID'])}${input('Triglycerides', 'Trig', ['TRIGLYCERIDES', 'LIPID'])}${input('HDL', 'HDL', ['HDL', 'LIPID'])}${input('LDL', 'LDL', ['LDL', 'LIPID'])}${input('BUN', 'BUN', ['BUN'])}${input('Creatinine', 'Crea', ['CREA'])}${input('Uric Acid', 'Uric', ['URIC'])}${input('SGOT', 'SGOT', ['SGOT', 'AST'])}${input('SGPT', 'SGPT', ['SGPT', 'ALT'])}</div>${rem}`; break;
+        case 'HEMA': formHtml = `<div class="form-grid grid-3">${input('Hemoglobin', 'Hb', ['CBC'])}${input('Hematocrit', 'Hct', ['CBC'])}${input('WBC_Count', 'WBC', ['CBC'])}${input('RBC_Count', 'RBC', ['CBC'])}${input('Platelet', 'Plt', ['CBC', 'PLATELET'])}${input('Neutrophils', 'Neut', ['CBC'])}${input('Lymphocytes', 'Lym', ['CBC'])}${input('Monocytes', 'Mono', ['CBC'])}${input('Eosinophils', 'Eos', ['CBC'])}${input('Basophils', 'Baso', ['CBC'])}${select('ABO', 'ABO', ['A', 'B', 'AB', 'O'], ['TYPING'])}${select('Rh', 'Rh', ['Positive', 'Negative'], ['TYPING'])}</div>${rem}`; break;
+        case 'UA': formHtml = `<div class="form-grid grid-3">${input('Color', 'Color')}${input('Transparency', 'Transp')}${input('pH', 'pH')}${input('SG', 'Sp.Grav')}${select('Protein', 'Protein', gradings)}${select('Glucose', 'Glucose', gradings)}${input('RBC', 'RBC')}${input('WBC', 'WBC')}${input('Bacteria', 'Bact.')}${input('Epithelial', 'Epith.')}${input('Cast', 'Casts')}${input('Crystals', 'Crys.')}${input('Amorphous', 'Amorph')}${input('Mucus', 'Mucus')}</div>${rem}`; break;
+        case 'FA': formHtml = `<div class="form-grid grid-2">${select('Color', 'Color', ['Brown', 'Yellow', 'Green', 'Black', 'Red'])}${select('Consistency', 'Consistency', ['Formed', 'Soft', 'Loose', 'Watery'])}<div class="full-width">${input('parasite', 'Parasite')}</div>${input('RBC', 'RBC')}${input('WBC', 'WBC')}</div>${rem}`; break;
+        case 'GRAM': formHtml = `<div class="form-grid grid-2"><div class="full-width font-bold" style="color:var(--pri);">Gram Positive</div>${input('GP_Quantity', 'Qty')}${input('GP_Morphology', 'Morph')}${input('GP_Arrangement', 'Arrange')}<div class="full-width font-bold" style="color:var(--sec); margin-top:8px;">Gram Negative</div>${input('GN_Quantity', 'Qty')}${input('GN_Morphology', 'Morph')}${input('GN_Arrangement', 'Arrange')}</div>${rem}`; break;
+        case 'SERO': formHtml = `<div class="form-grid grid-3">${select('HIV', 'HIV', ['NONREACTIVE', 'REACTIVE'], ['HIV', 'SERO'])}${select('HBSAG', 'HBsAg', ['NONREACTIVE', 'REACTIVE'], ['HBSAG', 'SERO'])}${select('SYPHILIS', 'Syphilis', ['NONREACTIVE', 'REACTIVE'], ['SYPHILIS', 'SERO'])}</div>${rem}`; break;
+        case 'DENGUE': { let showDuo = req.includes('DUO'); formHtml = `<div class="form-grid grid-3">${select('Dengue_Result', 'Dengue NS1', ['', 'Negative', 'Positive'])}${showDuo ? select('Dengue_IgG', 'Dengue IgG', ['', 'Negative', 'Positive']) : ''}${showDuo ? select('Dengue_IgM', 'Dengue IgM', ['', 'Negative', 'Positive']) : ''}</div>${rem}`; break; }
+        default: formHtml = `<div class="form-grid grid-1">${input('Result', 'Result')}</div>${rem}`; break;
+    }
+    return formHtml + sigBlock;
 }
 
 let regHoverTimer = null;
@@ -2702,10 +2761,11 @@ async function batchSaveResults(isPrint) {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); const inputs = document.querySelectorAll('.res-' + safeId);
         let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; });
         let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let tCodePrint = getTestCodeFromName(item.test);
-        if (tCodePrint === "GXP" && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
-        let performerName = currentUser.fullName || currentUser.username;
+        let performerName = newResults["Performed By"] || currentUser.fullName || currentUser.username;
+        let preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
         newResults["Performed By"] = performerName;
-        let finalStr = { ...detailsObj, ...newResults, "Performed By": performerName, date_examined: new Date().toISOString() };
+        newResults["Prepared By"] = preparedByName;
+        let finalStr = { ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: new Date().toISOString() };
 
         let batchStatus = 'ENCODED';
         let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
