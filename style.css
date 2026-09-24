@@ -2664,21 +2664,35 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
     max-width: none !important;
     white-space: normal !important;
     padding: 0 !important;
-    background: var(--bg-body) !important;
-    border-bottom: 2px solid var(--pri) !important;
+    background: transparent !important;
+    border: none !important;
+    height: 0 !important;
     cursor: default;
+}
+
+.reg-drawer-row td::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9998;
 }
 
 .reg-drawer-container {
     max-width: 700px;
-    margin: 10px auto;
+    width: 90vw;
+    margin: 0;
     padding: 16px 20px;
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-top: 4px solid var(--pri);
-    border-radius: 8px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-    position: relative;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
 }
 
 .rdd-header {
