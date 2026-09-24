@@ -3186,11 +3186,11 @@ function localGenerateNTPHtml(patientsArray) {
         .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; } 
         .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; } 
         .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } 
-        .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; } 
+        .footer-red { background: #ff0000 !important; color: white !important; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
         @media print { 
             body { background: white; padding: 0 !important; display: block; margin: 0; } 
             @page { size: A4 portrait; margin: 0; } 
-            .page-container { width: 210mm !important; height: 296mm !important; max-height: 296mm !important; margin: 0 auto !important; padding: 10mm 15mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
+            .page-container { width: 210mm !important; height: 296mm !important; max-height: 296mm !important; margin: 0 auto !important; padding: 10mm 10mm 15mm 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
             .page-break { display: none !important; } 
         } 
     </style></head><body>${combinedHtml}</body></html>`;
