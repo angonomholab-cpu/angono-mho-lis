@@ -2152,6 +2152,10 @@
         const SUPABASE_URL = "https://mtohvtmupjfdabrrpnii.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b2h2dG11cGpmZGFicnJwbmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njg2MzQsImV4cCI6MjEwNTU0NDYzNH0.lh5n2LY4x9_kyPcgUOdtDUxEpiBClTMDCKNSzQTTH64";
         window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Secondary client for Auth signup without overwriting active session
+        window.sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
     </script>
     <script src="app.js"></script>
     <script>
