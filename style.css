@@ -11,11 +11,11 @@
     --text-main: #0f172a;
     --text-muted: #64748b;
 
-    --pri: #0d9488;
-    --pri-hover: #0f766e;
-    --pri-light: rgba(13, 148, 136, 0.08);
-    --sec: #0284c7;
-    --sec-light: rgba(2, 132, 199, 0.08);
+    --pri: var(--pri);
+    --pri-hover: var(--pri-hover);
+    --pri-light: color-mix(in srgb, var(--pri) 8%, transparent);
+    --sec: var(--sec);
+    --sec-light: color-mix(in srgb, var(--sec) 8%, transparent);
 
     --success: #10b981;
     --success-light: #ecfdf5;
@@ -33,6 +33,7 @@
 
     --shadow-float: 0 12px 30px -6px rgba(15, 23, 42, 0.1), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
     --shadow-card: 0 2px 8px -1px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    --shadow-glow: color-mix(in srgb, var(--pri) 25%, transparent);
     --blur-effect: blur(12px);
 }
 
@@ -52,79 +53,100 @@ body.dark-mode {
     --success-light: rgba(16, 185, 129, 0.12);
     --border-color: rgba(255, 255, 255, 0.08);
     --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+    --shadow-glow: rgba(20, 184, 166, 0.35);
 }
 
-/* --- THEMES (Pastel Combinations) --- */
-/* 1. Default (Mint & Soft Lilac) */
+/* --- THEMES (Cohesive Palettes) --- */
+
+/* 1. Default (Teal & Indigo) */
 html[data-theme="default"] {
-    --pri: #4db6ac; /* Soft Teal/Mint */
-    --pri-hover: #26a69a;
-    --pri-light: rgba(77, 182, 172, 0.15);
-    --sec: #9575cd; /* Soft Lilac */
-    --sec-light: rgba(149, 117, 205, 0.15);
+    --pri: var(--pri); --pri-hover: var(--pri-hover); --pri-light: color-mix(in srgb, var(--pri) 10%, transparent);
+    --sec: #6366f1; --sec-light: rgba(99,102,241,0.1);
+    --bg-body: #f0fdfa; --bg-surface: #ffffff; --bg-subtle: #ccfbf1;
+    --text-main: #134e4a; --text-muted: var(--pri-hover);
+    --border-color: color-mix(in srgb, var(--pri) 15%, transparent);
+    --shadow-glow: color-mix(in srgb, var(--pri) 30%, transparent);
 }
 html[data-theme="default"] body.dark-mode {
-    --pri: #80cbc4;
-    --pri-hover: #4db6ac;
-    --sec: #b39ddb;
+    --pri: #2dd4bf; --pri-hover: #14b8a6;
+    --sec: #818cf8;
+    --bg-body: #042f2e; --bg-surface: #115e59; --bg-subtle: #134e4a;
+    --text-main: #ccfbf1; --text-muted: #99f6e4;
+    --border-color: rgba(45,212,191,0.2);
+    --shadow-glow: rgba(45,212,191,0.4);
 }
 
-/* 2. Sakura (Pastel Pink & Peach) */
+/* 2. Sakura (Rose & Amber) */
 html[data-theme="pink"] {
-    --pri: #f06292; /* Soft Pink */
-    --pri-hover: #e91e63;
-    --pri-light: rgba(240, 98, 146, 0.15);
-    --sec: #ffb74d; /* Peach/Orange */
-    --sec-light: rgba(255, 183, 77, 0.15);
+    --pri: #e11d48; --pri-hover: #be123c; --pri-light: rgba(225,29,72,0.1);
+    --sec: #d97706; --sec-light: rgba(217,119,6,0.1);
+    --bg-body: #fff1f2; --bg-surface: #ffffff; --bg-subtle: #ffe4e6;
+    --text-main: #881337; --text-muted: #be123c;
+    --border-color: rgba(225,29,72,0.15);
+    --shadow-glow: rgba(225,29,72,0.3);
 }
 html[data-theme="pink"] body.dark-mode {
-    --pri: #f48fb1;
-    --pri-hover: #f06292;
-    --sec: #ffcc80;
+    --pri: #fb7185; --pri-hover: #f43f5e;
+    --sec: #fbbf24;
+    --bg-body: #4c0519; --bg-surface: #881337; --bg-subtle: #9f1239;
+    --text-main: #ffe4e6; --text-muted: #fecdd3;
+    --border-color: rgba(251,113,133,0.2);
+    --shadow-glow: rgba(251,113,133,0.4);
 }
 
-/* 3. Twilight (Periwinkle & Blush) */
+/* 3. Twilight (Violet & Fuchsia) */
 html[data-theme="purple"] {
-    --pri: #7986cb; /* Periwinkle Blue */
-    --pri-hover: #5c6bc0;
-    --pri-light: rgba(121, 134, 203, 0.15);
-    --sec: #f06292; /* Blush Pink */
-    --sec-light: rgba(240, 98, 146, 0.15);
+    --pri: #6d28d9; --pri-hover: #5b21b6; --pri-light: rgba(109,40,217,0.1);
+    --sec: #c026d3; --sec-light: rgba(192,38,211,0.1);
+    --bg-body: #f5f3ff; --bg-surface: #ffffff; --bg-subtle: #ede9fe;
+    --text-main: #2e1065; --text-muted: #4c1d95;
+    --border-color: rgba(109,40,217,0.15);
+    --shadow-glow: rgba(109,40,217,0.3);
 }
 html[data-theme="purple"] body.dark-mode {
-    --pri: #9fa8da;
-    --pri-hover: #7986cb;
-    --sec: #f48fb1;
+    --pri: #a78bfa; --pri-hover: #8b5cf6;
+    --sec: #e879f9;
+    --bg-body: #2e1065; --bg-surface: #4c1d95; --bg-subtle: #5b21b6;
+    --text-main: #ede9fe; --text-muted: #ddd6fe;
+    --border-color: rgba(167,139,250,0.2);
+    --shadow-glow: rgba(167,139,250,0.4);
 }
 
-/* 4. Matcha (Sage Green & Lemon) */
+/* 4. Matcha (Emerald & Lime) */
 html[data-theme="green"] {
-    --pri: #81c784; /* Sage Green */
-    --pri-hover: #66bb6a;
-    --pri-light: rgba(129, 199, 132, 0.15);
-    --sec: #ffd54f; /* Soft Lemon */
-    --sec-light: rgba(255, 213, 79, 0.15);
+    --pri: #059669; --pri-hover: #047857; --pri-light: rgba(5,150,105,0.1);
+    --sec: #65a30d; --sec-light: rgba(101,163,13,0.1);
+    --bg-body: #ecfdf5; --bg-surface: #ffffff; --bg-subtle: #d1fae5;
+    --text-main: #064e3b; --text-muted: #065f46;
+    --border-color: rgba(5,150,105,0.15);
+    --shadow-glow: rgba(5,150,105,0.3);
 }
 html[data-theme="green"] body.dark-mode {
-    --pri: #a5d6a7;
-    --pri-hover: #81c784;
-    --sec: #ffe082;
+    --pri: #34d399; --pri-hover: #10b981;
+    --sec: #a3e635;
+    --bg-body: #064e3b; --bg-surface: #065f46; --bg-subtle: #047857;
+    --text-main: #d1fae5; --text-muted: #a7f3d0;
+    --border-color: rgba(52,211,153,0.2);
+    --shadow-glow: rgba(52,211,153,0.4);
 }
 
-/* 5. Sunset (Coral & Soft Teal) */
+/* 5. Sunset (Amber & Orange) */
 html[data-theme="orange"] {
-    --pri: #ff8a65; /* Coral */
-    --pri-hover: #ff7043;
-    --pri-light: rgba(255, 138, 101, 0.15);
-    --sec: #4db6ac; /* Soft Teal */
-    --sec-light: rgba(77, 182, 172, 0.15);
+    --pri: #d97706; --pri-hover: #b45309; --pri-light: rgba(217,119,6,0.1);
+    --sec: #ea580c; --sec-light: rgba(234,88,12,0.1);
+    --bg-body: #fffbeb; --bg-surface: #ffffff; --bg-subtle: #fef3c7;
+    --text-main: #78350f; --text-muted: #92400e;
+    --border-color: rgba(217,119,6,0.15);
+    --shadow-glow: rgba(217,119,6,0.3);
 }
 html[data-theme="orange"] body.dark-mode {
-    --pri: #ffab91;
-    --pri-hover: #ff8a65;
-    --sec: #80cbc4;
+    --pri: #fbbf24; --pri-hover: #f59e0b;
+    --sec: #fb923c;
+    --bg-body: #451a03; --bg-surface: #78350f; --bg-subtle: #92400e;
+    --text-main: #fef3c7; --text-muted: #fde68a;
+    --border-color: rgba(251,191,36,0.2);
+    --shadow-glow: rgba(251,191,36,0.4);
 }
-
 
 /* ========================================= */
 /* 2. GLOBAL SETUP & ANDROID SLIDE MENU      */
@@ -367,8 +389,8 @@ h4 {
     padding: 20px;
     box-sizing: border-box;
     background:
-        radial-gradient(circle at 10% 15%, rgba(13, 148, 136, 0.5) 0%, rgba(15, 118, 110, 0.3) 28%, transparent 60%),
-        radial-gradient(circle at 88% 22%, rgba(2, 132, 199, 0.45) 0%, rgba(14, 165, 233, 0.22) 32%, transparent 62%),
+        radial-gradient(circle at 10% 15%, color-mix(in srgb, var(--pri) 50%, transparent) 0%, rgba(15, 118, 110, 0.3) 28%, transparent 60%),
+        radial-gradient(circle at 88% 22%, color-mix(in srgb, var(--sec) 45%, transparent) 0%, rgba(14, 165, 233, 0.22) 32%, transparent 62%),
         radial-gradient(circle at 48% 82%, rgba(16, 185, 129, 0.4) 0%, rgba(5, 150, 105, 0.22) 30%, transparent 62%),
         radial-gradient(circle at 82% 86%, rgba(99, 102, 241, 0.35) 0%, transparent 55%),
         #041620;
@@ -421,7 +443,7 @@ h4 {
 .login-orb-1 {
     width: 380px;
     height: 380px;
-    background: radial-gradient(circle, #06b6d4, #0d9488);
+    background: radial-gradient(circle, #06b6d4, var(--pri));
     top: 6%;
     left: 10%;
     animation-name: orbFloat1;
@@ -522,7 +544,7 @@ h4 {
     contain: paint;
     border-radius: 28px 0 0 28px;
     background:
-        radial-gradient(120% 90% at 28% 28%, rgba(13, 148, 136, 0.35) 0%, transparent 65%),
+        radial-gradient(120% 90% at 28% 28%, color-mix(in srgb, var(--pri) 35%, transparent) 0%, transparent 65%),
         linear-gradient(145deg, #042f2e 0%, #064e3b 40%, #0a1b24 100%);
     min-height: 340px;
     display: flex;
@@ -673,7 +695,7 @@ h4 {
 
 /* Categorized Diagnostic Card Colors */
 .hwc-gxp .hwc-panel {
-    background: linear-gradient(150deg, #0d9488 0%, #065f46 65%, #022c22 100%);
+    background: linear-gradient(150deg, var(--pri) 0%, #065f46 65%, #022c22 100%);
 }
 
 .hwc-hema .hwc-panel {
@@ -685,7 +707,7 @@ h4 {
 }
 
 .hwc-chem .hwc-panel {
-    background: linear-gradient(150deg, #0284c7 0%, #0369a1 65%, #082f49 100%);
+    background: linear-gradient(150deg, var(--sec) 0%, #0369a1 65%, #082f49 100%);
 }
 
 .hwc-dssm .hwc-panel {
@@ -705,7 +727,7 @@ h4 {
 }
 
 .hwc-fecal .hwc-panel {
-    background: linear-gradient(150deg, #14b8a6 0%, #0f766e 65%, #134e4a 100%);
+    background: linear-gradient(150deg, #14b8a6 0%, var(--pri-hover) 65%, #134e4a 100%);
 }
 
 .hwc-bloodtype .hwc-panel {
@@ -736,7 +758,7 @@ h4 {
 .hwc-form-badge {
     font-size: 8px;
     font-weight: 800;
-    color: #0f766e;
+    color: var(--pri-hover);
     background: #ccfbf1;
     padding: 2px 6px;
     border-radius: 4px;
@@ -835,7 +857,7 @@ h4 {
 .hwc-barcode-status {
     font-size: 8.5px;
     font-weight: 800;
-    color: #0284c7;
+    color: var(--sec);
     background: #e0f2fe;
     padding: 3px 6px;
     border-radius: 6px;
@@ -899,13 +921,13 @@ h4 {
     width: 32px;
     height: 32px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    background: linear-gradient(135deg, var(--pri) 0%, #14b8a6 100%);
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.5);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--pri) 50%, transparent);
 }
 
 .hero-brand-word {
@@ -974,7 +996,7 @@ body.dark-mode .auth-form-panel {
     width: 48px;
     height: 48px;
     border-radius: 14px;
-    background: rgba(13, 148, 136, 0.12);
+    background: color-mix(in srgb, var(--pri) 12%, transparent);
     color: var(--pri);
     display: inline-flex;
     align-items: center;
@@ -1023,7 +1045,7 @@ body.dark-mode .auth-form-panel {
 .auth-form-panel .form-select:focus {
     background: var(--bg-surface);
     border-color: var(--pri);
-    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.18);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--pri) 18%, transparent);
     outline: none;
 }
 
@@ -1032,8 +1054,8 @@ body.dark-mode .auth-form-panel {
     font-size: 0.9rem;
     font-weight: 700;
     border-radius: 11px;
-    background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-    box-shadow: 0 8px 18px -6px rgba(13, 148, 136, 0.5);
+    background: linear-gradient(135deg, var(--pri) 0%, var(--pri-hover) 100%);
+    box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--pri) 50%, transparent);
     transition: all 0.25s ease;
     display: flex;
     align-items: center;
@@ -1043,7 +1065,7 @@ body.dark-mode .auth-form-panel {
 
 .auth-form-panel .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 22px -6px rgba(13, 148, 136, 0.65);
+    box-shadow: 0 12px 22px -6px color-mix(in srgb, var(--pri) 65%, transparent);
 }
 
 .auth-card-footer-link {
@@ -1206,7 +1228,7 @@ body.dark-mode .auth-form-panel {
         height: auto !important;
         padding: 20px 20px 14px 20px !important;
         border-radius: 24px 24px 0 0 !important;
-        background: linear-gradient(135deg, rgba(13, 148, 136, 0.45) 0%, rgba(15, 23, 42, 0.75) 100%) !important;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--pri) 45%, transparent) 0%, rgba(15, 23, 42, 0.75) 100%) !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
         display: flex;
         flex-direction: column;
@@ -1525,8 +1547,8 @@ body.dark-mode .workspace-col {
 }
 
 .workspace-col:hover {
-    border-color: rgba(13, 148, 136, 0.4);
-    box-shadow: 0 16px 36px -6px rgba(13, 148, 136, 0.1), 0 0 0 1px rgba(13, 148, 136, 0.25);
+    border-color: color-mix(in srgb, var(--pri) 40%, transparent);
+    box-shadow: 0 16px 36px -6px color-mix(in srgb, var(--pri) 10%, transparent), 0 0 0 1px color-mix(in srgb, var(--pri) 25%, transparent);
 }
 
 .workspace-header {
@@ -1695,7 +1717,7 @@ body.dark-mode .workspace-header {
         align-items: center;
         justify-content: center;
         font-size: 1.15rem;
-        box-shadow: 0 2px 8px rgba(13, 148, 136, 0.35);
+        box-shadow: 0 2px 8px color-mix(in srgb, var(--pri) 35%, transparent);
     }
 
     .mah-info {
@@ -1800,7 +1822,7 @@ body.dark-mode .workspace-header {
     .mwn-tab.active {
         background: linear-gradient(135deg, var(--pri) 0%, var(--pri-hover) 100%);
         color: white;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--pri) 35%, transparent);
     }
 
     .mwn-badge {
@@ -2181,7 +2203,7 @@ body.dark-mode .workspace-header {
 }
 
 .test-btn-vert:hover {
-    border-color: rgba(13, 148, 136, 0.4);
+    border-color: color-mix(in srgb, var(--pri) 40%, transparent);
     transform: translateY(-2px);
     box-shadow: 0 8px 18px -4px rgba(15, 23, 42, 0.08);
 }
@@ -2214,12 +2236,12 @@ body.dark-mode .workspace-header {
 }
 
 /* Categorized Diagnostic Icon Accents */
-#btn-mtb i   { color: #0d9488; }
+#btn-mtb i   { color: var(--pri); }
 #btn-dssm i  { color: #f59e0b; }
 #btn-viral i { color: #10b981; }
 #btn-sero i  { color: #8b5cf6; }
 #btn-hema i  { color: #f43f5e; }
-#btn-chem i  { color: #0284c7; }
+#btn-chem i  { color: var(--sec); }
 #btn-uria i  { color: #eab308; }
 #btn-feca i  { color: #14b8a6; }
 #btn-dengue i{ color: #ec4899; }
@@ -2277,7 +2299,7 @@ body.dark-mode .workspace-header {
     background-color: var(--bg-surface);
     border-color: var(--pri);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pri) 16%, transparent);
 }
 
 .form-select option {
@@ -2337,12 +2359,12 @@ body.dark-mode .workspace-header {
 .btn-primary {
     background: linear-gradient(135deg, var(--pri) 0%, var(--pri-hover) 100%);
     color: white;
-    box-shadow: 0 4px 12px -2px rgba(13, 148, 136, 0.4);
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--pri) 40%, transparent);
 }
 
 .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px -2px rgba(13, 148, 136, 0.55);
+    box-shadow: 0 6px 16px -2px color-mix(in srgb, var(--pri) 55%, transparent);
 }
 
 .btn-primary:active {
@@ -2411,7 +2433,7 @@ body.dark-mode .workspace-header {
     background: var(--pri) !important;
     color: white !important;
     border-color: var(--pri) !important;
-    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.32);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--pri) 32%, transparent);
 }
 
 .history-card {
@@ -2668,16 +2690,16 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 }
 
 .data-table tbody tr.reg-data-row:hover td {
-    background: rgba(13, 148, 136, 0.08) !important;
+    background: color-mix(in srgb, var(--pri) 8%, transparent) !important;
 }
 
 .data-table tbody tr.reg-data-row.active-row td {
-    background: rgba(13, 148, 136, 0.14) !important;
+    background: color-mix(in srgb, var(--pri) 14%, transparent) !important;
     border-bottom-color: transparent;
 }
 
 .data-table tbody tr.reg-data-row.pinned-open td {
-    background: rgba(13, 148, 136, 0.18) !important;
+    background: color-mix(in srgb, var(--pri) 18%, transparent) !important;
     border-bottom-color: transparent;
     font-weight: 600;
 }
@@ -2890,7 +2912,7 @@ body.dark-mode .res-warning {
 
 .pending-card:hover {
     box-shadow: 0 6px 18px -4px rgba(15, 23, 42, 0.08);
-    border-color: rgba(13, 148, 136, 0.35);
+    border-color: color-mix(in srgb, var(--pri) 35%, transparent);
     border-left-color: var(--pri);
     transform: translateY(-1px);
 }
@@ -3167,7 +3189,7 @@ body.dark-mode .res-warning {
     align-items: center;
     justify-content: center;
     font-size: 1.4rem;
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--pri) 30%, transparent);
 }
 
 .portal-title {
@@ -3245,9 +3267,9 @@ body.dark-mode .res-warning {
     width: 68px;
     height: 68px;
     border-radius: 20px;
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(2, 132, 199, 0.15) 100%);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--pri) 15%, transparent) 0%, color-mix(in srgb, var(--sec) 15%, transparent) 100%);
     color: var(--pri);
-    border: 1px solid rgba(13, 148, 136, 0.3);
+    border: 1px solid color-mix(in srgb, var(--pri) 30%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3348,8 +3370,8 @@ body.dark-mode .res-warning {
 }
 
 .patient-result-card:hover {
-    border-color: rgba(13, 148, 136, 0.4);
-    box-shadow: 0 8px 24px -4px rgba(13, 148, 136, 0.12);
+    border-color: color-mix(in srgb, var(--pri) 40%, transparent);
+    box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--pri) 12%, transparent);
     transform: translateY(-2px);
 }
 
@@ -3409,9 +3431,9 @@ body.dark-mode .res-warning {
 }
 
 .prc-badge.verified {
-    background: rgba(2, 132, 199, 0.12);
-    color: #0284c7;
-    border: 1px solid rgba(2, 132, 199, 0.25);
+    background: color-mix(in srgb, var(--sec) 12%, transparent);
+    color: var(--sec);
+    border: 1px solid color-mix(in srgb, var(--sec) 25%, transparent);
 }
 
 .prc-badge.pending {
@@ -3451,12 +3473,12 @@ body.dark-mode .res-warning {
     background: linear-gradient(135deg, var(--pri) 0%, var(--pri-hover) 100%);
     color: white;
     border: none;
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--pri) 25%, transparent);
 }
 
 .prc-btn-pdf:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--pri) 35%, transparent);
 }
 
 .prc-btn-print {
@@ -3499,8 +3521,8 @@ body.dark-mode .res-warning {
 
 /* TB DOTS Advisory Card */
 .portal-tbdots-card {
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(2, 132, 199, 0.05) 100%);
-    border: 1px solid rgba(13, 148, 136, 0.22);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--pri) 8%, transparent) 0%, color-mix(in srgb, var(--sec) 5%, transparent) 100%);
+    border: 1px solid color-mix(in srgb, var(--pri) 22%, transparent);
     border-radius: var(--radius-md);
     padding: 16px 20px;
     display: flex;
@@ -3513,7 +3535,7 @@ body.dark-mode .res-warning {
     width: 42px;
     height: 42px;
     border-radius: 12px;
-    background: rgba(13, 148, 136, 0.15);
+    background: color-mix(in srgb, var(--pri) 15%, transparent);
     color: var(--pri);
     display: flex;
     align-items: center;
