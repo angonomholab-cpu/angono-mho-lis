@@ -2334,7 +2334,9 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     let displayVal = val ? val : '<span style="color:var(--text-muted); font-weight:normal; font-style:italic;">None</span>';
                     
                     // Format results with badges like in the table
-                    let isResCol = cClean.includes('RESULT') || cClean.includes('DIAGNOSIS') || cClean === 'HIV' || cClean === 'SYPHILIS' || cClean === 'HBSAG';
+                    let isXrayCol = cClean === 'XRAYRESULT';
+                    let isResCol = (!isXrayCol) && (cClean.includes('RESULT') || cClean.includes('DIAGNOSIS') || cClean === 'HIV' || cClean === 'SYPHILIS' || cClean === 'HBSAG');
+                    
                     if (isResCol && val) {
                         let bg = "transparent", col = "inherit";
                         if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; }
@@ -2362,7 +2364,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         remarksHtml += itemHtml;
                     } else if (cClean === 'PERFORMEDBY' || cClean === 'ENCODER') {
                         performedHtml += itemHtml;
-                    } else if (isResCol || cClean.includes('GRADE') || cClean.includes('SMEAR') || cClean.includes('INTERPRETATION')) {
+                    } else if (isResCol || cClean.includes('GRADE') || cClean.includes('SMEAR') || cClean.includes('INTERPRETATION') || cClean === 'REPEAT' || cClean === 'TESTTYPE') {
                         resultsHtml += itemHtml;
                     } else {
                         detailsHtml += itemHtml;
@@ -2372,7 +2374,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 let drawerCardsHtml = `
                     ${datesHtml ? `<div class="rdd-section-title">Timeline</div><div class="rdd-group">${datesHtml}</div>` : ''}
                     ${detailsHtml ? `<div class="rdd-section-title">Test Details</div><div class="rdd-group">${detailsHtml}</div>` : ''}
-                    ${resultsHtml ? `<div class="rdd-section-title">Results</div><div class="rdd-group" style="background:#f1f5f9; padding:10px; border-radius:6px;">${resultsHtml}</div>` : ''}
+                    ${resultsHtml ? `<div class="rdd-section-title">Results</div><div class="rdd-group" style="background:var(--bg-subtle); padding:10px; border-radius:6px; border:1px solid var(--border-color);">${resultsHtml}</div>` : ''}
                     ${remarksHtml ? `<div class="rdd-section-title">Remarks</div><div class="rdd-group">${remarksHtml}</div>` : ''}
                     ${performedHtml ? `<div class="rdd-section-title">Signatories</div><div class="rdd-group">${performedHtml}</div>` : ''}
                 `;
