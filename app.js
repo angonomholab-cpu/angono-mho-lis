@@ -2288,10 +2288,21 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     return clean === 'NAME' || clean === 'PATIENTNAME';
                 });
                 const patientName = nameIdx > -1 ? (row[nameIdx] || '') : 'Patient Record';
+                
+                const ageIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => String(h).toUpperCase().replace(/[_\s]+/g, '') === 'AGE');
+                const sexIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => String(h).toUpperCase().replace(/[_\s]+/g, '') === 'SEX' || String(h).toUpperCase().replace(/[_\s]+/g, '') === 'GENDER');
+                const facIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => String(h).toUpperCase().replace(/[_\s]+/g, '') === 'FACILITY');
+                
+                const age = ageIdx > -1 ? (row[ageIdx] || '') : '';
+                const sex = sexIdx > -1 ? (row[sexIdx] || '') : '';
+                const fac = facIdx > -1 ? (row[facIdx] || '') : '';
 
                 // Build rich drawer content showing all columns of this record
                 let drawerCardsHtml = '';
+                const skipHeaders = ['TESTCODE', 'ID', 'NAME', 'PATIENTNAME', 'AGE', 'SEX', 'GENDER', 'FACILITY', 'LABORATORYSERIALNUMBER', 'LABSERIALNUMBER'];
                 hMap.forEach(c => {
+                    let cClean = String(c.original).toUpperCase().replace(/[_\s]+/g, '');
+                    if (skipHeaders.includes(cClean)) return;
                     let val = row[c.index] || '';
                     drawerCardsHtml += `
                         <div class="rdd-list-item">
@@ -2351,11 +2362,17 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     <tr id="${rowDrawerId}" class="reg-drawer-row" style="display:none;">
                         <td colspan="${totalCols}">
                             <div class="reg-drawer-container">
-                                <div class="rdd-header">
-                                    <div class="rdd-title">
-                                        <span class="rdd-code"><i class="ph ph-barcode"></i> ${testCode || 'LOGBOOK RECORD'}</span>
-                                        <span class="rdd-name">${patientName}</span>
-                                        <span style="font-size:0.72rem; color:var(--text-muted);"><i class="ph ph-list-magnifying-glass"></i> Full Patient Record Details</span>
+                                <div class="rdd-header" style="align-items: flex-start;">
+                                    <div class="rdd-title" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                            <span class="rdd-code"><i class="ph ph-barcode"></i> ${testCode || 'LOGBOOK RECORD'}</span>
+                                            <span class="rdd-name">${patientName}</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 15px; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
+                                            ${age ? `<span><i class="ph ph-calendar-blank"></i> ${age}</span>` : ''}
+                                            ${sex ? `<span><i class="ph ph-gender-intersex"></i> ${sex}</span>` : ''}
+                                            ${fac ? `<span><i class="ph ph-hospital"></i> ${fac}</span>` : ''}
+                                        </div>
                                     </div>
                                     <div class="rdd-actions">
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" onclick="printDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)"><i class="ph ph-printer"></i> Print</button>
