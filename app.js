@@ -282,9 +282,16 @@ async function apiGet(action, params = {}) {
                 });
                 if (authError) return { status: "FAIL", error: authError.message };
 
+                const { data: maintData } = await sb.from('facilities').select('*').eq('name', '_SYSTEM_MAINTENANCE_').maybeSingle();
+                const isMaintenance = maintData && maintData.address === 'ON';
+
                 const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).maybeSingle();
                 if (error) throw error;
-                if (!data) return { status: "FAIL" };
+                if (!data) return { status: "FAIL", error: "User not found" };
+                
+                if (isMaintenance && data.role !== 'ADMIN') {
+                    return { status: "FAIL", error: "System is offline for maintenance." };
+                }
                 if (data.status === "PENDING") return { status: "PENDING" };
                 if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
                 const effectiveFacility = (data.role === 'STAFF' || data.role === 'ADMIN') ? 'ALL' : (data.facility || 'ALL');
@@ -296,6 +303,11 @@ async function apiGet(action, params = {}) {
                     password: params.password
                 });
                 if (authError) return { status: "FAIL", error: authError.message };
+
+                const { data: maintData } = await sb.from('facilities').select('*').eq('name', '_SYSTEM_MAINTENANCE_').maybeSingle();
+                if (maintData && maintData.address === 'ON') {
+                    return { status: "FAIL", error: "System is offline for maintenance." };
+                }
 
                 const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).maybeSingle();
                 if (error) throw error;
@@ -790,6 +802,12 @@ async function apiPost(action, payload) {
                 await sb.from('staff').delete().not('id', 'is', null);
                 const rows = (payload.staffArray || []).map(s => ({ name: s.name, role: s.role, license: s.license, sig_url: s.sigUrl }));
                 if (rows.length) await sb.from('staff').insert(rows);
+                return { status: "success" };
+            }
+            case "toggleMaintenance": {
+                if (payload.adminRole !== 'ADMIN') throw new Error("Unauthorized");
+                const state = payload.state ? 'ON' : 'OFF';
+                await sb.from('facilities').upsert({ name: '_SYSTEM_MAINTENANCE_', address: state });
                 return { status: "success" };
             }
             case "saveNewUser": {
@@ -2651,6 +2669,16 @@ let globalStaffList = [
 function renderStaffList() { const container = document.getElementById('staffListContainer'); if (!container) return; if (globalStaffList.length === 0) { container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No staff found.</div>'; return; } container.innerHTML = globalStaffList.map((s, index) => { let previewUrl = cleanDriveLink(s.sigUrl); const sigBadge = previewUrl ? `<img src="${previewUrl}" style="height:30px; border:1px solid var(--border-color); border-radius:4px; padding:2px; object-fit:contain;" onerror="this.style.display='none'">` : `<span class="badge badge-neutral">No Sig</span>`; return `<div class="pending-card" style="margin-bottom: 8px; border-left: 3px solid var(--danger); flex-direction: row; justify-content: space-between; align-items: center;"><div style="flex:1;"><div class="pc-name">${s.name}</div><div class="pc-meta" style="margin-top:2px;">${s.role} • Lic: ${s.license || "N/A"}</div></div><div style="margin-right: 12px;">${sigBadge}</div><div style="display:flex; gap:4px;"><button onclick="editStaff(${index})" class="btn-icon"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Remove staff?', () => deleteStaff(${index}))" class="btn-icon" style="color:var(--danger);"><i class="ph ph-trash"></i></button></div></div>`; }).join(''); }
 function cleanDriveLink(url) { if (!url) return ""; if (url.includes("drive.google.com")) { let id = ""; let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (match) id = match[1]; else { match = url.match(/id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; } if (id) return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; } return url; }
 async function handleSaveStaff() { const name = document.getElementById('staffName').value; if (!name) return; const btn = document.querySelector('#staff-form .btn-primary'); const oldText = btn.innerText; btn.innerHTML = "PROCESSING..."; btn.disabled = true; const newItem = { name: name, role: document.getElementById('staffRole').value, license: document.getElementById('staffLicense').value, sigUrl: cleanDriveLink(document.getElementById('staffSigUrl').value) }; if (editingStaffIndex >= 0) { globalStaffList[editingStaffIndex] = newItem; editingStaffIndex = -1; } else { globalStaffList.push(newItem); } renderStaffList(); clearStaffForm(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); toggleForm('staff-form'); } catch (e) { } finally { btn.innerText = oldText; btn.disabled = false; } }
+async function toggleMaintenanceMode(isOn) {
+    if (currentUser.role !== 'ADMIN') return;
+    try {
+        await apiPost("toggleMaintenance", { adminRole: currentUser.role, state: isOn });
+        showAppAlert("Maintenance Mode", `System is now ${isOn ? 'OFFLINE' : 'ONLINE'}.`, isOn ? "warning" : "success");
+    } catch (e) {
+        showAppAlert("Error", "Could not toggle maintenance mode.", "error");
+        document.getElementById('toggle-maintenance-btn').checked = !isOn; // revert toggle
+    }
+}
 function editStaff(index) { const s = globalStaffList[index]; document.getElementById('staffName').value = s.name; document.getElementById('staffRole').value = s.role; document.getElementById('staffLicense').value = s.license; document.getElementById('staffSigUrl').value = s.sigUrl || ""; editingStaffIndex = index; document.getElementById('staff-form').style.display = 'block'; }
 async function deleteStaff(index) { globalStaffList.splice(index, 1); renderStaffList(); try { await apiPost("saveStaffData", { staffArray: globalStaffList }); } catch (e) { } }
 function clearStaffForm() { document.getElementById('staffName').value = ""; document.getElementById('staffRole').value = "Medical Technologist"; document.getElementById('staffLicense').value = ""; document.getElementById('staffSigUrl').value = ""; editingStaffIndex = -1; }
