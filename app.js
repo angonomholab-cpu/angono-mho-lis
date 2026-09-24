@@ -1820,7 +1820,8 @@ function renderLists() {
         return filterFn(i) && (encodedDateStr === TODAY_STR);
     });
 
-    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') ? `<div style="position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border: 1px solid var(--pri); box-shadow: 0 4px 10px rgba(0,0,0,0.1);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button><button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button></div></div>` : '';
+    let batchSavePrintBtn = (role === 'ADMIN' || role === 'STAFF') ? `<button class="btn btn-secondary text-xs" style="padding:4px 8px; border-color:var(--pri); color:var(--pri);" onclick="batchSaveResults(true)"><i class="ph ph-printer"></i> Save & Print</button>` : '';
+    let batchActionsHtml = (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') ? `<div style="position: sticky; top: 0; z-index: 10; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border: 1px solid var(--pri); box-shadow: 0 4px 10px rgba(0,0,0,0.1);"><label style="font-size:0.8rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px;"><input type="checkbox" onchange="document.querySelectorAll('.chk-pending').forEach(c=>c.checked=this.checked)" style="width:16px; height:16px; accent-color:var(--pri);"> Select All</label><div style="display:flex; gap:6px;"><button class="btn btn-primary text-xs" style="padding:4px 8px;" onclick="batchSaveResults(false)"><i class="ph ph-floppy-disk"></i> Batch Save</button>${batchSavePrintBtn}</div></div>` : '';
 
     const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = "";
@@ -1830,9 +1831,20 @@ function renderLists() {
 
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) { actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`; }
 
-        // Save at Print ay available sa lahat (Admin, Staff, Encoder, Viewer)
-        let clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
-        let expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button><button class="btn btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri);" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button></div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
+        let clickAttr = '';
+        let expandAreaHtml = '';
+        if (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') {
+            clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
+            
+            let savePrintBtn = '';
+            if (role === 'ADMIN' || role === 'STAFF') {
+                savePrintBtn = `<button class="btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri); padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button>`;
+            }
+            
+            expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area" style="display:none; padding:10px; border-top:1px solid var(--border-color);"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn-primary" style="flex:1; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>${savePrintBtn}</div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
+        } else {
+            clickAttr = `style="flex-grow:1;"`;
+        }
 
         const displaySerial = item.testCode || item.id;
 
@@ -1857,7 +1869,9 @@ function renderLists() {
         // Undo button is ONLY available to ADMIN and STAFF
         const canUndo = (role === 'ADMIN' || role === 'STAFF');
         const undoBtn = canUndo ? `<button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button>` : '';
-        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:8px;">${undoBtn}<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button></div></div>`;
+        const canPrint = (role === 'ADMIN' || role === 'STAFF');
+        const printBtns = canPrint ? `<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button>` : '';
+        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:8px;">${undoBtn}${printBtns}</div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if (cPend) cPend.innerText = `(${fPending.length})`;
@@ -2442,8 +2456,10 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                                         </div>
                                     </div>
                                     <div class="rdd-actions">
+                                        ${(currentUser.role === 'ADMIN' || currentUser.role === 'STAFF') ? `
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" onclick="printDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)"><i class="ph ph-printer"></i> Print</button>
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px;" onclick="downloadDirect(event, '${testCode}', window.CURRENT_TEST_TYPE)"><i class="ph ph-download-simple"></i> PDF</button>
+                                        ` : ''}
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="toggleRegistryRowDrawer('${rowDrawerId}')"><i class="ph ph-x"></i> Close</button>
                                     </div>
                                 </div>
