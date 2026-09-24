@@ -858,6 +858,23 @@ window.addEventListener('error', function (e) {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Auto-Logout after 15 minutes of inactivity
+    window.inactivityTimer = null;
+    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
+
+    window.resetInactivityTimer = function() {
+        clearTimeout(window.inactivityTimer);
+        if (currentUser && document.getElementById('login-portal').style.display === 'none') {
+            window.inactivityTimer = setTimeout(() => {
+                alert("You have been automatically logged out due to 15 minutes of inactivity.");
+                handleLogout();
+            }, INACTIVITY_LIMIT);
+        }
+    };
+
+    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt => 
+        document.addEventListener(evt, window.resetInactivityTimer, { passive: true })
+    );
     try {
         const style = document.createElement('style');
         style.innerHTML = `
