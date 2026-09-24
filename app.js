@@ -274,9 +274,11 @@ async function apiGet(action, params = {}) {
     try {
         switch (action) {
             case "loginUser": {
+                const safeEmail = `${params.username.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
+                const safePass = params.password.length < 6 ? params.password.padEnd(6, '_') : params.password;
                 const { data: authData, error: authError } = await sb.auth.signInWithPassword({
-                    email: `${params.username}@angono-mho-lis.local`,
-                    password: params.password
+                    email: safeEmail,
+                    password: safePass
                 });
                 if (authError) return { status: "FAIL", error: authError.message };
                 
@@ -792,9 +794,11 @@ async function apiPost(action, payload) {
             }
             case "saveNewUser": {
                 const d = payload.data;
+                const safeEmail = `${d.username.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
+                const safePass = d.password.length < 6 ? d.password.padEnd(6, '_') : d.password;
                 const { data: authData, error: authError } = await window.sbAuth.auth.signUp({
-                    email: `${d.username}@angono-mho-lis.local`,
-                    password: d.password
+                    email: safeEmail,
+                    password: safePass
                 });
                 if (authError) throw new Error("Auth Registration Error: " + authError.message);
                 await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
@@ -802,9 +806,11 @@ async function apiPost(action, payload) {
             }
             case "registerUser": {
                 const d = payload.data;
+                const safeEmail = `${d.u.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
+                const safePass = d.p.length < 6 ? d.p.padEnd(6, '_') : d.p;
                 const { data: authData, error: authError } = await window.sbAuth.auth.signUp({
-                    email: `${d.u}@angono-mho-lis.local`,
-                    password: d.p
+                    email: safeEmail,
+                    password: safePass
                 });
                 if (authError) throw new Error("Auth Registration Error: " + authError.message);
                 await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
@@ -2776,9 +2782,11 @@ async function submitStaffRegister() {
     if (pass1 !== pass2) { document.getElementById('reg_pass2').value = ''; return showAppAlert("Mismatch", "Passwords do not match! Please try again.", "error"); }
     const btn = document.querySelector('#staff-register-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Submitting...'; btn.disabled = true;
     try {
+        const safeEmail = `${user.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
+        const safePass = pass1.length < 6 ? pass1.padEnd(6, '_') : pass1;
         const { data: authData, error: authErr } = await window.sbAuth.auth.signUp({
-            email: `${user}@angono-mho-lis.local`,
-            password: pass1
+            email: safeEmail,
+            password: safePass
         });
         if (authErr) throw new Error("Auth Registration Error: " + authErr.message);
 
@@ -3420,10 +3428,11 @@ window.migrateToSupabaseAuth = async function() {
     } else {
         console.log(`Found ${staffData.length} staff users to migrate.`);
         for (let s of staffData) {
-            const email = `${s.username}@angono-mho-lis.local`;
+            const safeEmail = `${s.username.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
             if (s.password) {
-                const { error: authErr } = await window.sbAuth.auth.signUp({ email, password: s.password });
-                if (authErr && !authErr.message.includes('already registered')) {
+                const safePass = s.password.length < 6 ? s.password.padEnd(6, '_') : s.password;
+                const { error: authErr } = await window.sbAuth.auth.signUp({ email: safeEmail, password: safePass });
+                if (authErr && !authErr.message.includes('already registered') && !authErr.message.includes('User already registered')) {
                     console.error(`Failed to migrate staff ${s.username}:`, authErr.message);
                     failCount++;
                 } else {
@@ -3436,14 +3445,16 @@ window.migrateToSupabaseAuth = async function() {
     
     // 2. Migrate Patients
     console.log("Fetching patients...");
-    const { data: patientData, error: patErr } = await sb.from('patients').select('*').not('email', 'is', null).not('password', 'is', null);
+    const { data: patientData, error: patErr } = await sb.from('patients').select('*').not('email', 'is', null);
     if (patErr) {
         console.error("Failed to fetch patients:", patErr);
     } else {
-        console.log(`Found ${patientData.length} patients with email and password to migrate.`);
+        console.log(`Found ${patientData.length} patients with email to migrate.`);
         for (let p of patientData) {
-            const { error: authErr } = await window.sbAuth.auth.signUp({ email: p.email, password: p.password });
-            if (authErr && !authErr.message.includes('already registered')) {
+            // Use patient ID as default password since we can't decrypt the bcrypt hash
+            const defaultPass = p.id; 
+            const { error: authErr } = await window.sbAuth.auth.signUp({ email: p.email, password: defaultPass });
+            if (authErr && !authErr.message.includes('already registered') && !authErr.message.includes('User already registered')) {
                 console.error(`Failed to migrate patient ${p.email}:`, authErr.message);
                 failCount++;
             } else {
@@ -3454,5 +3465,5 @@ window.migrateToSupabaseAuth = async function() {
     }
     
     console.log(`Migration Complete! Success: ${successCount}, Failed: ${failCount}`);
-    alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.`);
+    alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.\n\nNote: Existing patients must use their Patient ID as their temporary password.`);
 };
