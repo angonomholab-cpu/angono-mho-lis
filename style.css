@@ -54,51 +54,75 @@ body.dark-mode {
     --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
 }
 
-/* --- THEMES (Premium Palettes) --- */
-/* 1. Default (Teal / Ocean) */
+/* --- THEMES (Pastel Combinations) --- */
+/* 1. Default (Mint & Soft Lilac) */
+html[data-theme="default"] {
+    --pri: #4db6ac; /* Soft Teal/Mint */
+    --pri-hover: #26a69a;
+    --pri-light: rgba(77, 182, 172, 0.15);
+    --sec: #9575cd; /* Soft Lilac */
+    --sec-light: rgba(149, 117, 205, 0.15);
+}
 html[data-theme="default"] body.dark-mode {
-    --pri: #2dd4bf; --pri-hover: #14b8a6;
-    --sec: #38bdf8;
+    --pri: #80cbc4;
+    --pri-hover: #4db6ac;
+    --sec: #b39ddb;
 }
 
-/* 2. Blossom (Rose / Magenta) */
+/* 2. Sakura (Pastel Pink & Peach) */
 html[data-theme="pink"] {
-    --pri: #f43f5e; --pri-hover: #e11d48; --pri-light: rgba(244, 63, 94, 0.08);
-    --sec: #8b5cf6; --sec-light: rgba(139, 92, 246, 0.08);
+    --pri: #f06292; /* Soft Pink */
+    --pri-hover: #e91e63;
+    --pri-light: rgba(240, 98, 146, 0.15);
+    --sec: #ffb74d; /* Peach/Orange */
+    --sec-light: rgba(255, 183, 77, 0.15);
 }
 html[data-theme="pink"] body.dark-mode {
-    --pri: #fb7185; --pri-hover: #f43f5e;
-    --sec: #a78bfa;
+    --pri: #f48fb1;
+    --pri-hover: #f06292;
+    --sec: #ffcc80;
 }
 
-/* 3. Lavender (Violet / Amethyst) */
+/* 3. Twilight (Periwinkle & Blush) */
 html[data-theme="purple"] {
-    --pri: #8b5cf6; --pri-hover: #7c3aed; --pri-light: rgba(139, 92, 246, 0.08);
-    --sec: #ec4899; --sec-light: rgba(236, 72, 153, 0.08);
+    --pri: #7986cb; /* Periwinkle Blue */
+    --pri-hover: #5c6bc0;
+    --pri-light: rgba(121, 134, 203, 0.15);
+    --sec: #f06292; /* Blush Pink */
+    --sec-light: rgba(240, 98, 146, 0.15);
 }
 html[data-theme="purple"] body.dark-mode {
-    --pri: #a78bfa; --pri-hover: #8b5cf6;
-    --sec: #f472b6;
+    --pri: #9fa8da;
+    --pri-hover: #7986cb;
+    --sec: #f48fb1;
 }
 
-/* 4. Mint (Emerald / Sage) */
+/* 4. Matcha (Sage Green & Lemon) */
 html[data-theme="green"] {
-    --pri: #10b981; --pri-hover: #059669; --pri-light: rgba(16, 185, 129, 0.08);
-    --sec: #3b82f6; --sec-light: rgba(59, 130, 246, 0.08);
+    --pri: #81c784; /* Sage Green */
+    --pri-hover: #66bb6a;
+    --pri-light: rgba(129, 199, 132, 0.15);
+    --sec: #ffd54f; /* Soft Lemon */
+    --sec-light: rgba(255, 213, 79, 0.15);
 }
 html[data-theme="green"] body.dark-mode {
-    --pri: #34d399; --pri-hover: #10b981;
-    --sec: #60a5fa;
+    --pri: #a5d6a7;
+    --pri-hover: #81c784;
+    --sec: #ffe082;
 }
 
-/* 5. Sunset (Amber / Coral) */
+/* 5. Sunset (Coral & Soft Teal) */
 html[data-theme="orange"] {
-    --pri: #f59e0b; --pri-hover: #d97706; --pri-light: rgba(245, 158, 11, 0.08);
-    --sec: #f43f5e; --sec-light: rgba(244, 63, 94, 0.08);
+    --pri: #ff8a65; /* Coral */
+    --pri-hover: #ff7043;
+    --pri-light: rgba(255, 138, 101, 0.15);
+    --sec: #4db6ac; /* Soft Teal */
+    --sec-light: rgba(77, 182, 172, 0.15);
 }
 html[data-theme="orange"] body.dark-mode {
-    --pri: #fbbf24; --pri-hover: #f59e0b;
-    --sec: #fb7185;
+    --pri: #ffab91;
+    --pri-hover: #ff8a65;
+    --sec: #80cbc4;
 }
 
 
