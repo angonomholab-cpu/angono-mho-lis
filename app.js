@@ -3189,8 +3189,8 @@ function localGenerateNTPHtml(patientsArray) {
         .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; } 
         @media print { 
             body { background: white; padding: 0 !important; display: block; margin: 0; } 
-            @page { size: portrait; margin: 3mm; } 
-            .page-container { width: 100% !important; height: 98vh !important; max-height: 98vh !important; min-height: 0 !important; margin: 0 auto !important; padding: 5mm 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
+            @page { size: A4 portrait; margin: 0; } 
+            .page-container { width: 210mm !important; height: 296mm !important; max-height: 296mm !important; margin: 0 auto !important; padding: 10mm 15mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
             .page-break { display: none !important; } 
         } 
     </style></head><body>${combinedHtml}</body></html>`;
