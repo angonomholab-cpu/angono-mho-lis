@@ -3177,21 +3177,21 @@ function localGenerateNTPHtml(patientsArray) {
         .res-table-inner th, .res-table-inner td { border: 1px solid #000; text-align: center; padding: 4px; font-size: 9px; } 
         .section-bar { background: #d9d9d9; font-size: 9px; text-align: center; border: 1px solid #000; padding: 3px; font-weight: bold; } 
         .res-n { background-color: #C8E6C9 !important; color: #1B5E20 !important; } .res-t { background-color: #FFCDD2 !important; color: #B71C1C !important; } .res-rr { background-color: #B71C1C !important; color: white !important; } .res-ti { background-color: #FFE0B2 !important; color: #E65100 !important; } .res-tt { background-color: #FFF9C4 !important; color: #827717 !important; } .res-i { background-color: #000000 !important; color: white !important; } .res-init { background-color: #EEEEEE !important; color: #757575 !important; } 
-        .footer-section { width: 100%; margin-top: auto; padding-bottom: 2px; flex-shrink: 0; } 
-        .footer-red { background: #ff0000 !important; color: white !important; font-weight: bold; text-align: center; padding: 3px; font-size: 11px; margin-top: 3px; border: 1px solid #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
+        .footer-section { width: 100%; margin-top: auto; padding-bottom: 0; flex-shrink: 0; } 
+        .footer-red { background: #ff0000 !important; color: white !important; font-weight: bold; text-align: center; padding: 2px; font-size: 10px; margin-top: 1px; border: 1px solid #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
         .content-spacer { flex-grow: 1; } 
-        .sig-container { display: flex; justify-content: space-between; margin-top: 3px; } 
-        .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 65px; } 
-        .sig-label { font-size: 9px; margin-bottom: 2px; text-align: left; } 
-        .sig-visual-area { position: relative; width: 100%; height: 40px; display: flex; align-items: flex-end; } 
-        .esig-img { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); height: 50px; mix-blend-mode: multiply; } 
-        .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 5px; } 
-        .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } 
+        .sig-container { display: flex; justify-content: space-between; margin-top: 2px; } 
+        .sig-block { width: 32%; text-align: center; display: flex; flex-direction: column; min-height: 50px; } 
+        .sig-label { font-size: 9px; margin-bottom: 1px; text-align: left; } 
+        .sig-visual-area { position: relative; width: 100%; height: 25px; display: flex; align-items: flex-end; } 
+        .esig-img { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 45px; mix-blend-mode: multiply; } 
+        .sig-name { font-weight: bold; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #000; width: 100%; padding-top: 2px; } 
+        .sig-info { font-size: 8px; margin-top: 1px; line-height: 1.1; } 
         @media print { 
             body { background: white; padding: 0 !important; margin: 0; } 
-            @page { size: A4 portrait; margin: 3mm; } 
-            .page-container { width: 204mm !important; min-height: 0 !important; margin: 0 auto !important; padding: 5mm 8mm !important; border: none !important; box-shadow: none !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; } 
-            .content-spacer { flex-grow: 0 !important; height: 2px !important; } 
+            @page { size: A4 portrait; margin: 2mm; } 
+            .page-container { width: 206mm !important; min-height: 0 !important; margin: 0 auto !important; padding: 3mm 6mm !important; border: none !important; box-shadow: none !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; } 
+            .content-spacer { flex-grow: 0 !important; height: 1px !important; } 
             .page-break { display: none !important; } 
         } 
     </style></head><body>${combinedHtml}</body></html>`;
