@@ -2716,9 +2716,9 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 
 .rdd-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px 24px;
-    padding: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    padding: 15px;
     background: var(--bg-subtle);
     border-radius: 8px;
     border: 1px solid var(--border-color);
@@ -2726,24 +2726,29 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 
 .rdd-list-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--border-color);
+    flex-direction: column;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    border-left: 3px solid var(--sec);
 }
 
 .rdd-list-label {
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
 }
 
 .rdd-list-value {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     color: var(--text-main);
-    font-weight: 800;
-    text-align: right;
-    max-width: 60%;
+    font-weight: 600;
+    text-align: left;
+    max-width: 100%;
     word-break: break-word;
 }
 
