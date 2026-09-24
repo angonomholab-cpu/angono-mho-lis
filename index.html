@@ -23,7 +23,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="style.css">
@@ -217,6 +218,9 @@
             font-size: 0.95rem;
             box-shadow: 0 2px 6px rgba(13, 148, 136, 0.3);
         }
+        .theme-blob { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: 0.2s; } 
+        .theme-blob:hover { transform: scale(1.1); } 
+        .theme-blob.active { border-color: var(--text-main); box-shadow: 0 0 8px rgba(0,0,0,0.2); } 
     </style>
 </head>
 
@@ -295,9 +299,12 @@
                 </div>
             </div>
             <div class="mah-actions">
-                <button class="mah-action-btn" onclick="openQuickSearch()" title="Search Patient"><i class="ph ph-magnifying-glass"></i></button>
-                <button class="mah-action-btn" onclick="toggleDarkMode()" title="Toggle Theme"><i class="ph ph-moon-stars" id="mah-theme-icon"></i></button>
-                <button class="mah-action-btn" onclick="toggleFab()" title="Menu"><i class="ph ph-dots-three-outline-vertical"></i></button>
+                <button class="mah-action-btn" onclick="openQuickSearch()" title="Search Patient"><i
+                        class="ph ph-magnifying-glass"></i></button>
+                <button class="mah-action-btn" onclick="toggleDarkMode()" title="Toggle Theme"><i
+                        class="ph ph-moon-stars" id="mah-theme-icon"></i></button>
+                <button class="mah-action-btn" onclick="toggleFab()" title="Menu"><i
+                        class="ph ph-dots-three-outline-vertical"></i></button>
             </div>
         </header>
 
@@ -409,7 +416,8 @@
                                 style="display:none; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
                                 <h4
                                     style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;">
-                                    <i class="ph ph-clock-counter-clockwise"></i> Previous Lab Records</h4>
+                                    <i class="ph ph-clock-counter-clockwise"></i> Previous Lab Records
+                                </h4>
                                 <div id="history-list" style="max-height: 150px; overflow-y: auto; padding-right: 5px;">
                                 </div>
                             </div>
@@ -498,7 +506,8 @@
                         <div class="portal-brand-logo"><i class="ph ph-heartbeat"></i></div>
                         <div>
                             <h2 class="portal-title">Angono MHO Patient Gateway</h2>
-                            <div class="portal-subtitle"><span class="portal-live-dot"></span> Verified Laboratory Results Portal</div>
+                            <div class="portal-subtitle"><span class="portal-live-dot"></span> Verified Laboratory
+                                Results Portal</div>
                         </div>
                     </div>
                     <button class="portal-logout-btn" onclick="logoutUser()" title="Log out from portal">
@@ -524,7 +533,8 @@
                 <div class="portal-section-head">
                     <div>
                         <h3 class="portal-section-title"><i class="ph ph-files"></i> Diagnostic Test Results</h3>
-                        <p class="portal-section-sub">Download your signed official PDF certificates or print authorized laboratory slips.</p>
+                        <p class="portal-section-sub">Download your signed official PDF certificates or print authorized
+                            laboratory slips.</p>
                     </div>
                 </div>
 
@@ -536,14 +546,20 @@
                     <div class="ptc-body">
                         <div class="ptc-tag">Pampublikong Paalala • TB DOTS Program</div>
                         <h4 class="ptc-title">Gabay sa Gamutan at Monitoring</h4>
-                        <p class="ptc-text">Para sa mga pasyenteng sumasailalim sa pagsusuri ng TB (GeneXpert o DSSM), ang libreng gamutan, konsultasyon, at regular na monitoring ay matatagpuan sa <strong>Health Center ng inyong sariling Barangay</strong>. Mangyaring hanapin ang inyong assigned Nurse o Midwife para sa agarang tulong.</p>
+                        <p class="ptc-text">Para sa mga pasyenteng sumasailalim sa pagsusuri ng TB (GeneXpert o DSSM),
+                            ang libreng gamutan, konsultasyon, at regular na monitoring ay matatagpuan sa <strong>Health
+                                Center ng inyong sariling Barangay</strong>. Mangyaring hanapin ang inyong assigned
+                            Nurse o Midwife para sa agarang tulong.</p>
                     </div>
                 </div>
 
                 <!-- Support & Clinical Privacy Notice -->
                 <div class="portal-privacy-note">
                     <i class="ph ph-shield-check"></i>
-                    <span><strong>Data Privacy Protected (RA 10173):</strong> Ang iyong diagnostic laboratory records ay protektado at confidential. Para sa opisyal na hard-copy release, mga katanungan, o laboratory verification, mangyaring magtungo sa <strong>Angono Municipal Health Office (P. Tolentino St., Brgy. San Isidro, Angono, Rizal)</strong>.</span>
+                    <span><strong>Data Privacy Protected (RA 10173):</strong> Ang iyong diagnostic laboratory records ay
+                        protektado at confidential. Para sa opisyal na hard-copy release, mga katanungan, o laboratory
+                        verification, mangyaring magtungo sa <strong>Angono Municipal Health Office (P. Tolentino St.,
+                            Brgy. San Isidro, Angono, Rizal)</strong>.</span>
                 </div>
             </div>
         </div>
@@ -1202,22 +1218,38 @@
                                         style="background:var(--danger-bg); color:var(--danger);">TOTAL</th>
                                 </tr>
                                 <tr>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&lt;15</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&gt;50</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&lt;15</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">15-24</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">25-34</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">35-49</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">&gt;50</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PREG</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSM</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">TGW</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">MSW</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">FSW</th>
-                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">PWID</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        &lt;15</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        15-24</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        25-34</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        35-49</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        &gt;50</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        &lt;15</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        15-24</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        25-34</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        35-49</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        &gt;50</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        PREG</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        MSM</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        TGW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        MSW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        FSW</th>
+                                    <th class="text-center" style="background:var(--danger-bg); color:var(--danger);">
+                                        PWID</th>
                                 </tr>
                             </thead>
                             <tbody id="hiv-react-body">
@@ -1346,13 +1378,15 @@
                             <strong style="text-transform: uppercase;">System Generated Report:</strong> This document
                             is generated by the Angono MHO Laboratory Information System. No signature is required for
                             system-generated summaries. However, official individual result forms must be signed by a
-                            licensed Medical Technologist and Pathologist.</p>
+                            licensed Medical Technologist and Pathologist.
+                        </p>
                         <p
                             style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;">
                             <strong style="text-transform: uppercase;">Confidentiality Notice:</strong> This document
                             contains sensitive personal health information protected by the Data Privacy Act of 2012 (RA
                             10173). Unauthorized disclosure, copying, or distribution of this information is strictly
-                            prohibited.</p>
+                            prohibited.
+                        </p>
                     </div>
                     <div>
                         <p
@@ -1360,12 +1394,14 @@
                             <strong style="text-transform: uppercase;">Data Validity:</strong> The data presented is
                             based on the records encoded by the facility personnel as of the generated date. Any
                             discrepancies should be reported to the Laboratory Head for immediate verification and
-                            correction.</p>
+                            correction.
+                        </p>
                         <p
                             style="font-size: 0.65rem; color: var(--text-main); margin-bottom: 0; line-height: 1.4; text-align: justify;">
                             <strong style="text-transform: uppercase;">Certification:</strong> This report is intended
                             for internal monitoring, surveillance, and official submission to the Department of Health
-                            (DOH) and Municipal Health Office (MHO) only.</p>
+                            (DOH) and Municipal Health Office (MHO) only.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1375,7 +1411,38 @@
             <div
                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
 
+                <!-- My Profile (All users) -->
                 <div class="workspace-col" style="padding:0;">
+                    <div class="workspace-header"
+                        style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                        <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
+                                class="ph ph-user-circle" style="color:var(--pri);"></i> My Profile</h3>
+                    </div>
+                    <div style="padding: 16px; background: var(--bg-subtle); display:flex; flex-direction:column; gap:20px;">
+                        <div style="text-align:center;">
+                            <img id="my-profile-avatar" src="" onerror="this.src='https://ui-avatars.com/api/?name=User&background=0d9488&color=fff'" style="width:80px; height:80px; border-radius:50%; object-fit:cover; margin-bottom:10px; border:3px solid var(--pri);">
+                            <div class="form-grid grid-1" style="gap:8px;">
+                                <input type="text" id="my-avatar-url" class="form-input text-xs" placeholder="Avatar Image URL (Optional)">
+                                <div style="display:flex; justify-content:center; gap:10px; margin-top:10px; padding:10px; background:var(--bg-surface); border-radius:var(--radius-md);">
+                                    <div class="theme-blob" style="background:#0d9488;" onclick="changeMyTheme('default')" title="Default (Teal -> Cyan)"></div>
+                                    <div class="theme-blob" style="background:#f472b6;" onclick="changeMyTheme('pink')" title="Blossom (Pastel Pink -> Neon Magenta)"></div>
+                                    <div class="theme-blob" style="background:#a78bfa;" onclick="changeMyTheme('purple')" title="Lavender (Soft Purple -> Electric Purple)"></div>
+                                    <div class="theme-blob" style="background:#6ee7b7;" onclick="changeMyTheme('green')" title="Mint (Pastel Green -> Acid Green)"></div>
+                                    <div class="theme-blob" style="background:#fb923c;" onclick="changeMyTheme('orange')" title="Peach (Soft Orange -> Cyber Orange)"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-grid grid-1" style="gap:8px;">
+                            <label class="text-xs text-muted font-bold">Username</label>
+                            <input type="text" id="my-profile-username" class="form-input" disabled style="background:var(--border-color);">
+                            <label class="text-xs text-muted font-bold">Change Password</label>
+                            <input type="password" id="my-profile-password" class="form-input" placeholder="New Password (leave blank to keep)">
+                            <button id="btn-save-profile" class="btn btn-primary" onclick="saveMyProfile()" style="margin-top:10px;"><i class="ph ph-floppy-disk"></i> Save Profile</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workspace-col admin-only-setting" style="padding:0; display:none;">
                     <div class="workspace-header"
                         style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
@@ -1384,8 +1451,8 @@
                     <div id="test-toggles-container" style="padding: 16px; background: var(--bg-subtle);">
                         <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
                             ENABLE/DISABLE TEST MENU</div>
-                        <div class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input
-                                    type="checkbox" class="test-toggle" data-test="GXP" onchange="saveTestToggles()">
+                        <div class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="GXP" onchange="saveTestToggles()">
                                 <span class="slider"></span></label></div>
                         <div class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="DSSM" onchange="saveTestToggles()"> <span
@@ -1408,8 +1475,8 @@
                         <div class="switch-row"><span>Fecalysis</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="FA" onchange="saveTestToggles()"> <span
                                     class="slider"></span></label></div>
-                        <div class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input
-                                    type="checkbox" class="test-toggle" data-test="DENGUE" onchange="saveTestToggles()">
+                        <div class="switch-row"><span>Dengue NS1/Duo</span> <label class="switch"><input type="checkbox"
+                                    class="test-toggle" data-test="DENGUE" onchange="saveTestToggles()">
                                 <span class="slider"></span></label></div>
                         <div class="switch-row"><span>Gram Stain</span> <label class="switch"><input type="checkbox"
                                     class="test-toggle" data-test="GRAM" onchange="saveTestToggles()"> <span
@@ -1417,7 +1484,7 @@
                     </div>
                 </div>
 
-                <div class="workspace-col" style="padding:0; flex-grow:2;">
+                <div class="workspace-col admin-only-setting" style="padding:0; flex-grow:2; display:none;">
                     <div class="workspace-header"
                         style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
@@ -1432,7 +1499,7 @@
                     </div>
                 </div>
 
-                <div class="workspace-col" style="padding:0;">
+                <div class="workspace-col admin-only-setting" style="padding:0; display:none;">
                     <div class="workspace-header"
                         style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
@@ -1468,33 +1535,41 @@
                 </div>
 
                 <!-- Email Notification Settings -->
-                <div class="workspace-col" style="padding:0;">
+                <div class="workspace-col admin-only-setting" style="padding:0; display:none;">
                     <div class="workspace-header"
                         style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
                                 class="ph ph-envelope-paper" style="color:var(--pri);"></i> Patient Email System
                         </h3>
                     </div>
-                    <div style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:12px; font-size:0.8rem;">
-                        <div style="background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); line-height:1.4;">
-                            <i class="ph ph-info" style="color:var(--pri);"></i> <strong>Automated Notifications:</strong>
+                    <div
+                        style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:12px; font-size:0.8rem;">
+                        <div
+                            style="background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); line-height:1.4;">
+                            <i class="ph ph-info" style="color:var(--pri);"></i> <strong>Automated
+                                Notifications:</strong>
                             <ul style="margin:6px 0 0 16px; padding:0;">
-                                <li><strong>Trigger 1:</strong> New / Updated patient email (sends Portal Login Credentials).</li>
-                                <li><strong>Trigger 2:</strong> Test result encoded & saved (sends Result Ready notification + Soft Copy notice).</li>
+                                <li><strong>Trigger 1:</strong> New / Updated patient email (sends Portal Login
+                                    Credentials).</li>
+                                <li><strong>Trigger 2:</strong> Test result encoded & saved (sends Result Ready
+                                    notification + Soft Copy notice).</li>
                             </ul>
                         </div>
 
                         <div class="field-group">
                             <label class="field-label">EmailJS Service ID</label>
-                            <input type="text" id="cfg_email_service" class="form-input" placeholder="e.g. service_mho123">
+                            <input type="text" id="cfg_email_service" class="form-input"
+                                placeholder="e.g. service_mho123">
                         </div>
                         <div class="field-group">
                             <label class="field-label">EmailJS Template ID</label>
-                            <input type="text" id="cfg_email_template" class="form-input" placeholder="e.g. template_lis456">
+                            <input type="text" id="cfg_email_template" class="form-input"
+                                placeholder="e.g. template_lis456">
                         </div>
                         <div class="field-group">
                             <label class="field-label">EmailJS Public Key</label>
-                            <input type="text" id="cfg_email_key" class="form-input" placeholder="e.g. user_pub_key_xyz">
+                            <input type="text" id="cfg_email_key" class="form-input"
+                                placeholder="e.g. user_pub_key_xyz">
                         </div>
 
                         <div style="display:flex; gap:8px; margin-top:4px;">
@@ -1505,7 +1580,8 @@
                                 <i class="ph ph-floppy-disk"></i> Save Config
                             </button>
                         </div>
-                        <p id="email-cfg-status" style="font-size:0.75rem; color:var(--text-muted); margin:0; text-align:center;"></p>
+                        <p id="email-cfg-status"
+                            style="font-size:0.75rem; color:var(--text-muted); margin:0; text-align:center;"></p>
                     </div>
                 </div>
             </div>
@@ -1829,7 +1905,8 @@
 
                 <!-- Ghost Laboratory Watermark SVG -->
                 <svg class="auth-hero-watermark" viewBox="0 0 64 64" aria-hidden="true">
-                    <path d="M32 6 C26 6, 21 12, 25 19 C15 26, 9 46, 6 58 L20 54 C23 40, 29 28, 32 25 C35 28, 41 40, 44 54 L58 58 C55 46, 49 26, 39 19 C43 12, 38 6, 32 6 Z" />
+                    <path
+                        d="M32 6 C26 6, 21 12, 25 19 C15 26, 9 46, 6 58 L20 54 C23 40, 29 28, 32 25 C35 28, 41 40, 44 54 L58 58 C55 46, 49 26, 39 19 C43 12, 38 6, 32 6 Z" />
                 </svg>
 
                 <div class="hero-vignette" aria-hidden="true"></div>
@@ -1864,7 +1941,8 @@
                         </div>
                     </div>
                     <h2 class="hero-headline">Precision Diagnostics.<br />Trusted Municipal Care.</h2>
-                    <p class="hero-subline">GeneXpert Molecular, DSSM, Hematology, Serology & Blood Chemistry — all unified in one secure municipal laboratory network.</p>
+                    <p class="hero-subline">GeneXpert Molecular, DSSM, Hematology, Serology & Blood Chemistry — all
+                        unified in one secure municipal laboratory network.</p>
                     <div class="hero-badges-row">
                         <span><i class="ph ph-lock-key"></i> 256-Bit SSL Encrypted</span>
                         <span><i class="ph ph-shield-check"></i> DOH NTP Integrated</span>
@@ -1910,17 +1988,21 @@
                         </button>
 
                         <div class="auth-card-footer-link">
-                            <span onclick="showStaffRegister()"><i class="ph ph-user-plus"></i> Request Staff Account</span>
+                            <span onclick="showStaffRegister()"><i class="ph ph-user-plus"></i> Request Staff
+                                Account</span>
                         </div>
                     </div>
 
                     <div id="patient-login-form" style="display:none;">
                         <div class="patient-note-box">
-                            <i class="ph ph-info"></i> <strong>Official Notice:</strong> Enter the registered email address provided during your Angono MHO laboratory testing visit.
+                            <i class="ph ph-info"></i> <strong>Official Notice:</strong> Enter the registered email
+                            address provided during your Angono MHO laboratory testing visit.
                         </div>
                         <div class="form-group" style="margin-bottom:12px; text-align:left;">
                             <label class="auth-label">Registered Email Address</label>
-                            <input type="email" id="pat_user" class="form-input" placeholder="e.g. juan.delacruz@email.com" onblur="this.value = this.value.toLowerCase()">
+                            <input type="email" id="pat_user" class="form-input"
+                                placeholder="e.g. juan.delacruz@email.com"
+                                onblur="this.value = this.value.toLowerCase()">
                         </div>
                         <div class="form-group" style="margin-bottom:16px; text-align:left;">
                             <label class="auth-label">Password</label>
@@ -1934,8 +2016,10 @@
                         </button>
 
                         <div class="patient-card-links">
-                            <span class="link-pri" onclick="showPatientResend()"><i class="ph ph-envelope-simple"></i> Resend Password</span>
-                            <span class="link-muted" onclick="showPatientInfo()"><i class="ph ph-info"></i> New Patient?</span>
+                            <span class="link-pri" onclick="showPatientResend()"><i class="ph ph-envelope-simple"></i>
+                                Resend Password</span>
+                            <span class="link-muted" onclick="showPatientInfo()"><i class="ph ph-info"></i> New
+                                Patient?</span>
                         </div>
                     </div>
 
@@ -1951,7 +2035,8 @@
                         <p class="auth-card-sub">Staff credentials require Administrator authorization</p>
                     </div>
                     <div class="form-grid grid-1" style="gap:10px; margin-bottom:14px; text-align:left;">
-                        <input type="text" id="reg_name" class="form-input" placeholder="Full Name (e.g. Juan Cruz, RMT)">
+                        <input type="text" id="reg_name" class="form-input"
+                            placeholder="Full Name (e.g. Juan Cruz, RMT)">
                         <select id="reg_fac" class="form-select">
                             <option value="ALL">ALL / MAIN LABORATORY</option>
                         </select>
@@ -1987,7 +2072,8 @@
                         <h2 class="auth-card-title">Resend Password</h2>
                         <p class="auth-card-sub">Enter your registered email to dispatch your access key</p>
                     </div>
-                    <input type="email" id="resend_pat_email" class="form-input" placeholder="Registered Email Address" style="margin-bottom:14px;">
+                    <input type="email" id="resend_pat_email" class="form-input" placeholder="Registered Email Address"
+                        style="margin-bottom:14px;">
                     <button class="btn btn-primary full-width" onclick="resendPatientPassword()">Send Password</button>
                     <div class="auth-back-link" onclick="backToLoginFromPatient()">
                         <i class="ph ph-arrow-left"></i> Back to Login
@@ -2003,16 +2089,24 @@
                         <p class="auth-card-sub">Automatic Account Provisioning</p>
                     </div>
                     <p style="font-size:0.8rem; color:var(--text-main); margin-bottom:14px; line-height:1.5;">
-                        Patient accounts are <strong>automatically provisioned</strong> during your laboratory registration at Angono Municipal Health Office. Your login credentials are automatically dispatched to your provided email address.
+                        Patient accounts are <strong>automatically provisioned</strong> during your laboratory
+                        registration at Angono Municipal Health Office. Your login credentials are automatically
+                        dispatched to your provided email address.
                     </p>
-                    <div style="background:var(--bg-subtle); padding:14px; border-radius:12px; border:1px solid var(--border-color); margin-bottom:16px;">
-                        <p style="margin:0 0 4px 0; font-size:0.72rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Need Assistance?</p>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-main);">Official Municipal Health Support:</p>
-                        <div style="margin-top:6px; font-weight:bold; color:#0084FF; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+                    <div
+                        style="background:var(--bg-subtle); padding:14px; border-radius:12px; border:1px solid var(--border-color); margin-bottom:16px;">
+                        <p
+                            style="margin:0 0 4px 0; font-size:0.72rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                            Need Assistance?</p>
+                        <p style="margin:0; font-size:0.78rem; color:var(--text-main);">Official Municipal Health
+                            Support:</p>
+                        <div
+                            style="margin-top:6px; font-weight:bold; color:#0084FF; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
                             <i class="ph ph-messenger-logo" style="font-size:1.1rem;"></i> Angono MHO Laboratory
                         </div>
                     </div>
-                    <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to Login</button>
+                    <button class="btn btn-secondary full-width" onclick="backToLoginFromPatient()">Back to
+                        Login</button>
                 </div>
             </div>
         </div>
@@ -2076,7 +2170,8 @@
                             <div class="field-group"><label class="field-label">Facility</label><input type="text"
                                     id="qs_edit_fac" class="form-input"></div>
                             <div class="field-group full-width"><label class="field-label">Patient Email</label><input
-                                    type="email" id="qs_edit_email" class="form-input" placeholder="e.g. patient@gmail.com"></div>
+                                    type="email" id="qs_edit_email" class="form-input"
+                                    placeholder="e.g. patient@gmail.com"></div>
                         </div>
                         <button class="btn btn-primary text-xs" onclick="savePatientDemographicsQS()">Save
                             Changes</button>
