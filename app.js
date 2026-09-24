@@ -3189,15 +3189,15 @@ function localGenerateNTPHtml(patientsArray) {
         .footer-red { background: #ff0000 !important; color: white !important; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
         @media print { 
             body { background: white; padding: 0 !important; display: block; margin: 0; } 
-            @page { size: portrait; margin: 5mm; } 
-            .page-container { width: 200mm !important; height: auto !important; max-height: none !important; min-height: 0 !important; margin: 0 auto !important; padding: 10mm !important; border: none !important; box-shadow: none !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 0.96 !important; } 
+            @page { size: portrait; margin: 0; } 
+            .page-container { width: 99vw !important; height: 99vh !important; max-height: 99vh !important; min-height: 99vh !important; margin: 0 auto !important; padding: 10mm 10mm 15mm 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
             .page-break { display: none !important; } 
         } 
         @media print and (max-height: 285mm) { /* Letter/Short Paper */
-            .page-container { zoom: 0.91 !important; }
+            .page-container { zoom: 0.94 !important; width: 105vw !important; height: 105vh !important; max-height: 105vh !important; min-height: 105vh !important; }
         }
         @media print and (max-height: 220mm) { /* A5 Paper */
-            .page-container { zoom: 0.67 !important; }
+            .page-container { zoom: 0.7 !important; width: 141vw !important; height: 141vh !important; max-height: 141vh !important; min-height: 141vh !important; }
         }
     </style></head><body>${combinedHtml}</body></html>`;
 }
