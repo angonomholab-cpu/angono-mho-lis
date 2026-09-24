@@ -2173,7 +2173,7 @@ window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
         });
 
         regPinnedDrawerId = drawerId;
-        drawer.style.display = 'table-row';
+        drawer.style.display = 'block';
         if (rowEl) {
             rowEl.classList.add('active-row');
             rowEl.classList.add('pinned-open');
