@@ -2297,20 +2297,66 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 const sex = sexIdx > -1 ? (row[sexIdx] || '') : '';
                 const fac = facIdx > -1 ? (row[facIdx] || '') : '';
 
-                // Build rich drawer content showing all columns of this record
-                let drawerCardsHtml = '';
+                // Group fields into specific categories for a cleaner layout
+                let datesHtml = '';
+                let detailsHtml = '';
+                let resultsHtml = '';
+                let remarksHtml = '';
+                let performedHtml = '';
+
                 const skipHeaders = ['TESTCODE', 'ID', 'NAME', 'PATIENTNAME', 'AGE', 'SEX', 'GENDER', 'FACILITY', 'LABORATORYSERIALNUMBER', 'LABSERIALNUMBER'];
+                
                 hMap.forEach(c => {
                     let cClean = String(c.original).toUpperCase().replace(/[_\s]+/g, '');
                     if (skipHeaders.includes(cClean)) return;
+                    
                     let val = row[c.index] || '';
-                    drawerCardsHtml += `
+                    let vU = String(val).toUpperCase().trim();
+                    let displayVal = val ? val : '<span style="color:var(--text-muted); font-weight:normal; font-style:italic;">None</span>';
+                    
+                    // Format results with badges like in the table
+                    let isResCol = cClean.includes('RESULT') || cClean.includes('DIAGNOSIS') || cClean === 'HIV' || cClean === 'SYPHILIS' || cClean === 'HBSAG';
+                    if (isResCol && val) {
+                        let bg = "transparent", col = "inherit";
+                        if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; }
+                        else if (vU === "T" || vU === "POSITIVE" || vU === "REACTIVE") { bg = "#fee2e2"; col = "#b91c1c"; }
+                        else if (vU === "N" || vU === "NEGATIVE" || vU === "NONREACTIVE" || vU === "NON-REACTIVE") { bg = "#dcfce7"; col = "#15803d"; }
+                        else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; }
+                        else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; }
+                        else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; }
+                        
+                        if (bg !== 'transparent') {
+                            displayVal = `<span class="res-badge" style="background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${val}</span>`;
+                        }
+                    }
+
+                    const itemHtml = `
                         <div class="rdd-list-item">
                             <span class="rdd-list-label">${c.text}</span>
-                            <span class="rdd-list-value">${val ? val : '<span style="color:var(--text-muted); font-weight:normal; font-style:italic;">None</span>'}</span>
+                            <span class="rdd-list-value">${displayVal}</span>
                         </div>
                     `;
+
+                    if (cClean.includes('DATE')) {
+                        datesHtml += itemHtml;
+                    } else if (cClean.includes('REMARK')) {
+                        remarksHtml += itemHtml;
+                    } else if (cClean === 'PERFORMEDBY' || cClean === 'ENCODER') {
+                        performedHtml += itemHtml;
+                    } else if (isResCol || cClean.includes('GRADE') || cClean.includes('SMEAR') || cClean.includes('INTERPRETATION')) {
+                        resultsHtml += itemHtml;
+                    } else {
+                        detailsHtml += itemHtml;
+                    }
                 });
+
+                let drawerCardsHtml = `
+                    ${datesHtml ? `<div class="rdd-section-title">Timeline</div><div class="rdd-group">${datesHtml}</div>` : ''}
+                    ${detailsHtml ? `<div class="rdd-section-title">Test Details</div><div class="rdd-group">${detailsHtml}</div>` : ''}
+                    ${resultsHtml ? `<div class="rdd-section-title">Results</div><div class="rdd-group" style="background:#f1f5f9; padding:10px; border-radius:6px;">${resultsHtml}</div>` : ''}
+                    ${remarksHtml ? `<div class="rdd-section-title">Remarks</div><div class="rdd-group">${remarksHtml}</div>` : ''}
+                    ${performedHtml ? `<div class="rdd-section-title">Signatories</div><div class="rdd-group">${performedHtml}</div>` : ''}
+                `;
 
                 html += `<tr class="reg-data-row" id="row-${rowDrawerId}" 
                             onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" 
@@ -2380,7 +2426,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="toggleRegistryRowDrawer('${rowDrawerId}')"><i class="ph ph-x"></i> Close</button>
                                     </div>
                                 </div>
-                                <div class="rdd-grid">
+                                <div class="rdd-content">
                                     ${drawerCardsHtml}
                                 </div>
                             </div>
