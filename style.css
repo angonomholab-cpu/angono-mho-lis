@@ -59,59 +59,6 @@ body.dark-mode {
     --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
 }
 
-/* --- THEMES (Ergonomic, Muted Combinations) --- */
-/* We only change --pri and --sec; the color-mix variables auto-update! */
-
-/* 1. Default (Soft Teal & Slate Blue) */
-html[data-theme="default"] {
-    --pri: #38b2ac; --pri-hover: #319795;
-    --sec: #5c7cfa;
-}
-html[data-theme="default"] body.dark-mode {
-    --pri: #4fd1c5; --pri-hover: #38b2ac;
-    --sec: #748ffc;
-}
-
-/* 2. Sakura (Dusty Rose & Warm Sand) */
-html[data-theme="pink"] {
-    --pri: #d9777f; --pri-hover: #c9616a;
-    --sec: #e2a382;
-}
-html[data-theme="pink"] body.dark-mode {
-    --pri: #e88c94; --pri-hover: #d9777f;
-    --sec: #f2b798;
-}
-
-/* 3. Twilight (Soft Lavender & Soft Cyan) */
-html[data-theme="purple"] {
-    --pri: #918ced; --pri-hover: #7b75db;
-    --sec: #48c9b0;
-}
-html[data-theme="purple"] body.dark-mode {
-    --pri: #a5a1f5; --pri-hover: #918ced;
-    --sec: #5cdbc2;
-}
-
-/* 4. Matcha (Sage & Pale Gold) */
-html[data-theme="green"] {
-    --pri: #7ebc89; --pri-hover: #6ca876;
-    --sec: #e9c46a;
-}
-html[data-theme="green"] body.dark-mode {
-    --pri: #92cd9d; --pri-hover: #7ebc89;
-    --sec: #f2d180;
-}
-
-/* 5. Sunset (Muted Terracotta & Mauve) */
-html[data-theme="orange"] {
-    --pri: #d9826c; --pri-hover: #c26c57;
-    --sec: #b57fb3;
-}
-html[data-theme="orange"] body.dark-mode {
-    --pri: #e89580; --pri-hover: #d9826c;
-    --sec: #c790c4;
-}
-
 /* ========================================= */
 /* 2. GLOBAL SETUP & ANDROID SLIDE MENU      */
 /* ========================================= */
