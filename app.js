@@ -2157,23 +2157,42 @@ window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
     if (regPinnedDrawerId === drawerId) {
         // Unpin and close
         regPinnedDrawerId = null;
-        drawer.style.display = 'none';
+        const activeModal = document.getElementById('active-registry-modal');
+        if (activeModal) activeModal.remove();
         if (rowEl) {
             rowEl.classList.remove('active-row');
             rowEl.classList.remove('pinned-open');
         }
     } else {
         // Close all others and pin this one
-        document.querySelectorAll('.reg-drawer-row').forEach(d => {
-            d.style.display = 'none';
-        });
+        const existingModal = document.getElementById('active-registry-modal');
+        if (existingModal) existingModal.remove();
+        
         document.querySelectorAll('#regTableBody tr.reg-data-row').forEach(r => {
             r.classList.remove('active-row');
             r.classList.remove('pinned-open');
         });
 
         regPinnedDrawerId = drawerId;
-        drawer.style.display = 'block';
+        
+        // Extract HTML from the hidden row
+        const containerHtml = drawer.querySelector('td').innerHTML;
+        
+        // Create global modal wrapper
+        const modalWrapper = document.createElement('div');
+        modalWrapper.id = 'active-registry-modal';
+        modalWrapper.className = 'registry-global-modal';
+        modalWrapper.innerHTML = containerHtml;
+        
+        // Close on backdrop click
+        modalWrapper.onclick = function(e) {
+            if (e.target === modalWrapper) {
+                window.toggleRegistryRowDrawer(drawerId, rowEl);
+            }
+        };
+        
+        document.body.appendChild(modalWrapper);
+
         if (rowEl) {
             rowEl.classList.add('active-row');
             rowEl.classList.add('pinned-open');
