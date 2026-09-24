@@ -274,7 +274,13 @@ async function apiGet(action, params = {}) {
     try {
         switch (action) {
             case "loginUser": {
-                const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).eq('password', params.password).maybeSingle();
+                const { data: authData, error: authError } = await sb.auth.signInWithPassword({
+                    email: `${params.username}@angono-mho-lis.local`,
+                    password: params.password
+                });
+                if (authError) return { status: "FAIL", error: authError.message };
+                
+                const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL" };
                 if (data.status === "PENDING") return { status: "PENDING" };
@@ -283,6 +289,12 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", username: data.username, facility: effectiveFacility, role: data.role, fullName: data.full_name || data.username };
             }
             case "patientLogin": {
+                const { data: authData, error: authError } = await sb.auth.signInWithPassword({
+                    email: params.email,
+                    password: params.password
+                });
+                if (authError) return { status: "FAIL", error: authError.message };
+
                 const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL" };
@@ -667,6 +679,16 @@ async function apiPost(action, payload) {
                 const tests = JSON.parse(f.testsData || "[]");
                 let patientId = f.patientId || ("MHOA-" + Date.now());
 
+                if (f.email && f.patientPassword) {
+                    const { error: authErr } = await window.sbAuth.auth.signUp({
+                        email: f.email,
+                        password: f.patientPassword
+                    });
+                    if (authErr && !authErr.message.includes('already registered')) {
+                         console.error("Patient Auth Error:", authErr);
+                    }
+                }
+
                 const { error: pErr } = await sb.from('patients').upsert({
                     id: patientId,
                     full_name: f.fullName,
@@ -675,6 +697,7 @@ async function apiPost(action, payload) {
                     address: f.address || null,
                     contact: f.contact || null,
                     email: f.email || null,
+                    password: f.patientPassword || null,
                     facility: f.facility || null
                 }, { onConflict: 'id' });
 
@@ -769,11 +792,21 @@ async function apiPost(action, payload) {
             }
             case "saveNewUser": {
                 const d = payload.data;
+                const { data: authData, error: authError } = await window.sbAuth.auth.signUp({
+                    email: `${d.username}@angono-mho-lis.local`,
+                    password: d.password
+                });
+                if (authError) throw new Error("Auth Registration Error: " + authError.message);
                 await sb.from('app_users').insert({ username: d.username, password: d.password, full_name: d.fullName, role: d.role, facility: d.facility, status: 'ACTIVE' });
                 return { status: "success" };
             }
             case "registerUser": {
                 const d = payload.data;
+                const { data: authData, error: authError } = await window.sbAuth.auth.signUp({
+                    email: `${d.u}@angono-mho-lis.local`,
+                    password: d.p
+                });
+                if (authError) throw new Error("Auth Registration Error: " + authError.message);
                 await sb.from('app_users').insert({ username: d.u, password: d.p, full_name: d.name, role: d.role, facility: d.fac, status: 'PENDING' });
                 return { status: "success" };
             }
@@ -2743,6 +2776,12 @@ async function submitStaffRegister() {
     if (pass1 !== pass2) { document.getElementById('reg_pass2').value = ''; return showAppAlert("Mismatch", "Passwords do not match! Please try again.", "error"); }
     const btn = document.querySelector('#staff-register-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Submitting...'; btn.disabled = true;
     try {
+        const { data: authData, error: authErr } = await window.sbAuth.auth.signUp({
+            email: `${user}@angono-mho-lis.local`,
+            password: pass1
+        });
+        if (authErr) throw new Error("Auth Registration Error: " + authErr.message);
+
         const { error } = await sb.from('app_users').insert({ username: user, password: pass1, facility: fac, role: role, full_name: name, status: 'PENDING' });
         if (error) throw error;
         showAppAlert("Success", "Account requested successfully! Please wait for the Admin to approve your account before logging in.", "success");
@@ -3366,4 +3405,54 @@ window.closePrintModal = function () {
         const iframe = document.getElementById('print-iframe');
         if (iframe) iframe.srcdoc = '';
     }
+};
+
+window.migrateToSupabaseAuth = async function() {
+    console.log("Starting Migration to Supabase Auth...");
+    let successCount = 0;
+    let failCount = 0;
+    
+    // 1. Migrate Staff
+    console.log("Fetching app_users...");
+    const { data: staffData, error: staffErr } = await sb.from('app_users').select('*');
+    if (staffErr) {
+        console.error("Failed to fetch app_users:", staffErr);
+    } else {
+        console.log(`Found ${staffData.length} staff users to migrate.`);
+        for (let s of staffData) {
+            const email = `${s.username}@angono-mho-lis.local`;
+            if (s.password) {
+                const { error: authErr } = await window.sbAuth.auth.signUp({ email, password: s.password });
+                if (authErr && !authErr.message.includes('already registered')) {
+                    console.error(`Failed to migrate staff ${s.username}:`, authErr.message);
+                    failCount++;
+                } else {
+                    console.log(`Successfully migrated staff: ${s.username}`);
+                    successCount++;
+                }
+            }
+        }
+    }
+    
+    // 2. Migrate Patients
+    console.log("Fetching patients...");
+    const { data: patientData, error: patErr } = await sb.from('patients').select('*').not('email', 'is', null).not('password', 'is', null);
+    if (patErr) {
+        console.error("Failed to fetch patients:", patErr);
+    } else {
+        console.log(`Found ${patientData.length} patients with email and password to migrate.`);
+        for (let p of patientData) {
+            const { error: authErr } = await window.sbAuth.auth.signUp({ email: p.email, password: p.password });
+            if (authErr && !authErr.message.includes('already registered')) {
+                console.error(`Failed to migrate patient ${p.email}:`, authErr.message);
+                failCount++;
+            } else {
+                console.log(`Successfully migrated patient: ${p.email}`);
+                successCount++;
+            }
+        }
+    }
+    
+    console.log(`Migration Complete! Success: ${successCount}, Failed: ${failCount}`);
+    alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.`);
 };
