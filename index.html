@@ -1490,8 +1490,31 @@
                         <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i
                                 class="ph ph-users-three" style="color:var(--pri);"></i> User Accounts</h3>
                         <div style="display:flex; gap:8px;">
+                            <button onclick="toggleForm('user-form')" class="btn-icon" style="color: var(--success);"><i
+                                    class="ph ph-plus-circle"></i></button>
                             <button onclick="loadSettingsData()" class="btn-icon"><i
                                     class="ph ph-arrows-clockwise"></i></button>
+                        </div>
+                    </div>
+                    <div id="user-form" style="display:none; padding: 16px; border-bottom: 1px solid var(--border-color); background: var(--bg-body);">
+                        <h4 class="text-xs font-bold text-muted" style="margin-bottom: 12px;">ADD NEW USER</h4>
+                        <div class="form-grid grid-1" style="gap: 8px; margin-bottom: 12px;">
+                            <input type="text" id="u_fullname" class="form-input" placeholder="Full Name">
+                            <input type="text" id="u_user" class="form-input" placeholder="Username (cannot be changed later)">
+                            <input type="password" id="u_pass" class="form-input" placeholder="Password">
+                            <select id="u_role" class="form-select">
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="STAFF">STAFF</option>
+                                <option value="ENCODER">ENCODER</option>
+                                <option value="VIEWER">VIEWER</option>
+                            </select>
+                            <select id="u_facility" class="form-select">
+                                <option value="ALL">ALL / MAIN</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-secondary" style="flex: 1;" onclick="toggleForm('user-form');">Cancel</button>
+                            <button class="btn btn-primary" style="flex: 1;" onclick="saveUser()">Save</button>
                         </div>
                     </div>
                     <div id="list-users"
@@ -2199,7 +2222,7 @@
                 <div class="field-group"><label class="field-label">Full Name</label><input type="text" id="edit_u_name"
                         class="form-input"></div>
                 <div class="field-group"><label class="field-label">Username</label><input type="text" id="edit_u_user"
-                        class="form-input"></div>
+                        class="form-input" disabled style="background:var(--border-color);"></div>
                 <div class="field-group"><label class="field-label">New Password (leave blank to keep current)</label>
                     <div class="pass-wrapper">
                         <input type="password" id="edit_u_pass" class="form-input" placeholder="***">
