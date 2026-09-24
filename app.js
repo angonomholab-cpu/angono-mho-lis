@@ -996,7 +996,8 @@ async function attemptLogin() {
     try {
         const res = await apiGet("loginUser", { username: u, password: p });
         if (res.status === "SUCCESS") {
-            currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName };
+            const savedTheme = localStorage.getItem('labTheme_' + res.username) || res.theme || 'default';
+            currentUser = { username: res.username, facility: res.facility, role: res.role, fullName: res.fullName, avatar: res.avatar, theme: savedTheme };
             localStorage.setItem('labUser', JSON.stringify(currentUser));
             await apiPost("logAudit", { username: currentUser.username, action: "LOGIN", details: "Staff member logged in successfully" });
             window.location.reload();
@@ -1120,16 +1121,18 @@ function applyPermissions() {
 
     } else if (role === 'STAFF') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
-        if (navSet) navSet.style.display = 'none';
+        if (navSet) navSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
         const bell = document.getElementById('notif-bell');
         if (bell) bell.style.display = 'none';
 
     } else if (role === 'ENCODER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
+        if (navSet) navSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'VIEWER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
+        if (navSet) navSet.style.display = 'flex';
         if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
@@ -3580,13 +3583,41 @@ window.migrateToSupabaseAuth = async function () {
     alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.\n\nNote: Existing patients must use their Patient ID as their temporary password.`);
 };
 
-// ==========================================
-// MY PROFILE SETTINGS LOGIC
-// ==========================================
+window.handleImageUpload = function(input, previewId, dataId) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const dataUrl = e.target.result;
+            document.getElementById(dataId).value = dataUrl;
+            const preview = document.getElementById(previewId);
+            if (preview) {
+                preview.src = dataUrl;
+                preview.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 window.loadMyProfile = function () {
     document.getElementById('my-profile-username').value = currentUser.username;
-    if (currentUser.avatar) document.getElementById('my-profile-avatar').src = currentUser.avatar;
-    if (currentUser.avatar) document.getElementById('my-avatar-url').value = currentUser.avatar;
+    document.getElementById('my-profile-fullname').value = currentUser.fullName || '';
+    if (currentUser.avatar) {
+        document.getElementById('my-profile-avatar').src = currentUser.avatar;
+        document.getElementById('my-avatar-data').value = currentUser.avatar;
+    }
+    
+    // Find staff details if they exist
+    const staffMatch = (typeof globalStaffList !== 'undefined' ? globalStaffList : []).find(s => s.name === currentUser.fullName);
+    if (staffMatch) {
+        document.getElementById('my-profile-license').value = staffMatch.license || '';
+        document.getElementById('my-signature-data').value = staffMatch.sig_url || staffMatch.sigUrl || '';
+        if (staffMatch.sig_url || staffMatch.sigUrl) {
+            const sigPreview = document.getElementById('my-sig-preview');
+            sigPreview.src = cleanDriveLink(staffMatch.sig_url || staffMatch.sigUrl);
+            sigPreview.style.display = 'block';
+        }
+    }
 }
 
 window.changeMyTheme = function (themeName) {
@@ -3603,7 +3634,10 @@ window.saveMyProfile = async function () {
 
     try {
         const newPass = document.getElementById('my-profile-password').value;
-        const newAvatar = document.getElementById('my-avatar-url').value;
+        let newAvatar = document.getElementById('my-avatar-data').value;
+        
+        // Use standard URL if it's already a URL, otherwise it's base64 data
+        if (newAvatar && typeof cleanDriveLink === 'function') newAvatar = cleanDriveLink(newAvatar);
 
         // Update Auth Password if provided
         if (newPass) {
@@ -3614,17 +3648,39 @@ window.saveMyProfile = async function () {
             if (dbErr1) throw dbErr1;
         }
 
-        // Update Theme and Avatar in DB
-        const { error: dbErr2 } = await sb.from('app_users').update({
-            avatar_url: newAvatar,
-            color_theme: currentUser.theme || 'default'
-        }).eq('username', currentUser.username);
+        const newFullName = document.getElementById('my-profile-fullname').value.trim();
+        const newLicense = document.getElementById('my-profile-license').value.trim();
+        let newSig = document.getElementById('my-signature-data').value;
+        if (newSig && typeof cleanDriveLink === 'function') newSig = cleanDriveLink(newSig);
 
-        if (dbErr2) throw dbErr2;
+        // 1. Update app_users (try-catch because columns might not exist yet)
+        try {
+            await sb.from('app_users').update({
+                full_name: newFullName,
+                avatar_url: newAvatar,
+                color_theme: currentUser.theme || 'default'
+            }).eq('username', currentUser.username);
+        } catch (ignoredErr) {
+            // Fallback for missing avatar_url/color_theme columns in app_users
+            await sb.from('app_users').update({ full_name: newFullName }).eq('username', currentUser.username);
+        }
 
-        // Update Local State
+        // 2. Update staff table for professional details
+        if (newFullName && (newLicense || newSig)) {
+            const staffMatch = (typeof globalStaffList !== 'undefined' ? globalStaffList : []).find(s => s.name === currentUser.fullName || s.name === newFullName);
+            if (staffMatch && staffMatch.id) {
+                await sb.from('staff').update({ name: newFullName, license: newLicense, sig_url: newSig }).eq('id', staffMatch.id);
+            } else {
+                await sb.from('staff').insert({ name: newFullName, role: (currentUser.role === 'ADMIN' ? 'Pathologist' : 'Medical Technologist'), license: newLicense, sig_url: newSig });
+            }
+        }
+
+        // 3. Update Local State
         currentUser.avatar = newAvatar;
+        currentUser.fullName = newFullName;
         localStorage.setItem('labUser', JSON.stringify(currentUser));
+        localStorage.setItem('labTheme_' + currentUser.username, currentUser.theme || 'default');
+        
         if (newAvatar) {
             document.getElementById('my-profile-avatar').src = newAvatar;
             const dAvatar = document.getElementById('pill-avatar');
