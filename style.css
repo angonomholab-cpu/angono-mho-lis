@@ -54,6 +54,55 @@ body.dark-mode {
     --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
 }
 
+/* --- THEMES (Pastel in Light Mode -> Cyberpunk in Dark Mode) --- */
+/* 1. Default (Medical Teal / Cyber Cyan) */
+/* (Light mode default is defined in :root above) */
+html[data-theme="default"] body.dark-mode {
+    --pri: #00f0ff; --pri-hover: #00c3ff;
+    --sec: #f0f; 
+}
+
+/* 2. Blossom (Pastel Pink -> Hot Magenta) */
+html[data-theme="pink"] {
+    --pri: #f472b6; --pri-hover: #db2777; --pri-light: rgba(244, 114, 182, 0.08);
+    --sec: #818cf8; --sec-light: rgba(129, 140, 248, 0.08);
+}
+html[data-theme="pink"] body.dark-mode {
+    --pri: #ff00ff; --pri-hover: #ff00cc;
+    --sec: #00ffff;
+}
+
+/* 3. Lavender (Soft Purple -> Electric Purple) */
+html[data-theme="purple"] {
+    --pri: #a78bfa; --pri-hover: #8b5cf6; --pri-light: rgba(167, 139, 250, 0.08);
+    --sec: #f472b6; --sec-light: rgba(244, 114, 182, 0.08);
+}
+html[data-theme="purple"] body.dark-mode {
+    --pri: #b026ff; --pri-hover: #9d00ff;
+    --sec: #ff003c;
+}
+
+/* 4. Mint (Pastel Green -> Acid/Matrix Green) */
+html[data-theme="green"] {
+    --pri: #6ee7b7; --pri-hover: #10b981; --pri-light: rgba(110, 231, 183, 0.08);
+    --sec: #60a5fa; --sec-light: rgba(96, 165, 250, 0.08);
+}
+html[data-theme="green"] body.dark-mode {
+    --pri: #39ff14; --pri-hover: #00ff00;
+    --sec: #ffff00;
+}
+
+/* 5. Peach (Soft Orange -> Cyber Orange) */
+html[data-theme="orange"] {
+    --pri: #fb923c; --pri-hover: #ea580c; --pri-light: rgba(251, 146, 60, 0.08);
+    --sec: #a78bfa; --sec-light: rgba(167, 139, 250, 0.08);
+}
+html[data-theme="orange"] body.dark-mode {
+    --pri: #ff8c00; --pri-hover: #ff5500;
+    --sec: #00ffcc;
+}
+
+
 /* ========================================= */
 /* 2. GLOBAL SETUP & ANDROID SLIDE MENU      */
 /* ========================================= */
