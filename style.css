@@ -2661,26 +2661,22 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 
 /* 🟢 Row Detail Expansion Drawer (Popup Modal Style) 🟢 */
 .reg-drawer-row {
+    display: none !important;
+}
+
+.registry-global-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     width: 100vw; height: 100vh;
-    z-index: 9999;
+    z-index: 99999;
     background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
 }
 
-.reg-drawer-row td {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: none;
-    white-space: normal;
-    padding: 0;
-    background: transparent;
-    border: none;
-    cursor: default;
-}
-
-.reg-drawer-container {
+.registry-global-modal .reg-drawer-container {
     max-width: 700px;
     width: 90vw;
     max-height: 90vh;
