@@ -2716,12 +2716,24 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
     color: var(--text-main);
 }
 
-.rdd-grid {
+.rdd-group {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px 24px;
-    padding: 10px 5px;
+    gap: 8px 24px;
+    padding: 5px;
     background: transparent;
+    margin-bottom: 12px;
+}
+
+.rdd-section-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--pri);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 10px 0 2px 0;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 4px;
 }
 
 .rdd-list-item {
