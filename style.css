@@ -4,18 +4,21 @@
 :root {
     --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-    /* Eye-Friendly Soothing Medical Palette (Slate + Deep Medical Teal) */
+    /* Clean, Modern Backgrounds (Slate Palette) */
     --bg-body: #f8fafc;
     --bg-surface: #ffffff;
     --bg-subtle: #f1f5f9;
     --text-main: #0f172a;
     --text-muted: #64748b;
+    --border-color: #e2e8f0;
 
-    --pri: var(--pri);
-    --pri-hover: var(--pri-hover);
-    --pri-light: color-mix(in srgb, var(--pri) 8%, transparent);
-    --sec: var(--sec);
-    --sec-light: color-mix(in srgb, var(--sec) 8%, transparent);
+    /* Base Default Theme Colors (Teal & Violet) */
+    --pri: #0d9488;
+    --pri-hover: #0f766e;
+    --pri-light: color-mix(in srgb, var(--pri) 12%, transparent);
+    --sec: #8b5cf6;
+    --sec-light: color-mix(in srgb, var(--sec) 12%, transparent);
+    --shadow-glow: color-mix(in srgb, var(--pri) 25%, transparent);
 
     --success: #10b981;
     --success-light: #ecfdf5;
@@ -24,8 +27,6 @@
     --danger: #ef4444;
     --danger-bg: #fef2f2;
 
-    --border-color: #e2e8f0;
-
     --radius-lg: 18px;
     --radius-md: 12px;
     --radius-sm: 8px;
@@ -33,7 +34,6 @@
 
     --shadow-float: 0 12px 30px -6px rgba(15, 23, 42, 0.1), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
     --shadow-card: 0 2px 8px -1px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
-    --shadow-glow: color-mix(in srgb, var(--pri) 25%, transparent);
     --blur-effect: blur(12px);
 }
 
@@ -44,108 +44,71 @@ body.dark-mode {
     --bg-subtle: #1e293b;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --pri: #14b8a6;
-    --pri-hover: #2dd4bf;
-    --sec: #38bdf8;
+    --border-color: rgba(255, 255, 255, 0.08);
+
+    --pri: #2dd4bf;
+    --pri-hover: #14b8a6;
+    --sec: #a78bfa;
+    --shadow-glow: color-mix(in srgb, var(--pri) 35%, transparent);
+
     --sec-light: rgba(56, 189, 248, 0.12);
     --warning-light-bg: rgba(245, 158, 11, 0.12);
     --danger-bg: rgba(239, 68, 68, 0.12);
     --success-light: rgba(16, 185, 129, 0.12);
-    --border-color: rgba(255, 255, 255, 0.08);
     --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
-    --shadow-glow: rgba(20, 184, 166, 0.35);
 }
 
-/* --- THEMES (Cohesive Palettes) --- */
+/* --- THEMES (Aesthetic Combinations) --- */
+/* We only change --pri and --sec; the color-mix variables auto-update! */
 
-/* 1. Default (Teal & Indigo) */
+/* 1. Default (Teal & Violet) */
 html[data-theme="default"] {
-    --pri: var(--pri); --pri-hover: var(--pri-hover); --pri-light: color-mix(in srgb, var(--pri) 10%, transparent);
-    --sec: #6366f1; --sec-light: rgba(99,102,241,0.1);
-    --bg-body: #f0fdfa; --bg-surface: #ffffff; --bg-subtle: #ccfbf1;
-    --text-main: #134e4a; --text-muted: var(--pri-hover);
-    --border-color: color-mix(in srgb, var(--pri) 15%, transparent);
-    --shadow-glow: color-mix(in srgb, var(--pri) 30%, transparent);
+    --pri: #0d9488; --pri-hover: #0f766e;
+    --sec: #8b5cf6;
 }
 html[data-theme="default"] body.dark-mode {
     --pri: #2dd4bf; --pri-hover: #14b8a6;
-    --sec: #818cf8;
-    --bg-body: #042f2e; --bg-surface: #115e59; --bg-subtle: #134e4a;
-    --text-main: #ccfbf1; --text-muted: #99f6e4;
-    --border-color: rgba(45,212,191,0.2);
-    --shadow-glow: rgba(45,212,191,0.4);
+    --sec: #a78bfa;
 }
 
-/* 2. Sakura (Rose & Amber) */
+/* 2. Sakura (Rose & Peach) */
 html[data-theme="pink"] {
-    --pri: #e11d48; --pri-hover: #be123c; --pri-light: rgba(225,29,72,0.1);
-    --sec: #d97706; --sec-light: rgba(217,119,6,0.1);
-    --bg-body: #fff1f2; --bg-surface: #ffffff; --bg-subtle: #ffe4e6;
-    --text-main: #881337; --text-muted: #be123c;
-    --border-color: rgba(225,29,72,0.15);
-    --shadow-glow: rgba(225,29,72,0.3);
+    --pri: #f43f5e; --pri-hover: #e11d48;
+    --sec: #f97316;
 }
 html[data-theme="pink"] body.dark-mode {
     --pri: #fb7185; --pri-hover: #f43f5e;
-    --sec: #fbbf24;
-    --bg-body: #4c0519; --bg-surface: #881337; --bg-subtle: #9f1239;
-    --text-main: #ffe4e6; --text-muted: #fecdd3;
-    --border-color: rgba(251,113,133,0.2);
-    --shadow-glow: rgba(251,113,133,0.4);
+    --sec: #fb923c;
 }
 
-/* 3. Twilight (Violet & Fuchsia) */
+/* 3. Twilight (Indigo & Cyan) */
 html[data-theme="purple"] {
-    --pri: #6d28d9; --pri-hover: #5b21b6; --pri-light: rgba(109,40,217,0.1);
-    --sec: #c026d3; --sec-light: rgba(192,38,211,0.1);
-    --bg-body: #f5f3ff; --bg-surface: #ffffff; --bg-subtle: #ede9fe;
-    --text-main: #2e1065; --text-muted: #4c1d95;
-    --border-color: rgba(109,40,217,0.15);
-    --shadow-glow: rgba(109,40,217,0.3);
+    --pri: #4f46e5; --pri-hover: #4338ca;
+    --sec: #0ea5e9;
 }
 html[data-theme="purple"] body.dark-mode {
-    --pri: #a78bfa; --pri-hover: #8b5cf6;
-    --sec: #e879f9;
-    --bg-body: #2e1065; --bg-surface: #4c1d95; --bg-subtle: #5b21b6;
-    --text-main: #ede9fe; --text-muted: #ddd6fe;
-    --border-color: rgba(167,139,250,0.2);
-    --shadow-glow: rgba(167,139,250,0.4);
+    --pri: #818cf8; --pri-hover: #6366f1;
+    --sec: #38bdf8;
 }
 
-/* 4. Matcha (Emerald & Lime) */
+/* 4. Matcha (Emerald & Amber) */
 html[data-theme="green"] {
-    --pri: #059669; --pri-hover: #047857; --pri-light: rgba(5,150,105,0.1);
-    --sec: #65a30d; --sec-light: rgba(101,163,13,0.1);
-    --bg-body: #ecfdf5; --bg-surface: #ffffff; --bg-subtle: #d1fae5;
-    --text-main: #064e3b; --text-muted: #065f46;
-    --border-color: rgba(5,150,105,0.15);
-    --shadow-glow: rgba(5,150,105,0.3);
+    --pri: #10b981; --pri-hover: #059669;
+    --sec: #f59e0b;
 }
 html[data-theme="green"] body.dark-mode {
     --pri: #34d399; --pri-hover: #10b981;
-    --sec: #a3e635;
-    --bg-body: #064e3b; --bg-surface: #065f46; --bg-subtle: #047857;
-    --text-main: #d1fae5; --text-muted: #a7f3d0;
-    --border-color: rgba(52,211,153,0.2);
-    --shadow-glow: rgba(52,211,153,0.4);
+    --sec: #fbbf24;
 }
 
-/* 5. Sunset (Amber & Orange) */
+/* 5. Sunset (Coral & Amethyst) */
 html[data-theme="orange"] {
-    --pri: #d97706; --pri-hover: #b45309; --pri-light: rgba(217,119,6,0.1);
-    --sec: #ea580c; --sec-light: rgba(234,88,12,0.1);
-    --bg-body: #fffbeb; --bg-surface: #ffffff; --bg-subtle: #fef3c7;
-    --text-main: #78350f; --text-muted: #92400e;
-    --border-color: rgba(217,119,6,0.15);
-    --shadow-glow: rgba(217,119,6,0.3);
+    --pri: #ea580c; --pri-hover: #c2410c;
+    --sec: #d946ef;
 }
 html[data-theme="orange"] body.dark-mode {
-    --pri: #fbbf24; --pri-hover: #f59e0b;
-    --sec: #fb923c;
-    --bg-body: #451a03; --bg-surface: #78350f; --bg-subtle: #92400e;
-    --text-main: #fef3c7; --text-muted: #fde68a;
-    --border-color: rgba(251,191,36,0.2);
-    --shadow-glow: rgba(251,191,36,0.4);
+    --pri: #fb923c; --pri-hover: #f97316;
+    --sec: #e879f9;
 }
 
 /* ========================================= */
