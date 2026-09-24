@@ -2670,14 +2670,14 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 }
 
 .reg-drawer-container {
-    max-width: 850px;
-    margin: 15px auto;
-    padding: 25px 30px;
+    max-width: 700px;
+    margin: 10px auto;
+    padding: 16px 20px;
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-top: 5px solid var(--pri);
+    border-top: 4px solid var(--pri);
     border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     position: relative;
 }
 
@@ -2718,22 +2718,22 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 
 .rdd-group {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px 24px;
-    padding: 5px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 4px 16px;
+    padding: 2px 5px;
     background: transparent;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .rdd-section-title {
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     font-weight: 800;
     color: var(--pri);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin: 10px 0 2px 0;
-    border-bottom: 2px solid var(--border-color);
-    padding-bottom: 4px;
+    margin: 8px 0 2px 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 2px;
 }
 
 .rdd-list-item {
