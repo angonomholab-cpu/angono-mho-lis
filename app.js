@@ -448,9 +448,8 @@ async function apiGet(action, params = {}) {
                         const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
                         q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']);
                     }
-                    // Viewer at Encoder ay nakikita ang lahat ng records sa registry (Serology confidential fields lang ang nakatago)
-                    if (params.role === 'PATIENT') {
-                        if (params.facility && params.facility !== 'ALL') q = q.eq('facility', params.facility);
+                    if (params.facility && params.facility !== 'ALL') {
+                        q = q.eq('facility', params.facility);
                     }
                     return q.order(dateColOrder, { ascending: isAsc });
                 }
