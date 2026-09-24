@@ -281,7 +281,7 @@ async function apiGet(action, params = {}) {
                     password: safePass
                 });
                 if (authError) return { status: "FAIL", error: authError.message };
-                
+
                 const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL" };
@@ -687,7 +687,7 @@ async function apiPost(action, payload) {
                         password: f.patientPassword
                     });
                     if (authErr && !authErr.message.includes('already registered')) {
-                         console.error("Patient Auth Error:", authErr);
+                        console.error("Patient Auth Error:", authErr);
                     }
                 }
 
@@ -3188,9 +3188,9 @@ function localGenerateNTPHtml(patientsArray) {
         .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } 
         .footer-red { background: #ff0000; color: white; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; } 
         @media print { 
-            body { background: white; padding-top: 0 !important; display: block; margin: 0; } 
-            @page { size: auto; margin: 5mm; } 
-            .page-container { width: 200mm !important; min-height: 275mm !important; margin: 0 auto !important; padding: 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; zoom: 0.96 !important; } 
+            body { background: white; padding: 0 !important; display: block; margin: 0; } 
+            @page { size: portrait; margin: 3mm; } 
+            .page-container { width: 100% !important; height: 98vh !important; max-height: 98vh !important; min-height: 0 !important; margin: 0 auto !important; padding: 5mm 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
             .page-break { display: none !important; } 
         } 
     </style></head><body>${combinedHtml}</body></html>`;
@@ -3415,11 +3415,11 @@ window.closePrintModal = function () {
     }
 };
 
-window.migrateToSupabaseAuth = async function() {
+window.migrateToSupabaseAuth = async function () {
     console.log("Starting Migration to Supabase Auth...");
     let successCount = 0;
     let failCount = 0;
-    
+
     // 1. Migrate Staff
     console.log("Fetching app_users...");
     const { data: staffData, error: staffErr } = await sb.from('app_users').select('*');
@@ -3442,7 +3442,7 @@ window.migrateToSupabaseAuth = async function() {
             }
         }
     }
-    
+
     // 2. Migrate Patients
     console.log("Fetching patients...");
     const { data: patientData, error: patErr } = await sb.from('patients').select('*').not('email', 'is', null);
@@ -3452,7 +3452,7 @@ window.migrateToSupabaseAuth = async function() {
         console.log(`Found ${patientData.length} patients with email to migrate.`);
         for (let p of patientData) {
             // Use patient ID as default password since we can't decrypt the bcrypt hash
-            const defaultPass = p.id; 
+            const defaultPass = p.id;
             const { error: authErr } = await window.sbAuth.auth.signUp({ email: p.email, password: defaultPass });
             if (authErr && !authErr.message.includes('already registered') && !authErr.message.includes('User already registered')) {
                 console.error(`Failed to migrate patient ${p.email}:`, authErr.message);
@@ -3463,7 +3463,7 @@ window.migrateToSupabaseAuth = async function() {
             }
         }
     }
-    
+
     console.log(`Migration Complete! Success: ${successCount}, Failed: ${failCount}`);
     alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.\n\nNote: Existing patients must use their Patient ID as their temporary password.`);
 };
