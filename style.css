@@ -2659,11 +2659,19 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
     font-weight: 600;
 }
 
-/* 🟢 Row Detail Expansion Drawer (Lahat ng laman nung row kapag clinick) 🟢 */
+/* 🟢 Row Detail Expansion Drawer (Popup Modal Style) 🟢 */
+.reg-drawer-row {
+    position: fixed !important;
+    top: 0; left: 0; width: 0; height: 0;
+    pointer-events: none;
+    border: none !important;
+}
+
 .reg-drawer-row td {
     max-width: none !important;
     white-space: normal !important;
     padding: 0 !important;
+    pointer-events: auto;
     background: transparent !important;
     border: none !important;
     height: 0 !important;
