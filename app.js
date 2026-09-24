@@ -2323,7 +2323,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 let remarksHtml = '';
                 let performedHtml = '';
 
-                const skipHeaders = ['TESTCODE', 'ID', 'NAME', 'PATIENTNAME', 'AGE', 'SEX', 'GENDER', 'FACILITY', 'LABORATORYSERIALNUMBER', 'LABSERIALNUMBER'];
+                const skipHeaders = ['TESTCODE', 'ID', 'NAME', 'PATIENTNAME', 'AGE', 'SEX', 'GENDER', 'FACILITY', 'LABORATORYSERIALNUMBER', 'LABSERIALNUMBER', 'XRAYRESULT'];
                 
                 hMap.forEach(c => {
                     let cClean = String(c.original).toUpperCase().replace(/[_\s]+/g, '');
