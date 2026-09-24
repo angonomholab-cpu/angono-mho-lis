@@ -126,15 +126,81 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
     let messageBody = "";
     let noticeType = "";
 
+    // --- BEAUTIFUL EMAIL HTML TEMPLATE ---
+    const primaryColor = "#0d9488"; // MHO Teal
+    
+    let contentHtml = "";
     if (type === "welcome") {
         subject = "Angono MHO Laboratory - Patient Portal Access & Account Details";
         noticeType = "Patient Portal Account Created / Updated";
-        messageBody = `Dear ${patientName},\n\nYour patient account has been created/updated with the Angono Municipal Health Office Laboratory.\n\nYou can access your official digital laboratory records directly through our Patient Portal:\n${portalUrl}\n\nLogin Credentials:\n• Registered Email: ${toEmail}\n• Patient ID: ${patientId}\n• Password: ${password}\n\nPlease keep your credentials confidential. You will receive an automated email notification once your test results are processed and saved.\n\nRespectfully,\nAngono MHO Laboratory Team`;
+        contentHtml = `
+            <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
+            <p>Your patient account has been successfully created and registered with the Angono Municipal Health Office Laboratory.</p>
+            <p>You can now access your official digital laboratory records directly through our secure Patient Portal.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${portalUrl}" style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Click Here to Access Patient Portal</a>
+            </div>
+            
+            <div style="background-color: #f8fafc; border-left: 4px solid ${primaryColor}; border-radius: 4px; padding: 16px; margin: 25px 0;">
+                <p style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b;"><strong>Your Login Credentials</strong></p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 6px 0; width: 100px; color: #64748b;">Email:</td>
+                        <td style="font-weight: 500; color: #111;">${toEmail}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;">Patient ID:</td>
+                        <td style="font-weight: 500; color: #111;">${patientId}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0 6px 0; color: #64748b;">Password:</td>
+                        <td style="padding-top: 6px;">
+                            <span style="background: #e2e8f0; color: #0f172a; padding: 6px 12px; border-radius: 4px; font-family: monospace; font-size: 16px; font-weight:bold; display: inline-block; border: 1px dashed #94a3b8; user-select: all;">${password}</span>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">(Double-click password to copy)</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">Please keep your credentials confidential. You will receive another automated notification once your test results are processed.</p>
+        `;
     } else if (type === "result_ready") {
         subject = `Angono MHO Laboratory - Result Ready for ${testName} (${testCode || 'Record'})`;
         noticeType = "Laboratory Test Result Ready";
-        messageBody = `Dear ${patientName},\n\nThis is to notify you that the result for your laboratory test (${testName}) is now ready.\n\n[ IMPORTANT NOTICE REGARDING YOUR RESULT ]\n• SOFT COPY: An initial digital soft copy is available online right now. You can view or download it immediately by signing into the Patient Portal:\n${portalUrl}\n\n• HARD COPY: Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono Municipal Health Office.\n\nFor any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.\n\nRespectfully,\nAngono Municipal Health Office Laboratory`;
+        contentHtml = `
+            <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
+            <p>This is to formally notify you that the result for your laboratory test (<strong>${testName}</strong>) is now ready.</p>
+            
+            <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin: 25px 0;">
+                <p style="margin: 0 0 10px 0; font-size: 13px; color: #b45309;"><strong>IMPORTANT NOTICE</strong></p>
+                <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>SOFT COPY:</strong> An initial digital soft copy is available online. You can view or download it immediately by signing into the Patient Portal.</p>
+                <p style="margin: 0; font-size: 14px;"><strong>HARD COPY:</strong> Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono MHO.</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${portalUrl}" style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Click Here to Access Patient Portal</a>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">For any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.</p>
+        `;
     }
+
+    messageBody = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <div style="background-color: ${primaryColor}; padding: 25px 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">ANGONO MHO LABORATORY</h1>
+                <div style="color: #ccfbf1; font-size: 13px; margin-top: 5px;">OFFICIAL NOTIFICATION SYSTEM</div>
+            </div>
+            <div style="padding: 35px 30px; background-color: #ffffff; line-height: 1.6; font-size: 15px;">
+                ${contentHtml}
+            </div>
+            <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+                <p style="margin: 0 0 8px 0; color: #475569;"><strong>PLEASE DO NOT REPLY TO THIS EMAIL.</strong></p>
+                <p style="margin: 0 0 8px 0;">This is an automatically generated message from the Angono MHO Laboratory Information System. Inboxes for this address are not monitored.</p>
+                <p style="margin: 0;">&copy; ${new Date().getFullYear()} Angono Municipal Health Office • Angono, Rizal</p>
+            </div>
+        </div>
+    `;
+    // --- END HTML TEMPLATE ---
 
     // Try EmailJS if configured
     if (cfg.serviceId && cfg.templateId && cfg.publicKey) {
