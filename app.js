@@ -566,6 +566,7 @@ async function apiGet(action, params = {}) {
                             "Patient Name": r.patient_name || "",
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.sex || d.Sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
+                            "Facility": r.facility || d.Facility || d.facility || (pMap[r.patient_id] ? pMap[r.patient_id].facility : "") || "",
                             "Classification": d.Classification || d.classification || "",
                             "KAP Category": d["KAP Category"] || d.kap_category || "",
                             "HIV": d.HIV || d.hiv || "",
@@ -2302,9 +2303,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
                 html += `<tr class="reg-data-row" id="row-${rowDrawerId}" 
                             onclick="toggleRegistryRowDrawer('${rowDrawerId}', this)" 
-                            onmouseenter="handleRegistryRowHover('${rowDrawerId}', this)" 
-                            onmouseleave="handleRegistryRowLeave('${rowDrawerId}', this)" 
-                            title="Click or hover to expand full record details">
+                            title="Click to view full record details">
                     <td class="reg-col-chk" onclick="event.stopPropagation()"><input type="checkbox" class="chk-reg" value="${encodeURIComponent(JSON.stringify(row))}" onchange="document.getElementById('reg-selected-count').innerText=document.querySelectorAll('.chk-reg:checked').length;"></td>`;
 
                 let isInitialRow = false;
@@ -2349,9 +2348,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
                 // Interactive row drawer displaying all values
                 html += `
-                    <tr id="${rowDrawerId}" class="reg-drawer-row" style="display:none;" 
-                        onmouseenter="handleRegistryDrawerEnter('${rowDrawerId}')" 
-                        onmouseleave="handleRegistryDrawerLeave('${rowDrawerId}')">
+                    <tr id="${rowDrawerId}" class="reg-drawer-row" style="display:none;">
                         <td colspan="${totalCols}">
                             <div class="reg-drawer-container">
                                 <div class="rdd-header">
@@ -2469,7 +2466,7 @@ async function loadSettingsData() {
         const admins = document.querySelectorAll('.admin-only-setting');
         admins.forEach(el => el.style.display = 'block');
     }
-    
+
     try {
         loadEmailConfigIntoUI();
         const res = await apiPost("getSettingsData", {});
@@ -3486,19 +3483,19 @@ window.migrateToSupabaseAuth = async function () {
 // ==========================================
 // MY PROFILE SETTINGS LOGIC
 // ==========================================
-window.loadMyProfile = function() {
+window.loadMyProfile = function () {
     document.getElementById('my-profile-username').value = currentUser.username;
     if (currentUser.avatar) document.getElementById('my-profile-avatar').src = currentUser.avatar;
     if (currentUser.avatar) document.getElementById('my-avatar-url').value = currentUser.avatar;
 }
 
-window.changeMyTheme = function(themeName) {
+window.changeMyTheme = function (themeName) {
     document.documentElement.setAttribute('data-theme', themeName);
     currentUser.theme = themeName;
     localStorage.setItem('labUser', JSON.stringify(currentUser));
 }
 
-window.saveMyProfile = async function() {
+window.saveMyProfile = async function () {
     const btn = document.getElementById('btn-save-profile');
     const oldHtml = btn.innerHTML;
     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
@@ -3518,11 +3515,11 @@ window.saveMyProfile = async function() {
         }
 
         // Update Theme and Avatar in DB
-        const { error: dbErr2 } = await sb.from('app_users').update({ 
-            avatar_url: newAvatar, 
-            color_theme: currentUser.theme || 'default' 
+        const { error: dbErr2 } = await sb.from('app_users').update({
+            avatar_url: newAvatar,
+            color_theme: currentUser.theme || 'default'
         }).eq('username', currentUser.username);
-        
+
         if (dbErr2) throw dbErr2;
 
         // Update Local State
@@ -3536,7 +3533,7 @@ window.saveMyProfile = async function() {
 
         document.getElementById('my-profile-password').value = '';
         showAppAlert("Profile Saved", "Your profile and theme preferences have been updated.", "success");
-    } catch(err) {
+    } catch (err) {
         showAppAlert("Error", String(err.message || err), "error");
     } finally {
         btn.innerHTML = oldHtml;
