@@ -54,52 +54,51 @@ body.dark-mode {
     --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
 }
 
-/* --- THEMES (Pastel in Light Mode -> Cyberpunk in Dark Mode) --- */
-/* 1. Default (Medical Teal / Cyber Cyan) */
-/* (Light mode default is defined in :root above) */
+/* --- THEMES (Premium Palettes) --- */
+/* 1. Default (Teal / Ocean) */
 html[data-theme="default"] body.dark-mode {
-    --pri: #00f0ff; --pri-hover: #00c3ff;
-    --sec: #f0f; 
+    --pri: #2dd4bf; --pri-hover: #14b8a6;
+    --sec: #38bdf8;
 }
 
-/* 2. Blossom (Pastel Pink -> Hot Magenta) */
+/* 2. Blossom (Rose / Magenta) */
 html[data-theme="pink"] {
-    --pri: #f472b6; --pri-hover: #db2777; --pri-light: rgba(244, 114, 182, 0.08);
-    --sec: #818cf8; --sec-light: rgba(129, 140, 248, 0.08);
+    --pri: #f43f5e; --pri-hover: #e11d48; --pri-light: rgba(244, 63, 94, 0.08);
+    --sec: #8b5cf6; --sec-light: rgba(139, 92, 246, 0.08);
 }
 html[data-theme="pink"] body.dark-mode {
-    --pri: #ff00ff; --pri-hover: #ff00cc;
-    --sec: #00ffff;
+    --pri: #fb7185; --pri-hover: #f43f5e;
+    --sec: #a78bfa;
 }
 
-/* 3. Lavender (Soft Purple -> Electric Purple) */
+/* 3. Lavender (Violet / Amethyst) */
 html[data-theme="purple"] {
-    --pri: #a78bfa; --pri-hover: #8b5cf6; --pri-light: rgba(167, 139, 250, 0.08);
-    --sec: #f472b6; --sec-light: rgba(244, 114, 182, 0.08);
+    --pri: #8b5cf6; --pri-hover: #7c3aed; --pri-light: rgba(139, 92, 246, 0.08);
+    --sec: #ec4899; --sec-light: rgba(236, 72, 153, 0.08);
 }
 html[data-theme="purple"] body.dark-mode {
-    --pri: #b026ff; --pri-hover: #9d00ff;
-    --sec: #ff003c;
+    --pri: #a78bfa; --pri-hover: #8b5cf6;
+    --sec: #f472b6;
 }
 
-/* 4. Mint (Pastel Green -> Acid/Matrix Green) */
+/* 4. Mint (Emerald / Sage) */
 html[data-theme="green"] {
-    --pri: #6ee7b7; --pri-hover: #10b981; --pri-light: rgba(110, 231, 183, 0.08);
-    --sec: #60a5fa; --sec-light: rgba(96, 165, 250, 0.08);
+    --pri: #10b981; --pri-hover: #059669; --pri-light: rgba(16, 185, 129, 0.08);
+    --sec: #3b82f6; --sec-light: rgba(59, 130, 246, 0.08);
 }
 html[data-theme="green"] body.dark-mode {
-    --pri: #39ff14; --pri-hover: #00ff00;
-    --sec: #ffff00;
+    --pri: #34d399; --pri-hover: #10b981;
+    --sec: #60a5fa;
 }
 
-/* 5. Peach (Soft Orange -> Cyber Orange) */
+/* 5. Sunset (Amber / Coral) */
 html[data-theme="orange"] {
-    --pri: #fb923c; --pri-hover: #ea580c; --pri-light: rgba(251, 146, 60, 0.08);
-    --sec: #a78bfa; --sec-light: rgba(167, 139, 250, 0.08);
+    --pri: #f59e0b; --pri-hover: #d97706; --pri-light: rgba(245, 158, 11, 0.08);
+    --sec: #f43f5e; --sec-light: rgba(244, 63, 94, 0.08);
 }
 html[data-theme="orange"] body.dark-mode {
-    --pri: #ff8c00; --pri-hover: #ff5500;
-    --sec: #00ffcc;
+    --pri: #fbbf24; --pri-hover: #f59e0b;
+    --sec: #fb7185;
 }
 
 
