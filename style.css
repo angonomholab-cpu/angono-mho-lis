@@ -4,19 +4,19 @@
 :root {
     --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-    /* Clean, Modern Backgrounds (Slate Palette) */
-    --bg-body: #f8fafc;
+    /* Ergonomic, Low-Contrast Light Mode */
+    --bg-body: #f4f5f7;
     --bg-surface: #ffffff;
-    --bg-subtle: #f1f5f9;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border-color: #e2e8f0;
+    --bg-subtle: #f0f2f5;
+    --text-main: #333333;
+    --text-muted: #7a7a7a;
+    --border-color: #e6e8eb;
 
-    /* Base Default Theme Colors (Teal & Violet) */
-    --pri: #0d9488;
-    --pri-hover: #0f766e;
+    /* Base Default Theme Colors (Soft Teal & Slate Blue) */
+    --pri: #38b2ac;
+    --pri-hover: #319795;
     --pri-light: color-mix(in srgb, var(--pri) 12%, transparent);
-    --sec: #8b5cf6;
+    --sec: #5c7cfa;
     --sec-light: color-mix(in srgb, var(--sec) 12%, transparent);
     --shadow-glow: color-mix(in srgb, var(--pri) 25%, transparent);
 
@@ -32,83 +32,84 @@
     --radius-sm: 8px;
     --radius-pill: 50px;
 
-    --shadow-float: 0 12px 30px -6px rgba(15, 23, 42, 0.1), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
-    --shadow-card: 0 2px 8px -1px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    --shadow-float: 0 12px 30px -6px rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+    --shadow-card: 0 2px 8px -1px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
     --blur-effect: blur(12px);
 }
 
 body.dark-mode {
     color-scheme: dark;
-    --bg-body: #0b1120;
-    --bg-surface: #131d33;
-    --bg-subtle: #1e293b;
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --border-color: rgba(255, 255, 255, 0.08);
+    /* Ergonomic, Google-style Dark Mode */
+    --bg-body: #202124;
+    --bg-surface: #2d2e31;
+    --bg-subtle: #35363a;
+    --text-main: #e8eaed;
+    --text-muted: #9aa0a6;
+    --border-color: #3c4043;
 
-    --pri: #2dd4bf;
-    --pri-hover: #14b8a6;
-    --sec: #a78bfa;
+    --pri: #4fd1c5;
+    --pri-hover: #38b2ac;
+    --sec: #748ffc;
     --shadow-glow: color-mix(in srgb, var(--pri) 35%, transparent);
 
-    --sec-light: rgba(56, 189, 248, 0.12);
+    --sec-light: rgba(116, 143, 252, 0.12);
     --warning-light-bg: rgba(245, 158, 11, 0.12);
     --danger-bg: rgba(239, 68, 68, 0.12);
     --success-light: rgba(16, 185, 129, 0.12);
-    --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
 }
 
-/* --- THEMES (Aesthetic Combinations) --- */
+/* --- THEMES (Ergonomic, Muted Combinations) --- */
 /* We only change --pri and --sec; the color-mix variables auto-update! */
 
-/* 1. Default (Teal & Violet) */
+/* 1. Default (Soft Teal & Slate Blue) */
 html[data-theme="default"] {
-    --pri: #0d9488; --pri-hover: #0f766e;
-    --sec: #8b5cf6;
+    --pri: #38b2ac; --pri-hover: #319795;
+    --sec: #5c7cfa;
 }
 html[data-theme="default"] body.dark-mode {
-    --pri: #2dd4bf; --pri-hover: #14b8a6;
-    --sec: #a78bfa;
+    --pri: #4fd1c5; --pri-hover: #38b2ac;
+    --sec: #748ffc;
 }
 
-/* 2. Sakura (Rose & Peach) */
+/* 2. Sakura (Dusty Rose & Warm Sand) */
 html[data-theme="pink"] {
-    --pri: #f43f5e; --pri-hover: #e11d48;
-    --sec: #f97316;
+    --pri: #d9777f; --pri-hover: #c9616a;
+    --sec: #e2a382;
 }
 html[data-theme="pink"] body.dark-mode {
-    --pri: #fb7185; --pri-hover: #f43f5e;
-    --sec: #fb923c;
+    --pri: #e88c94; --pri-hover: #d9777f;
+    --sec: #f2b798;
 }
 
-/* 3. Twilight (Indigo & Cyan) */
+/* 3. Twilight (Soft Lavender & Soft Cyan) */
 html[data-theme="purple"] {
-    --pri: #4f46e5; --pri-hover: #4338ca;
-    --sec: #0ea5e9;
+    --pri: #918ced; --pri-hover: #7b75db;
+    --sec: #48c9b0;
 }
 html[data-theme="purple"] body.dark-mode {
-    --pri: #818cf8; --pri-hover: #6366f1;
-    --sec: #38bdf8;
+    --pri: #a5a1f5; --pri-hover: #918ced;
+    --sec: #5cdbc2;
 }
 
-/* 4. Matcha (Emerald & Amber) */
+/* 4. Matcha (Sage & Pale Gold) */
 html[data-theme="green"] {
-    --pri: #10b981; --pri-hover: #059669;
-    --sec: #f59e0b;
+    --pri: #7ebc89; --pri-hover: #6ca876;
+    --sec: #e9c46a;
 }
 html[data-theme="green"] body.dark-mode {
-    --pri: #34d399; --pri-hover: #10b981;
-    --sec: #fbbf24;
+    --pri: #92cd9d; --pri-hover: #7ebc89;
+    --sec: #f2d180;
 }
 
-/* 5. Sunset (Coral & Amethyst) */
+/* 5. Sunset (Muted Terracotta & Mauve) */
 html[data-theme="orange"] {
-    --pri: #ea580c; --pri-hover: #c2410c;
-    --sec: #d946ef;
+    --pri: #d9826c; --pri-hover: #c26c57;
+    --sec: #b57fb3;
 }
 html[data-theme="orange"] body.dark-mode {
-    --pri: #fb923c; --pri-hover: #f97316;
-    --sec: #e879f9;
+    --pri: #e89580; --pri-hover: #d9826c;
+    --sec: #c790c4;
 }
 
 /* ========================================= */
