@@ -2670,12 +2670,14 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 }
 
 .reg-drawer-container {
-    padding: 20px;
+    max-width: 850px;
+    margin: 15px auto;
+    padding: 25px 30px;
     background: var(--bg-surface);
-    border: 3px solid var(--pri);
+    border: 1px solid var(--border-color);
+    border-top: 5px solid var(--pri);
     border-radius: 8px;
-    margin: 10px;
-    box-shadow: var(--shadow-float);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     position: relative;
 }
 
