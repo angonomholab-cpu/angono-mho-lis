@@ -3190,14 +3190,14 @@ function localGenerateNTPHtml(patientsArray) {
         @media print { 
             body { background: white; padding: 0 !important; display: block; margin: 0; } 
             @page { size: portrait; margin: 3mm; } 
-            .page-container { width: 100% !important; height: auto !important; max-height: none !important; min-height: 0 !important; margin: 0 auto !important; padding: 2mm !important; border: none !important; box-shadow: none !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
+            .page-container { width: 100% !important; height: auto !important; max-height: none !important; min-height: 0 !important; margin: 0 auto !important; padding: 2mm !important; border: none !important; box-shadow: none !important; overflow: visible !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 0.96 !important; } 
             .page-break { display: none !important; } 
         } 
         @media print and (max-height: 285mm) { /* Letter/Short Paper */
-            .page-container { zoom: 0.95 !important; }
+            .page-container { zoom: 0.91 !important; }
         }
         @media print and (max-height: 220mm) { /* A5 Paper */
-            .page-container { zoom: 0.7 !important; }
+            .page-container { zoom: 0.67 !important; }
         }
     </style></head><body>${combinedHtml}</body></html>`;
 }
