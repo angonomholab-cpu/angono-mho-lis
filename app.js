@@ -288,7 +288,7 @@ async function apiGet(action, params = {}) {
                 if (data.status === "PENDING") return { status: "PENDING" };
                 if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
                 const effectiveFacility = (data.role === 'STAFF' || data.role === 'ADMIN') ? 'ALL' : (data.facility || 'ALL');
-                return { status: "SUCCESS", username: data.username, facility: effectiveFacility, role: data.role, fullName: data.full_name || data.username };
+                return { status: "SUCCESS", username: data.username, facility: effectiveFacility, role: data.role, fullName: data.full_name || data.username, avatar: data.avatar_url, theme: data.color_theme };
             }
             case "patientLogin": {
                 const { data: authData, error: authError } = await sb.auth.signInWithPassword({
@@ -900,7 +900,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
 
             const dAvatar = document.getElementById('pill-avatar');
-            if (dAvatar) dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+            if (dAvatar) {
+                if (currentUser.avatar) {
+                    dAvatar.innerHTML = `<img src="${currentUser.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+                } else {
+                    dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+                }
+            }
+            if (currentUser.theme) {
+                document.documentElement.setAttribute('data-theme', currentUser.theme);
+            }
 
             applyPermissions();
             ensureStaffList();
@@ -2456,6 +2465,12 @@ function printRegistryLogbook() {
 }
 
 async function loadSettingsData() {
+    loadMyProfile();
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'STAFF') {
+        const admins = document.querySelectorAll('.admin-only-setting');
+        admins.forEach(el => el.style.display = 'block');
+    }
+    
     try {
         loadEmailConfigIntoUI();
         const res = await apiPost("getSettingsData", {});
@@ -3468,3 +3483,64 @@ window.migrateToSupabaseAuth = async function () {
     console.log(`Migration Complete! Success: ${successCount}, Failed: ${failCount}`);
     alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.\n\nNote: Existing patients must use their Patient ID as their temporary password.`);
 };
+
+// ==========================================
+// MY PROFILE SETTINGS LOGIC
+// ==========================================
+window.loadMyProfile = function() {
+    document.getElementById('my-profile-username').value = currentUser.username;
+    if (currentUser.avatar) document.getElementById('my-profile-avatar').src = currentUser.avatar;
+    if (currentUser.avatar) document.getElementById('my-avatar-url').value = currentUser.avatar;
+}
+
+window.changeMyTheme = function(themeName) {
+    document.documentElement.setAttribute('data-theme', themeName);
+    currentUser.theme = themeName;
+    localStorage.setItem('labUser', JSON.stringify(currentUser));
+}
+
+window.saveMyProfile = async function() {
+    const btn = document.getElementById('btn-save-profile');
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    btn.disabled = true;
+
+    try {
+        const newPass = document.getElementById('my-profile-password').value;
+        const newAvatar = document.getElementById('my-avatar-url').value;
+
+        // Update Auth Password if provided
+        if (newPass) {
+            const { error: pwdErr } = await window.sbAuth.auth.updateUser({ password: newPass.length < 6 ? newPass.padEnd(6, '_') : newPass });
+            if (pwdErr) throw pwdErr;
+            // Also update app_users table for fallback
+            const { error: dbErr1 } = await sb.from('app_users').update({ password: newPass }).eq('username', currentUser.username);
+            if (dbErr1) throw dbErr1;
+        }
+
+        // Update Theme and Avatar in DB
+        const { error: dbErr2 } = await sb.from('app_users').update({ 
+            avatar_url: newAvatar, 
+            color_theme: currentUser.theme || 'default' 
+        }).eq('username', currentUser.username);
+        
+        if (dbErr2) throw dbErr2;
+
+        // Update Local State
+        currentUser.avatar = newAvatar;
+        localStorage.setItem('labUser', JSON.stringify(currentUser));
+        if (newAvatar) {
+            document.getElementById('my-profile-avatar').src = newAvatar;
+            const dAvatar = document.getElementById('pill-avatar');
+            if (dAvatar) dAvatar.innerHTML = `<img src="${newAvatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        }
+
+        document.getElementById('my-profile-password').value = '';
+        showAppAlert("Profile Saved", "Your profile and theme preferences have been updated.", "success");
+    } catch(err) {
+        showAppAlert("Error", String(err.message || err), "error");
+    } finally {
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+    }
+}
