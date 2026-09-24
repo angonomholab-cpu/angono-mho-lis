@@ -3188,18 +3188,57 @@ function localGenerateNTPHtml(patientsArray) {
         .sig-info { font-size: 8px; margin-top: 3px; line-height: 1.2; } 
         .footer-red { background: #ff0000 !important; color: white !important; font-weight: bold; text-align: center; padding: 5px; font-size: 13px; margin-top: 5px; border: 1px solid #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
         @media print { 
-            body { background: white; padding: 0 !important; display: block; margin: 0; } 
+            body { background: white; padding: 0 !important; margin: 0; } 
             @page { size: portrait; margin: 0; } 
-            .page-container { width: 99vw !important; height: 99vh !important; max-height: 99vh !important; min-height: 99vh !important; margin: 0 auto !important; padding: 10mm 10mm 15mm 10mm !important; border: none !important; box-shadow: none !important; overflow: hidden !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; zoom: 1 !important; } 
+            .page-container { margin: 0 auto !important; padding: 5mm !important; border: none !important; box-shadow: none !important; page-break-after: always; page-break-inside: avoid; box-sizing: border-box !important; transform-origin: top center; } 
             .page-break { display: none !important; } 
         } 
-        @media print and (max-height: 285mm) { /* Letter/Short Paper */
-            .page-container { zoom: 0.94 !important; width: 105vw !important; height: 105vh !important; max-height: 105vh !important; min-height: 105vh !important; }
+    </style>
+    <script>
+    (function(){
+        function fitPages(){
+            document.querySelectorAll('.page-container').forEach(function(el){
+                el.style.transform = 'none';
+                el.style.width = '';
+                el.style.height = '';
+            });
+            setTimeout(function(){
+                var pages = document.querySelectorAll('.page-container');
+                if(!pages.length) return;
+                // Use a temporary element to measure the page height
+                var measureDiv = document.createElement('div');
+                measureDiv.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;visibility:hidden;';
+                document.body.appendChild(measureDiv);
+                var pageW = measureDiv.offsetWidth;
+                var pageH = measureDiv.offsetHeight;
+                document.body.removeChild(measureDiv);
+                pages.forEach(function(el){
+                    el.style.width = pageW + 'px';
+                    var naturalH = el.scrollHeight;
+                    var naturalW = el.scrollWidth;
+                    var scaleY = pageH / naturalH;
+                    var scaleX = pageW / naturalW;
+                    var scale = Math.min(scaleY, scaleX, 1);
+                    el.style.transform = 'scale(' + scale + ')';
+                    el.style.transformOrigin = 'top center';
+                    el.style.height = (pageH / scale) + 'px';
+                    el.style.width = (pageW / scale) + 'px';
+                    el.style.margin = '0 auto';
+                });
+            }, 50);
         }
-        @media print and (max-height: 220mm) { /* A5 Paper */
-            .page-container { zoom: 0.7 !important; width: 141vw !important; height: 141vh !important; max-height: 141vh !important; min-height: 141vh !important; }
-        }
-    </style></head><body>${combinedHtml}</body></html>`;
+        window.addEventListener('beforeprint', fitPages);
+        window.addEventListener('afterprint', function(){
+            document.querySelectorAll('.page-container').forEach(function(el){
+                el.style.transform = 'none';
+                el.style.width = '';
+                el.style.height = '';
+            });
+        });
+        // Also run on load for iframe print
+        window.addEventListener('load', function(){ setTimeout(fitPages, 200); });
+    })();
+    </script></head><body>${combinedHtml}</body></html>`;
 }
 
 function localGenerateA5Html(patientsArray) {
