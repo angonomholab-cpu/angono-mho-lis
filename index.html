@@ -1424,13 +1424,6 @@
                             <div class="form-grid grid-1" style="gap:8px;">
                                 <input type="file" id="my-avatar-upload" class="form-input text-xs" accept="image/*" onchange="handleImageUpload(this, 'my-profile-avatar', 'my-avatar-data')">
                                 <input type="hidden" id="my-avatar-data">
-                                <div style="display:flex; justify-content:center; gap:10px; margin-top:10px; padding:10px; background:var(--bg-surface); border-radius:var(--radius-md); border:1px solid var(--border-color);">
-                                    <div class="theme-blob" style="background:linear-gradient(135deg, #38b2ac, #5c7cfa);" onclick="changeMyTheme('default')" title="Default (Soft Teal & Slate Blue)"></div>
-                                    <div class="theme-blob" style="background:linear-gradient(135deg, #d9777f, #e2a382);" onclick="changeMyTheme('pink')" title="Sakura (Dusty Rose & Warm Sand)"></div>
-                                    <div class="theme-blob" style="background:linear-gradient(135deg, #918ced, #48c9b0);" onclick="changeMyTheme('purple')" title="Twilight (Soft Lavender & Soft Cyan)"></div>
-                                    <div class="theme-blob" style="background:linear-gradient(135deg, #7ebc89, #e9c46a);" onclick="changeMyTheme('green')" title="Matcha (Sage & Pale Gold)"></div>
-                                    <div class="theme-blob" style="background:linear-gradient(135deg, #d9826c, #b57fb3);" onclick="changeMyTheme('orange')" title="Sunset (Muted Terracotta & Mauve)"></div>
-                                </div>
                             </div>
                         </div>
                         <div class="form-grid grid-1" style="gap:8px;">
@@ -1458,6 +1451,16 @@
                                 class="ph ph-gear" style="color:var(--pri);"></i> System Preferences</h3>
                     </div>
                     <div id="test-toggles-container" style="padding: 16px; background: var(--bg-subtle);">
+                        <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
+                            SYSTEM MAINTENANCE</div>
+                        <div class="switch-row" style="margin-bottom:20px; border-bottom: 1px dashed var(--border-color); padding-bottom: 15px;">
+                            <div>
+                                <div style="color:var(--danger); font-weight:bold;">Offline Mode</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Only Admins can log in</div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="toggle-maintenance-btn" onchange="toggleMaintenanceMode(this.checked)">
+                                <span class="slider"></span></label>
+                        </div>
                         <div style="font-weight:bold; font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
                             ENABLE/DISABLE TEST MENU</div>
                         <div class="switch-row"><span>GeneXpert MTB</span> <label class="switch"><input type="checkbox"
