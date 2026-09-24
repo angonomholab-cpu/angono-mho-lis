@@ -2289,14 +2289,14 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 });
                 const patientName = nameIdx > -1 ? (row[nameIdx] || '') : 'Patient Record';
 
-                // Build rich drawer cards showing all columns of this record
+                // Build rich drawer content showing all columns of this record
                 let drawerCardsHtml = '';
                 hMap.forEach(c => {
                     let val = row[c.index] || '';
                     drawerCardsHtml += `
-                        <div class="rdd-card">
-                            <span class="rdd-card-label">${c.text}</span>
-                            <span class="rdd-card-value">${val ? val : '<span style="color:var(--text-muted); font-weight:normal;">—</span>'}</span>
+                        <div class="rdd-list-item">
+                            <span class="rdd-list-label">${c.text}</span>
+                            <span class="rdd-list-value">${val ? val : '<span style="color:var(--text-muted); font-weight:normal; font-style:italic;">None</span>'}</span>
                         </div>
                     `;
                 });
