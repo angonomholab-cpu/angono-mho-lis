@@ -1422,19 +1422,28 @@
                         <div style="text-align:center;">
                             <img id="my-profile-avatar" src="" onerror="this.src='https://ui-avatars.com/api/?name=User&background=0d9488&color=fff'" style="width:80px; height:80px; border-radius:50%; object-fit:cover; margin-bottom:10px; border:3px solid var(--pri);">
                             <div class="form-grid grid-1" style="gap:8px;">
-                                <input type="text" id="my-avatar-url" class="form-input text-xs" placeholder="Avatar Image URL (Optional)">
+                                <input type="file" id="my-avatar-upload" class="form-input text-xs" accept="image/*" onchange="handleImageUpload(this, 'my-profile-avatar', 'my-avatar-data')">
+                                <input type="hidden" id="my-avatar-data">
                                 <div style="display:flex; justify-content:center; gap:10px; margin-top:10px; padding:10px; background:var(--bg-surface); border-radius:var(--radius-md);">
-                                    <div class="theme-blob" style="background:#0d9488;" onclick="changeMyTheme('default')" title="Default (Teal -> Cyan)"></div>
-                                    <div class="theme-blob" style="background:#f472b6;" onclick="changeMyTheme('pink')" title="Blossom (Pastel Pink -> Neon Magenta)"></div>
-                                    <div class="theme-blob" style="background:#a78bfa;" onclick="changeMyTheme('purple')" title="Lavender (Soft Purple -> Electric Purple)"></div>
-                                    <div class="theme-blob" style="background:#6ee7b7;" onclick="changeMyTheme('green')" title="Mint (Pastel Green -> Acid Green)"></div>
-                                    <div class="theme-blob" style="background:#fb923c;" onclick="changeMyTheme('orange')" title="Peach (Soft Orange -> Cyber Orange)"></div>
+                                    <div class="theme-blob" style="background:linear-gradient(135deg, #4db6ac, #9575cd);" onclick="changeMyTheme('default')" title="Default (Mint & Lilac)"></div>
+                                    <div class="theme-blob" style="background:linear-gradient(135deg, #f06292, #ffb74d);" onclick="changeMyTheme('pink')" title="Sakura (Pink & Peach)"></div>
+                                    <div class="theme-blob" style="background:linear-gradient(135deg, #7986cb, #f06292);" onclick="changeMyTheme('purple')" title="Twilight (Periwinkle & Blush)"></div>
+                                    <div class="theme-blob" style="background:linear-gradient(135deg, #81c784, #ffd54f);" onclick="changeMyTheme('green')" title="Matcha (Sage & Lemon)"></div>
+                                    <div class="theme-blob" style="background:linear-gradient(135deg, #ff8a65, #4db6ac);" onclick="changeMyTheme('orange')" title="Sunset (Coral & Teal)"></div>
                                 </div>
                             </div>
                         </div>
                         <div class="form-grid grid-1" style="gap:8px;">
                             <label class="text-xs text-muted font-bold">Username</label>
                             <input type="text" id="my-profile-username" class="form-input" disabled style="background:var(--border-color);">
+                            <label class="text-xs text-muted font-bold">Full Name (For Results)</label>
+                            <input type="text" id="my-profile-fullname" class="form-input" placeholder="e.g. Maria Cruz, RMT">
+                            <label class="text-xs text-muted font-bold">License Number</label>
+                            <input type="text" id="my-profile-license" class="form-input" placeholder="e.g. 123456">
+                            <label class="text-xs text-muted font-bold">E-Signature (Upload Transparent PNG)</label>
+                            <input type="file" id="my-signature-upload" class="form-input text-xs" accept="image/png, image/jpeg" onchange="handleImageUpload(this, 'my-sig-preview', 'my-signature-data')">
+                            <input type="hidden" id="my-signature-data">
+                            <img id="my-sig-preview" src="" style="height:40px; object-fit:contain; border:1px dashed var(--border-color); margin-top:2px; display:none;">
                             <label class="text-xs text-muted font-bold">Change Password</label>
                             <input type="password" id="my-profile-password" class="form-input" placeholder="New Password (leave blank to keep)">
                             <button id="btn-save-profile" class="btn btn-primary" onclick="saveMyProfile()" style="margin-top:10px;"><i class="ph ph-floppy-disk"></i> Save Profile</button>
