@@ -2716,47 +2716,37 @@ body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
 
 .rdd-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-}
-
-.rdd-card {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px 24px;
+    padding: 10px;
     background: var(--bg-subtle);
+    border-radius: 8px;
     border: 1px solid var(--border-color);
-    border-left: 4px solid var(--pri);
-    border-radius: 6px;
-    padding: 10px 12px;
+}
+
+.rdd-list-item {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.rdd-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-card);
-    border-left-color: var(--sec);
-}
-
-.rdd-card:hover {
-    border-color: var(--pri);
-    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.08);
-}
-
-.rdd-card-label {
-    font-size: 0.65rem;
-    font-weight: 700;
+.rdd-list-label {
+    font-size: 0.8rem;
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    font-weight: 600;
 }
 
-.rdd-card-value {
-    font-size: 0.76rem;
-    font-weight: 700;
+.rdd-list-value {
+    font-size: 0.85rem;
     color: var(--text-main);
+    font-weight: 800;
+    text-align: right;
+    max-width: 60%;
     word-break: break-word;
 }
+
 
 .rdd-actions {
     display: flex;
