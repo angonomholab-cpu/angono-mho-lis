@@ -776,7 +776,7 @@ async function apiPost(action, payload) {
                     address: f.address || null,
                     contact: f.contact || null,
                     email: f.email || null,
-                    password: f.patientPassword || null,
+                    password_hash: f.patientPassword || null,
                     facility: f.facility || null
                 }, { onConflict: 'id' });
 
