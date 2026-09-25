@@ -2116,8 +2116,12 @@
                     style="background:var(--bg-body); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:15px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <h3 id="qs-name" style="color:var(--pri); font-size:1.1rem; margin:0;"></h3>
-                        <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i
-                                class="ph ph-pencil-simple"></i> Edit Profile</button>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-secondary text-xs" onclick="openMergeModal()"><i
+                                    class="ph ph-git-merge" style="color:var(--warning);"></i> Merge</button>
+                            <button class="btn btn-secondary text-xs" onclick="editPatientDemographicsQS()"><i
+                                    class="ph ph-pencil-simple"></i> Edit</button>
+                        </div>
                     </div>
                     <div id="qs-meta"
                         style="font-size:0.8rem; color:var(--text-main); font-weight:500; display:flex; flex-wrap:wrap; gap:10px;">
@@ -2149,6 +2153,41 @@
     </div>
 
 
+
+    <div id="merge-patient-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
+        <div class="auth-card" style="width:500px; text-align: left; padding: 25px; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-git-merge"
+                        style="color:var(--warning);"></i> Merge Duplicate Patient</h3>
+                <button onclick="closeMergeModal()" class="btn-icon"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Search and select the duplicate (WRONG/OLD) patient record. All lab tests from the selected duplicate will be moved to the current master record: <strong id="merge-master-name" style="color:var(--pri);"></strong>.</p>
+            
+            <div style="position: relative; margin-bottom: 15px;">
+                <label class="field-label">Search Duplicate Record (Source)</label>
+                <input type="text" id="merge-search-input" class="form-input"
+                    placeholder="Search name..." onkeyup="runMergeSearch(this.value)">
+                <div id="merge-search-results" class="search-results-container"
+                    style="position: absolute; width: 100%; z-index: 9999; max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-float);">
+                </div>
+            </div>
+
+            <div id="merge-comparison-area" style="display:none; margin-top:20px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.8rem;">
+                    <div style="background:var(--danger-bg); padding:10px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.3);">
+                        <h4 style="color:var(--danger); margin:0 0 5px 0;">Duplicate (Will be Deleted)</h4>
+                        <div id="merge-source-details" style="color:var(--text-main);"></div>
+                    </div>
+                    <div style="background:var(--success-light); padding:10px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.3);">
+                        <h4 style="color:var(--success); margin:0 0 5px 0;">Master (Will Keep Tests)</h4>
+                        <div id="merge-master-details" style="color:var(--text-main);"></div>
+                    </div>
+                </div>
+                <button class="btn btn-primary full-width" style="margin-top:15px;" onclick="confirmMergePatient()">Confirm & Merge Tests</button>
+            </div>
+        </div>
+    </div>
 
     <div id="edit-user-modal" class="modal-backdrop" style="display:none; z-index:9999999;">
         <div class="auth-card" style="width:350px; text-align: left; padding: 25px;">
