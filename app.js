@@ -1451,6 +1451,23 @@ async function savePatientDemographicsQS() {
         const { error } = await sb.from('patients').update(pUpdates).eq('id', currentQuickPatient.id);
         if (error) throw error;
 
+        // Cascade update to all lab_tests associated with this patient
+        const { data: relatedTests, error: fetchErr } = await sb.from('lab_tests').select('id, details').eq('patient_id', currentQuickPatient.id);
+        if (!fetchErr && relatedTests && relatedTests.length > 0) {
+            for (let t of relatedTests) {
+                let updatedDetails = typeof t.details === 'object' && t.details !== null ? { ...t.details } : {};
+                if (updatedDetails.name) updatedDetails.name = newName;
+                await sb.from('lab_tests').update({
+                    patient_name: newName,
+                    details: updatedDetails
+                }).eq('id', t.id);
+            }
+            // If workspace is active, refresh it so pending/completed lists show the new name
+            if (typeof loadWorkspaceData === 'function') {
+                loadWorkspaceData();
+            }
+        }
+
         // Also update cached patient data
         currentQuickPatient.name = newName;
         currentQuickPatient.facility = newFac;
@@ -1475,6 +1492,122 @@ async function savePatientDemographicsQS() {
         showAppAlert("Success", `Demographics updated successfully!${newEmail && newEmail !== oldEmail ? `\n\nLogin notification sent to ${newEmail}` : ''}`, "success");
     } catch (err) {
         showAppAlert("Error", "Could not update demographics: " + err.message, "error");
+    }
+}
+
+// ================= MERGE DUPLICATE LOGIC =================
+let mergeSourcePatient = null;
+
+function openMergeModal() {
+    if (!currentQuickPatient) return;
+    document.getElementById('merge-master-name').innerText = currentQuickPatient.name;
+    document.getElementById('merge-search-input').value = '';
+    document.getElementById('merge-search-results').innerHTML = '';
+    document.getElementById('merge-comparison-area').style.display = 'none';
+    mergeSourcePatient = null;
+    document.getElementById('merge-patient-modal').style.display = 'flex';
+}
+
+function closeMergeModal() {
+    document.getElementById('merge-patient-modal').style.display = 'none';
+}
+
+async function runMergeSearch(q) {
+    const resBox = document.getElementById('merge-search-results');
+    if (!q || q.length < 2) {
+        resBox.innerHTML = '';
+        return;
+    }
+    resBox.innerHTML = '<div style="padding:10px; font-size:0.8rem; color:var(--text-muted); text-align:center;">Searching duplicates...</div>';
+    try {
+        const { data, error } = await sb.from('patients').select('*').ilike('full_name', `%${q}%`).limit(10);
+        if (error) throw error;
+        
+        // Filter out the current master patient
+        const filtered = (data || []).filter(p => p.id !== currentQuickPatient.id);
+        
+        if (filtered.length === 0) {
+            resBox.innerHTML = '<div style="padding:10px; font-size:0.8rem; color:var(--text-muted); text-align:center;">No duplicate found.</div>';
+            return;
+        }
+
+        resBox.innerHTML = filtered.map(p => `
+            <div class="search-result-item" style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" onclick='selectMergeSource(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
+                <div style="font-weight:bold; color:var(--danger);">${p.full_name}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">ID: ${p.id} | DOB: ${p.bday || 'N/A'} | Fac: ${p.facility || 'N/A'}</div>
+            </div>
+        `).join('');
+    } catch (e) {
+        resBox.innerHTML = `<div style="padding:10px; font-size:0.8rem; color:var(--danger); text-align:center;">Error: ${e.message}</div>`;
+    }
+}
+
+function selectMergeSource(p) {
+    mergeSourcePatient = p;
+    document.getElementById('merge-search-input').value = p.full_name;
+    document.getElementById('merge-search-results').innerHTML = '';
+    
+    document.getElementById('merge-source-details').innerHTML = `
+        <strong>${p.full_name}</strong><br>
+        ID: ${p.id}<br>
+        Bday: ${p.bday || 'N/A'} (Age: ${p.age || 'N/A'})<br>
+        Address: ${p.address || 'N/A'}<br>
+        Facility: ${p.facility || 'N/A'}<br>
+        Sex: ${p.sex || 'N/A'}
+    `;
+    
+    document.getElementById('merge-master-details').innerHTML = `
+        <strong>${currentQuickPatient.name}</strong><br>
+        ID: ${currentQuickPatient.id}<br>
+        Bday: ${currentQuickPatient.bday || 'N/A'} (Age: ${currentQuickPatient.age || 'N/A'})<br>
+        Address: ${currentQuickPatient.address || 'N/A'}<br>
+        Facility: ${currentQuickPatient.facility || 'N/A'}<br>
+        Sex: ${currentQuickPatient.sex || 'N/A'}
+    `;
+    
+    document.getElementById('merge-comparison-area').style.display = 'block';
+}
+
+async function confirmMergePatient() {
+    if (!mergeSourcePatient || !currentQuickPatient) return;
+    
+    const confirmMsg = `Are you absolutely sure you want to merge these records?\n\nALL lab tests under "${mergeSourcePatient.full_name}" will be transferred to "${currentQuickPatient.name}".\n\nThe duplicate profile (${mergeSourcePatient.id}) will be DELETED permanently.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        // 1. Update all lab_tests from source to master
+        const { error: updateErr } = await sb.from('lab_tests')
+            .update({ patient_id: currentQuickPatient.id, patient_name: currentQuickPatient.name })
+            .eq('patient_id', mergeSourcePatient.id);
+            
+        if (updateErr) throw updateErr;
+        
+        // 2. Also update details JSON to reflect new name
+        const { data: migratedTests } = await sb.from('lab_tests').select('id, details').eq('patient_id', currentQuickPatient.id);
+        if (migratedTests) {
+            for (let t of migratedTests) {
+                let d = typeof t.details === 'object' && t.details !== null ? { ...t.details } : {};
+                if (d.name && d.name !== currentQuickPatient.name) {
+                    d.name = currentQuickPatient.name;
+                    await sb.from('lab_tests').update({ details: d }).eq('id', t.id);
+                }
+            }
+        }
+        
+        // 3. Delete the source patient
+        const { error: delErr } = await sb.from('patients').delete().eq('id', mergeSourcePatient.id);
+        if (delErr) throw delErr;
+        
+        showAppAlert("Merge Successful", `All records successfully moved to ${currentQuickPatient.name}. Duplicate profile deleted.`, "success");
+        closeMergeModal();
+        
+        // Refresh master patient details
+        runQuickSearch(currentQuickPatient.name);
+        if (typeof loadWorkspaceData === 'function') loadWorkspaceData();
+        
+    } catch(e) {
+        showAppAlert("Merge Failed", e.message, "error");
     }
 }
 
