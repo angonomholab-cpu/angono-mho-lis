@@ -3234,6 +3234,19 @@ function processNtpResultsClient(p) {
             if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; } if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; } if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
         });
     }
+
+    // 🟢 4. DSSM Follow-up Auto-detect Rules (applied AFTER smears are parsed)
+    if (p.isDSSM) {
+        const hasS1 = p.smear1 && String(p.smear1).trim() !== "";
+        const hasS2 = p.smear2 && String(p.smear2).trim() !== "";
+        const isHistoryEmpty = String(p.history).toUpperCase() !== "NEW" && String(p.history).toUpperCase() !== "RETREATMENT" && String(p.history).toUpperCase() !== "RETREAT";
+        
+        // Rule: "pag smear 1 lng may result at blank ang smear 2, follow up un" OR "pag walang nakasulat na new automatic na follow up na"
+        if ((hasS1 && !hasS2) || isHistoryEmpty) {
+            p.reason = "Follow-up";
+            p.history = "";
+        }
+    }
 }
 
 function mapSupabaseToPrintObject(d) {
