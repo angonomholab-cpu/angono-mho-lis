@@ -656,15 +656,14 @@ async function apiGet(action, params = {}) {
                     });
                 }
 
-                // 🟢 1. Dapat may Date Examined AT Date Released bago lumabas sa registry
+                // 🟢 1. Dapat may Date Examined bago lumabas sa registry (Date Released is now optional to allow viewing encoded results)
                 const isValidDateVal = (val) => val && String(val).trim() !== '' && String(val).trim() !== '-' && String(val).trim() !== 'null' && String(val).trim() !== 'undefined';
                 let filteredData = data.filter(row => {
                     const dExam = row["Date Examined"] || row["Date Exam"] || row.date_examined;
-                    const dRel = row["Date Released"] || row["Date Rel"] || row.date_released;
-                    return isValidDateVal(dExam) && isValidDateVal(dRel);
+                    return isValidDateVal(dExam);
                 });
 
-                if (filteredData.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No completed records found (requires both Date Examined and Date Released)"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
+                if (filteredData.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No completed records found (requires Date Examined)"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
 
                 // Auto-fill Age for other logbooks (CHEM, HEMA, UA, FA, DENGUE, GRAM, GXVL) if missing
                 filteredData.forEach(row => {
