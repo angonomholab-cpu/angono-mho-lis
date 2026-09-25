@@ -128,7 +128,7 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
 
     // --- BEAUTIFUL EMAIL HTML TEMPLATE ---
     const primaryColor = "#0d9488"; // MHO Teal
-    
+
     let contentHtml = "";
     if (type === "welcome") {
         subject = "Angono MHO Laboratory - Patient Portal Access & Account Details";
@@ -354,7 +354,7 @@ async function apiGet(action, params = {}) {
                 const { data, error } = await sb.from('app_users').select('*').ilike('username', params.username).maybeSingle();
                 if (error) throw error;
                 if (!data) return { status: "FAIL", error: "User not found" };
-                
+
                 if (isMaintenance && data.role !== 'ADMIN') {
                     return { status: "FAIL", error: "System is offline for maintenance." };
                 }
@@ -840,7 +840,7 @@ async function apiPost(action, payload) {
                 };
                 if (details.email) {
                     pUpdate.email = details.email.trim().toLowerCase();
-                    if (details.patientPassword) pUpdate.password = details.patientPassword;
+                    if (details.patientPassword) pUpdate.password_hash = details.patientPassword;
                 }
                 const { error: pErr } = await sb.from('patients').update(pUpdate).eq('id', payload.patientId);
                 if (pErr) throw new Error("Update Patient Error: " + pErr.message);
@@ -945,7 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.inactivityTimer = null;
     const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
 
-    window.resetInactivityTimer = function() {
+    window.resetInactivityTimer = function () {
         clearTimeout(window.inactivityTimer);
         if (currentUser && document.getElementById('login-portal').style.display === 'none') {
             window.inactivityTimer = setTimeout(() => {
@@ -955,7 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt => 
+    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt =>
         document.addEventListener(evt, window.resetInactivityTimer, { passive: true })
     );
     try {
@@ -1137,8 +1137,8 @@ async function resendPatientPassword() {
     try {
         const { data, error } = await sb.from('patients').select('*').ilike('email', email).maybeSingle();
         if (data) {
-            let pass = data.password;
-            if (!pass) { pass = Math.random().toString(36).slice(-8).toUpperCase(); await sb.from('patients').update({ password: pass }).eq('id', data.id); }
+            let pass = data.password_hash || data.password;
+            if (!pass) { pass = Math.random().toString(36).slice(-8).toUpperCase(); await sb.from('patients').update({ password_hash: pass }).eq('id', data.id); }
 
             // Dispatch live automated email
             const emailRes = await sendPatientEmail({
@@ -1442,9 +1442,9 @@ async function savePatientDemographicsQS() {
 
         if (newEmail) {
             pUpdates.email = newEmail;
-            const { data: pRec } = await sb.from('patients').select('password').eq('id', currentQuickPatient.id).maybeSingle();
-            generatedPassword = (pRec && pRec.password) ? pRec.password : Math.random().toString(36).slice(-8).toUpperCase();
-            pUpdates.password = generatedPassword;
+            const { data: pRec } = await sb.from('patients').select('password_hash').eq('id', currentQuickPatient.id).maybeSingle();
+            generatedPassword = (pRec && pRec.password_hash) ? pRec.password_hash : Math.random().toString(36).slice(-8).toUpperCase();
+            pUpdates.password_hash = generatedPassword;
         }
 
         const { error } = await sb.from('patients').update(pUpdates).eq('id', currentQuickPatient.id);
@@ -1521,10 +1521,10 @@ async function runMergeSearch(q) {
     try {
         const { data, error } = await sb.from('patients').select('*').ilike('full_name', `%${q}%`).limit(10);
         if (error) throw error;
-        
+
         // Filter out the current master patient
         const filtered = (data || []).filter(p => p.id !== currentQuickPatient.id);
-        
+
         if (filtered.length === 0) {
             resBox.innerHTML = '<div style="padding:10px; font-size:0.8rem; color:var(--text-muted); text-align:center;">No duplicate found.</div>';
             return;
@@ -1545,7 +1545,7 @@ function selectMergeSource(p) {
     mergeSourcePatient = p;
     document.getElementById('merge-search-input').value = p.full_name;
     document.getElementById('merge-search-results').innerHTML = '';
-    
+
     document.getElementById('merge-source-details').innerHTML = `
         <strong>${p.full_name}</strong><br>
         ID: ${p.id}<br>
@@ -1554,7 +1554,7 @@ function selectMergeSource(p) {
         Facility: ${p.facility || 'N/A'}<br>
         Sex: ${p.sex || 'N/A'}
     `;
-    
+
     document.getElementById('merge-master-details').innerHTML = `
         <strong>${currentQuickPatient.name}</strong><br>
         ID: ${currentQuickPatient.id}<br>
@@ -1563,25 +1563,25 @@ function selectMergeSource(p) {
         Facility: ${currentQuickPatient.facility || 'N/A'}<br>
         Sex: ${currentQuickPatient.sex || 'N/A'}
     `;
-    
+
     document.getElementById('merge-comparison-area').style.display = 'block';
 }
 
 async function confirmMergePatient() {
     if (!mergeSourcePatient || !currentQuickPatient) return;
-    
+
     const confirmMsg = `Are you absolutely sure you want to merge these records?\n\nALL lab tests under "${mergeSourcePatient.full_name}" will be transferred to "${currentQuickPatient.name}".\n\nThe duplicate profile (${mergeSourcePatient.id}) will be DELETED permanently.`;
-    
+
     if (!confirm(confirmMsg)) return;
-    
+
     try {
         // 1. Update all lab_tests from source to master
         const { error: updateErr } = await sb.from('lab_tests')
             .update({ patient_id: currentQuickPatient.id, patient_name: currentQuickPatient.name })
             .eq('patient_id', mergeSourcePatient.id);
-            
+
         if (updateErr) throw updateErr;
-        
+
         // 2. Also update details JSON to reflect new name
         const { data: migratedTests } = await sb.from('lab_tests').select('id, details').eq('patient_id', currentQuickPatient.id);
         if (migratedTests) {
@@ -1593,19 +1593,19 @@ async function confirmMergePatient() {
                 }
             }
         }
-        
+
         // 3. Delete the source patient
         const { error: delErr } = await sb.from('patients').delete().eq('id', mergeSourcePatient.id);
         if (delErr) throw delErr;
-        
+
         showAppAlert("Merge Successful", `All records successfully moved to ${currentQuickPatient.name}. Duplicate profile deleted.`, "success");
         closeMergeModal();
-        
+
         // Refresh master patient details
         runQuickSearch(currentQuickPatient.name);
         if (typeof loadWorkspaceData === 'function') loadWorkspaceData();
-        
-    } catch(e) {
+
+    } catch (e) {
         showAppAlert("Merge Failed", e.message, "error");
     }
 }
@@ -1969,8 +1969,8 @@ async function submitPendingUpdate() {
 
         if (pEmail) {
             // Check existing patient password in DB or generate one
-            const { data: pRec } = await sb.from('patients').select('password').eq('id', item.patientId).maybeSingle();
-            generatedPassword = (pRec && pRec.password) ? pRec.password : Math.random().toString(36).slice(-8).toUpperCase();
+            const { data: pRec } = await sb.from('patients').select('password_hash').eq('id', item.patientId).maybeSingle();
+            generatedPassword = (pRec && pRec.password_hash) ? pRec.password_hash : Math.random().toString(36).slice(-8).toUpperCase();
             demogUpdates.patientPassword = generatedPassword;
         }
 
@@ -2071,12 +2071,12 @@ function renderLists() {
         let expandAreaHtml = '';
         if (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') {
             clickAttr = `onclick="toggleExpand('${safeId}')" style="cursor:pointer; flex-grow:1;"`;
-            
+
             let savePrintBtn = '';
             if (role === 'ADMIN' || role === 'STAFF') {
                 savePrintBtn = `<button class="btn-secondary" style="flex:1; border-color:var(--pri); color:var(--pri); padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button>`;
             }
-            
+
             expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area" style="display:none; padding:10px; border-top:1px solid var(--border-color);"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn-primary" style="flex:1; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>${savePrintBtn}</div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         } else {
             clickAttr = `style="flex-grow:1;"`;
@@ -2417,30 +2417,30 @@ window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
         // Close all others and pin this one
         const existingModal = document.getElementById('active-registry-modal');
         if (existingModal) existingModal.remove();
-        
+
         document.querySelectorAll('#regTableBody tr.reg-data-row').forEach(r => {
             r.classList.remove('active-row');
             r.classList.remove('pinned-open');
         });
 
         regPinnedDrawerId = drawerId;
-        
+
         // Extract HTML from the hidden row
         const containerHtml = drawer.querySelector('td').innerHTML;
-        
+
         // Create global modal wrapper
         const modalWrapper = document.createElement('div');
         modalWrapper.id = 'active-registry-modal';
         modalWrapper.className = 'registry-global-modal';
         modalWrapper.innerHTML = containerHtml;
-        
+
         // Close on backdrop click
-        modalWrapper.onclick = function(e) {
+        modalWrapper.onclick = function (e) {
             if (e.target === modalWrapper) {
                 window.toggleRegistryRowDrawer(drawerId, rowEl);
             }
         };
-        
+
         document.body.appendChild(modalWrapper);
 
         if (rowEl) {
@@ -2557,11 +2557,11 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                     return clean === 'NAME' || clean === 'PATIENTNAME';
                 });
                 const patientName = nameIdx > -1 ? (row[nameIdx] || '') : 'Patient Record';
-                
+
                 const ageIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => String(h).toUpperCase().replace(/[_\s]+/g, '') === 'AGE');
                 const sexIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => String(h).toUpperCase().replace(/[_\s]+/g, '') === 'SEX' || String(h).toUpperCase().replace(/[_\s]+/g, '') === 'GENDER');
                 const facIdx = window.CURRENT_REGISTRY_HEADERS.findIndex(h => String(h).toUpperCase().replace(/[_\s]+/g, '') === 'FACILITY');
-                
+
                 const age = ageIdx > -1 ? (row[ageIdx] || '') : '';
                 const sex = sexIdx > -1 ? (row[sexIdx] || '') : '';
                 const fac = facIdx > -1 ? (row[facIdx] || '') : '';
@@ -2574,19 +2574,19 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 let performedHtml = '';
 
                 const skipHeaders = ['TESTCODE', 'ID', 'NAME', 'PATIENTNAME', 'AGE', 'SEX', 'GENDER', 'FACILITY', 'LABORATORYSERIALNUMBER', 'LABSERIALNUMBER', 'XRAYRESULT'];
-                
+
                 hMap.forEach(c => {
                     let cClean = String(c.original).toUpperCase().replace(/[_\s]+/g, '');
                     if (skipHeaders.includes(cClean)) return;
-                    
+
                     let val = row[c.index] || '';
                     let vU = String(val).toUpperCase().trim();
                     let displayVal = val ? val : '<span style="color:var(--text-muted); font-weight:normal; font-style:italic;">None</span>';
-                    
+
                     // Format results with badges like in the table
                     let isXrayCol = cClean === 'XRAYRESULT';
                     let isResCol = (!isXrayCol) && (cClean.includes('RESULT') || cClean.includes('DIAGNOSIS') || cClean === 'HIV' || cClean === 'SYPHILIS' || cClean === 'HBSAG');
-                    
+
                     if (isResCol && val) {
                         let bg = "transparent", col = "inherit";
                         if (vU === "I" || vU.includes("INVALID") || vU.includes("ERR")) { bg = "#000000"; col = "#ffffff"; }
@@ -2595,7 +2595,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         else if (vU === "RR" || vU.includes("RESISTANT")) { bg = "#991b1b"; col = "#ffffff"; }
                         else if (vU === "TI") { bg = "#ffedd5"; col = "#c2410c"; }
                         else if (vU === "TT") { bg = "#fef9c3"; col = "#b45309"; }
-                        
+
                         if (bg !== 'transparent') {
                             displayVal = `<span class="res-badge" style="background-color:${bg}; color:${col}; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${val}</span>`;
                         }
@@ -3214,12 +3214,12 @@ function processNtpResultsClient(p) {
     // 🔴 FIX: Idinagdag ang TB Case No para lumabas sa mismong form
     p.tbCase = findRes("TB Case Number") || "";
     p.history = findRes("History of Treatment"); let phys = findRes("Source of Request") || p.physician || ""; p.physician = (phys === "undefined") ? "" : phys; p.xray = findRes("X-Ray Result"); p.monthTreat = findRes("Month of Treatment"); p.reason = findRes("Reason for Examination") || findRes("Category") || "Diagnosis";
-    
+
     // If it's a Follow-up, it shouldn't be "New" history
     if (p.reason === "Follow-up") {
         p.history = "";
     }
-    
+
     p.appearance = findRes("Appearance") || findRes("Visual Appearance") || findRes("Specimen Volume and Quality") || p.appearance || "";
     p.remarks = findRes("Remarks") || p.remarks || "";
 
@@ -3240,7 +3240,7 @@ function processNtpResultsClient(p) {
         const hasS1 = p.smear1 && String(p.smear1).trim() !== "";
         const hasS2 = p.smear2 && String(p.smear2).trim() !== "";
         const isHistoryEmpty = String(p.history).toUpperCase() !== "NEW" && String(p.history).toUpperCase() !== "RETREATMENT" && String(p.history).toUpperCase() !== "RETREAT";
-        
+
         // Rule: "pag smear 1 lng may result at blank ang smear 2, follow up un" OR "pag walang nakasulat na new automatic na follow up na"
         if ((hasS1 && !hasS2) || isHistoryEmpty) {
             p.reason = "Follow-up";
@@ -3840,7 +3840,7 @@ window.migrateToSupabaseAuth = async function () {
     alert(`Migration Complete! Success: ${successCount}, Failed: ${failCount}. Check console for details.\n\nNote: Existing patients must use their Patient ID as their temporary password.`);
 };
 
-window.handleImageUpload = function(input, previewId, dataId) {
+window.handleImageUpload = function (input, previewId, dataId) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function (e) {
@@ -3863,7 +3863,7 @@ window.loadMyProfile = function () {
         document.getElementById('my-profile-avatar').src = currentUser.avatar;
         document.getElementById('my-avatar-data').value = currentUser.avatar;
     }
-    
+
     // Find staff details if they exist
     const staffMatch = (typeof globalStaffList !== 'undefined' ? globalStaffList : []).find(s => s.name === currentUser.fullName);
     if (staffMatch) {
@@ -3892,7 +3892,7 @@ window.saveMyProfile = async function () {
     try {
         const newPass = document.getElementById('my-profile-password').value;
         let newAvatar = document.getElementById('my-avatar-data').value;
-        
+
         // Use standard URL if it's already a URL, otherwise it's base64 data
         if (newAvatar && typeof cleanDriveLink === 'function') newAvatar = cleanDriveLink(newAvatar);
 
@@ -3937,7 +3937,7 @@ window.saveMyProfile = async function () {
         currentUser.fullName = newFullName;
         localStorage.setItem('labUser', JSON.stringify(currentUser));
         localStorage.setItem('labTheme_' + currentUser.username, currentUser.theme || 'default');
-        
+
         if (newAvatar) {
             document.getElementById('my-profile-avatar').src = newAvatar;
             const dAvatar = document.getElementById('pill-avatar');
