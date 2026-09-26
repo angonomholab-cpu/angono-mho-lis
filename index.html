@@ -1585,7 +1585,7 @@
 
                 <div id="page-settings" class="page-area">
                     <div
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; height: 100%;">
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; align-items: start;">
 
                         <!-- My Profile (All users) -->
                         <div class="workspace-col" style="padding:0;">
@@ -1734,7 +1734,7 @@
                                 </div>
                             </div>
                             <div id="list-users"
-                                style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;">
+                                style="padding: 16px; display:flex; flex-direction:column; gap:10px;">
                             </div>
                         </div>
 
@@ -1750,7 +1750,7 @@
                                     style="color: var(--success);"><i class="ph ph-plus-circle"></i></button>
                             </div>
                             <div id="staffListContainer"
-                                style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:10px;">
+                                style="padding: 16px; display:flex; flex-direction:column; gap:10px;">
                             </div>
                             <div id="staff-form"
                                 style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
@@ -1786,7 +1786,7 @@
                                 </h3>
                             </div>
                             <div
-                                style="padding: 16px; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:12px; font-size:0.8rem;">
+                                style="padding: 16px; display:flex; flex-direction:column; gap:12px; font-size:0.8rem;">
                                 <div
                                     style="background:var(--bg-subtle); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); line-height:1.4;">
                                     <i class="ph ph-info" style="color:var(--pri);"></i> <strong>Automated
@@ -2483,7 +2483,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=23"></script>
+    <script src="app.js?v=25"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
