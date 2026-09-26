@@ -2233,8 +2233,8 @@ async function openRegistryEditModal(testCode) {
         'Dengue IgM': ['', 'Negative', 'Positive'],
         'ABO': ['A', 'B', 'AB', 'O'],
         'Rh': ['Positive', 'Negative'],
-        'Performed By': (window.globalStaffList || []).map(s => s.name),
-        'Prepared By': Object.values(window.globalUsersMap || {})
+        'Performed By': (globalStaffList || []).map(s => s.name),
+        'Prepared By': Object.values(globalUsersMap || {})
     };
 
     headers.forEach((h, i) => {
