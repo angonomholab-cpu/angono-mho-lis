@@ -925,14 +925,22 @@ async function apiPost(action, payload) {
                 return { status: "success" };
             }
             case "getSettingsData": {
-                const [{ data: staff }, { data: facilities }, { data: users }] = await Promise.all([
-                    sb.from('staff').select('*'), sb.from('facilities').select('*'), sb.from('app_users').select('*')
+                const [{ data: staff }, { data: facilities }, { data: users }, { data: audits }] = await Promise.all([
+                    sb.from('staff').select('*'), sb.from('facilities').select('*'), sb.from('app_users').select('*'), sb.from('audit_logs').select('username, created_at').eq('action', 'LOGIN')
                 ]);
+                const lastLogins = {};
+                if (audits) {
+                    audits.forEach(a => {
+                        if (!lastLogins[a.username] || new Date(a.created_at) > new Date(lastLogins[a.username])) {
+                            lastLogins[a.username] = a.created_at;
+                        }
+                    });
+                }
                 return {
                     status: "success", data: {
                         staff: (staff || []).map(s => ({ name: s.name, role: s.role, license: s.license, sigUrl: s.sig_url })),
                         facilities: (facilities || []).map(f => ({ name: f.name, address: f.address, person: f.contact_person, number: f.contact_number })),
-                        users: (users || []).map(u => ({ username: u.username, fullname: u.full_name || u.username, role: u.role, facility: u.facility, status: u.status, last_login: u.last_login }))
+                        users: (users || []).map(u => ({ username: u.username, fullname: u.full_name || u.username, role: u.role, facility: u.facility, status: u.status, last_login: u.last_login || lastLogins[u.username] || null }))
                     }
                 };
             }
