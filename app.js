@@ -250,10 +250,11 @@ const availableTests = {
         html: `
             <div class="field-group">
                 <label class="field-label">Category</label>
-                <select data-key="Category" class="form-select" onchange="toggleDssmCategory(this)">
-                    <option value="Diagnosis">Diagnosis</option>
-                    <option value="Follow-up">Follow-up</option>
-                </select>
+                <input type="hidden" data-key="Category" id="dssm_category" value="Diagnosis">
+                <div class="compact-toggle">
+                    <button type="button" class="toggle-btn active" onclick="setDssmToggle(this, 'Diagnosis')">Diagnosis</button>
+                    <button type="button" class="toggle-btn" onclick="setDssmToggle(this, 'Follow-up')">Follow-up</button>
+                </div>
             </div>
             <div class="field-group" id="dssm-history-group">
                 <label class="field-label">History of Treatment</label>
@@ -273,11 +274,11 @@ const availableTests = {
             </div>
         `
     },
-    'hema': { testName: 'Hematology', testCode: 'HEMA', title: 'Hematology', html: '<div class="chip-group"><div class="chip" data-val="CBC" onclick="toggleSub(this)">CBC</div><div class="chip" data-val="Blood Typing" onclick="toggleSub(this)">Blood Typing</div></div>' },
-    'chem': { testName: 'Blood Chemistry', testCode: 'CHEM', title: 'Blood Chemistry', html: '<div class="chip-group"><div class="chip" data-val="FBS" onclick="toggleSub(this)">FBS</div><div class="chip" data-val="RBS" onclick="toggleSub(this)">RBS</div><div class="chip" data-val="Cholesterol" onclick="toggleSub(this)">Cholesterol</div><div class="chip" data-val="Triglycerides" onclick="toggleSub(this)">Triglycerides</div><div class="chip" data-val="HDL" onclick="toggleSub(this)">HDL</div><div class="chip" data-val="LDL" onclick="toggleSub(this)">LDL</div><div class="chip" data-val="BUN" onclick="toggleSub(this)">BUN</div><div class="chip" data-val="Creatinine" onclick="toggleSub(this)">Creatinine</div><div class="chip" data-val="Uric Acid" onclick="toggleSub(this)">Uric Acid</div><div class="chip" data-val="SGOT" onclick="toggleSub(this)">SGOT/AST</div><div class="chip" data-val="SGPT" onclick="toggleSub(this)">SGPT/ALT</div><div class="chip" data-val="HbA1c" onclick="toggleSub(this)">HbA1c</div></div>' },
+    'hema': { testName: 'Hematology', testCode: 'HEMA', title: 'Hematology', html: '<div class="chip-group"><div class="chip" data-val="CBC" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> CBC</div><div class="chip" data-val="Blood Typing" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> Blood Typing</div></div>' },
+    'chem': { testName: 'Blood Chemistry', testCode: 'CHEM', title: 'Blood Chemistry', html: '<div class="chip-group"><div class="chip" data-val="FBS" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> FBS</div><div class="chip" data-val="RBS" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> RBS</div><div class="chip" data-val="Cholesterol" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> Cholesterol</div><div class="chip" data-val="Triglycerides" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> Triglycerides</div><div class="chip" data-val="HDL" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> HDL</div><div class="chip" data-val="LDL" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> LDL</div><div class="chip" data-val="BUN" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> BUN</div><div class="chip" data-val="Creatinine" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> Creatinine</div><div class="chip" data-val="Uric Acid" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> Uric Acid</div><div class="chip" data-val="SGOT" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> SGOT/AST</div><div class="chip" data-val="SGPT" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> SGPT/ALT</div><div class="chip" data-val="HbA1c" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> HbA1c</div></div>' },
     'uria': { testName: 'Urinalysis', testCode: 'UA', title: 'Clinical Microscopy - Urine', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Standard Urinalysis selected.</div>' },
     'feca': { testName: 'Fecalysis', testCode: 'FA', title: 'Clinical Microscopy - Feces', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Standard Fecalysis selected.</div>' },
-    'sero': { testName: 'Serology', testCode: 'SERO', title: 'Serology / Immunology', html: '<div class="chip-group"><div class="chip" data-val="HIV" onclick="toggleSub(this)">HIV</div><div class="chip" data-val="Syphilis" onclick="toggleSub(this)">Syphilis</div><div class="chip" data-val="HBsAg" onclick="toggleSub(this)">HBsAg</div></div><div class="field-group" style="margin-top:10px;"><label class="field-label">Classification</label><input type="hidden" data-key="Classification" id="sero_class" value="Maternal"><div class="compact-toggle"><button type="button" class="toggle-btn active" onclick="setToggleValue(this, \'sero_class\', \'Maternal\')">Maternal</button><button type="button" class="toggle-btn" onclick="setToggleValue(this, \'sero_class\', \'SHC\')">SHC</button><button type="button" class="toggle-btn" onclick="setToggleValue(this, \'sero_class\', \'TB Patient\')">TB</button></div></div><div class="field-group" style="margin-top:10px;"><label class="field-label">KAP Category</label><select data-key="KAP Category" class="form-select"><option value="None">None</option><option value="MSM">MSM</option><option value="TGW">TGW</option><option value="MSW">MSW</option><option value="FSW">FSW</option><option value="PWID">PWID</option></select></div>' },
+    'sero': { testName: 'Serology', testCode: 'SERO', title: 'Serology / Immunology', html: '<div class="chip-group"><div class="chip" data-val="HIV" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> HIV</div><div class="chip" data-val="Syphilis" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> Syphilis</div><div class="chip" data-val="HBsAg" onclick="toggleSub(this)"><i class="ph ph-plus-circle"></i> HBsAg</div></div><div class="field-group" style="margin-top:10px;"><label class="field-label">Classification</label><input type="hidden" data-key="Classification" id="sero_class" value="Maternal"><div class="compact-toggle"><button type="button" class="toggle-btn active" onclick="setToggleValue(this, \'sero_class\', \'Maternal\')">Maternal</button><button type="button" class="toggle-btn" onclick="setToggleValue(this, \'sero_class\', \'SHC\')">SHC</button><button type="button" class="toggle-btn" onclick="setToggleValue(this, \'sero_class\', \'TB Patient\')">TB</button></div></div><div class="field-group" style="margin-top:10px;"><label class="field-label">KAP Category</label><select data-key="KAP Category" class="form-select"><option value="None">None</option><option value="MSM">MSM</option><option value="TGW">TGW</option><option value="MSW">MSW</option><option value="FSW">FSW</option><option value="PWID">PWID</option></select></div>' },
     'dengue': { testName: 'Dengue', testCode: 'DENGUE', title: 'Dengue Rapid Test', html: '<label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="dn_duo_check" style="width:18px; height:18px; accent-color:var(--pri);"> Dengue Duo (NS1 + IgG/IgM)</label>' },
     'gram': { testName: 'Gram Stain', testCode: 'GRAM', title: 'Gram Stain', html: '<div class="field-group full-width"><label class="field-label">Source of Specimen</label><input type="text" data-key="Source" class="form-input"></div>' }
 };
@@ -1366,7 +1367,22 @@ function openTestDetails(id) {
     const area = document.getElementById('test-details-area'); area.style.display = 'block';
     area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> ${config.title}</div><div class="form-grid grid-1">${config.html}</div><div style="margin-top:6px; display:flex; gap:8px; position:relative; z-index:99999; padding-bottom:4px;"><button type="button" class="btn btn-secondary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); cancelDetail()">Cancel</button><button type="button" class="btn btn-primary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); confirmDetail('${id}')">Confirm</button></div>`;
 }
-function toggleSub(btn) { btn.classList.toggle('active'); }
+function toggleSub(btn) { 
+    btn.classList.toggle('active'); 
+    let icon = btn.querySelector('i');
+    if (icon) {
+        if (btn.classList.contains('active')) {
+            icon.className = 'ph-fill ph-check-circle';
+        } else {
+            icon.className = 'ph ph-plus-circle';
+        }
+    }
+}
+function setDssmToggle(btn, val) {
+    setToggleValue(btn, 'dssm_category', val);
+    const fakeSelect = { value: val };
+    toggleDssmCategory(fakeSelect);
+}
 function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-details-area').innerHTML = ''; document.getElementById('test-buttons-container').style.display = ''; }
 
 function confirmDetail(id) {
