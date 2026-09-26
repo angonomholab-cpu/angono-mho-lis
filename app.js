@@ -385,7 +385,11 @@ async function apiGet(action, params = {}) {
                     return { status: "FAIL", error: "System is offline for maintenance." };
                 }
                 if (data.status === "PENDING") return { status: "PENDING" };
-                if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL" };
+                if (data.status === "REJECTED" || data.status === "BANNED") return { status: "FAIL", error: "Account Disabled/Rejected" };
+                
+                try {
+                    await sb.from('app_users').update({ last_login: new Date().toISOString() }).eq('username', params.username);
+                } catch(e) {}
                 const effectiveFacility = (data.role === 'STAFF' || data.role === 'ADMIN') ? 'ALL' : (data.facility || 'ALL');
                 return { status: "SUCCESS", username: data.username, facility: effectiveFacility, role: data.role, fullName: data.full_name || data.username, avatar: data.avatar_url, theme: data.color_theme };
             }
@@ -928,7 +932,7 @@ async function apiPost(action, payload) {
                     status: "success", data: {
                         staff: (staff || []).map(s => ({ name: s.name, role: s.role, license: s.license, sigUrl: s.sig_url })),
                         facilities: (facilities || []).map(f => ({ name: f.name, address: f.address, person: f.contact_person, number: f.contact_number })),
-                        users: (users || []).map(u => ({ username: u.username, fullname: u.full_name || u.username, role: u.role, facility: u.facility, status: u.status }))
+                        users: (users || []).map(u => ({ username: u.username, fullname: u.full_name || u.username, role: u.role, facility: u.facility, status: u.status, last_login: u.last_login }))
                     }
                 };
             }
@@ -982,6 +986,16 @@ async function apiPost(action, payload) {
             case "approveUser": {
                 const status = payload.userAction === 'APPROVE' ? 'ACTIVE' : 'REJECTED';
                 await sb.from('app_users').update({ status }).eq('username', payload.targetUsername);
+                return { status: "success" };
+            }
+            case "updateUserRoleInline": {
+                if (payload.adminRole !== 'ADMIN') throw new Error("Unauthorized");
+                await sb.from('app_users').update({ role: payload.newRole }).eq('username', payload.targetUsername);
+                return { status: "success" };
+            }
+            case "updateUserStatusInline": {
+                if (payload.adminRole !== 'ADMIN') throw new Error("Unauthorized");
+                await sb.from('app_users').update({ status: payload.newStatus }).eq('username', payload.targetUsername);
                 return { status: "success" };
             }
             case "editRegistryRecord": {
@@ -1074,14 +1088,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const topName = document.getElementById('top-name');
             if (topName) topName.innerText = currentUser.fullName || currentUser.username;
+            const sideName = document.getElementById('display-name');
+            if (sideName) sideName.innerText = currentUser.fullName || currentUser.username;
 
             const topRole = document.getElementById('top-role');
             if (topRole) topRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
+            const sideRole = document.getElementById('display-role');
+            if (sideRole) sideRole.innerText = currentUser.role;
 
-            const topAvatars = document.querySelectorAll('.top-avatar, .fab-avatar');
+            const topAvatars = document.querySelectorAll('.top-avatar, .fab-avatar, #user-avatar-text');
             topAvatars.forEach(av => {
                 if (currentUser.avatar) {
-                    av.innerHTML = `<img src="${currentUser.avatar}" style="width:100%; height:100%; border-radius:14px; object-fit:cover;">`;
+                    av.innerHTML = `<img src="${currentUser.avatar}" style="width:100%; height:100%; border-radius:inherit; object-fit:cover;">`;
+                    av.style.padding = '0';
+                    av.style.overflow = 'hidden';
                 } else {
                     av.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
                 }
@@ -2993,26 +3013,68 @@ function renderSettings(users) {
     const uList = document.getElementById('list-users'); if (!uList) return;
     if (!users || users.length === 0) { uList.innerHTML = '<div style="text-align:center; color:var(--text-muted);">No users found.</div>'; return; }
     const isAdmin = (String(currentUser.role || "").toUpperCase() === 'ADMIN');
+    
+    // Sort so PENDING is at top
+    users.sort((a,b) => {
+        if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+        if (b.status === 'PENDING' && a.status !== 'PENDING') return 1;
+        return 0;
+    });
+
     uList.innerHTML = users.map(u => {
-        const status = String(u.status || "").toUpperCase(); const isPending = (status === 'PENDING'); let statusDisplay = ''; let cardBorder = 'border-color: var(--border-color);';
-        if (isPending && isAdmin) { cardBorder = 'border-color: var(--warning); background: var(--warning-bg);'; statusDisplay = `<div style="display:flex; gap:8px; margin-top:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.7rem; background: var(--success);"><i class="ph ph-check"></i></button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;"><i class="ph ph-x"></i></button></div>`; } else { let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); statusDisplay = `<div style="margin-top:8px;"><span class="badge ${badgeClass}">${status}</span></div>`; }
-        let editBtn = isAdmin ? `<button onclick="openEditUser('${u.username}', '${u.fullname}', '${u.role}', '${u.status}', '${u.facility}')" class="btn-icon"><i class="ph ph-pencil-simple"></i></button>` : '';
-        return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role} • ${u.facility}</div>${statusDisplay}</div>${editBtn}</div>`;
+        const status = String(u.status || "").toUpperCase(); 
+        const isPending = (status === 'PENDING'); 
+        let cardBorder = isPending ? 'border-color: var(--warning); background: var(--warning-bg);' : 'border-color: var(--border-color);';
+        
+        if (isAdmin) {
+            let roleSelect = `<select class="form-input text-xs" style="width:auto; padding:2px 6px; margin:0; display:inline-block;" onchange="updateUserRoleInline('${u.username}', this.value)">
+                <option value="STAFF" ${u.role==='STAFF'?'selected':''}>STAFF</option>
+                <option value="ENCODER" ${u.role==='ENCODER'?'selected':''}>ENCODER</option>
+                <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
+            </select>`;
+            
+            let toggleHtml = isPending ? 
+                `<div style="display:flex; gap:8px;"><button onclick="decideUser('${u.username}', 'APPROVE')" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.75rem; background: var(--success);"><i class="ph ph-check"></i> Approve</button><button onclick="decideUser('${u.username}', 'REJECT')" class="btn btn-danger" style="padding: 4px 12px; font-size: 0.75rem;"><i class="ph ph-x"></i> Reject</button></div>`
+                :
+                `<div style="display:flex; align-items:center; gap:6px;">
+                    <label class="switch"><input type="checkbox" onchange="toggleUserStatusInline('${u.username}', this.checked)" ${status === 'ACTIVE' ? 'checked' : ''}><span class="slider"></span></label>
+                    <span style="font-size:0.75rem; font-weight:bold; color:${status==='ACTIVE'?'var(--success)':'var(--danger)'};">${status==='ACTIVE'?'Active':'Rejected'}</span>
+                 </div>`;
+                 
+            return `<div class="pending-card" style="margin-bottom: 12px; ${cardBorder} flex-direction: column; gap:10px; box-shadow: var(--shadow-card);">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
+                            <div>
+                                <div class="pc-name" style="font-size:1.1rem; color:var(--text-main);">${u.fullname}</div>
+                                <div class="pc-meta" style="margin-top:2px;">@${u.username} • Last Online: <strong style="color:var(--text-main);">${u.last_login ? new Date(u.last_login).toLocaleString() : 'N/A'}</strong></div>
+                            </div>
+                            <button onclick="deleteUserInline('${u.username}')" class="btn-icon" style="color:var(--danger); background:rgba(239, 68, 68, 0.1);" title="Delete User"><i class="ph ph-trash"></i></button>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-top:10px; border-top:1px dashed var(--border-color);">
+                            <div style="display:flex; align-items:center; gap:8px;"><strong style="font-size:0.75rem; color:var(--text-muted);">Role:</strong> ${roleSelect}</div>
+                            ${toggleHtml}
+                        </div>
+                    </div>`;
+        } else {
+            let badgeClass = status === 'ACTIVE' ? 'badge-negative' : (status === 'REJECTED' ? 'badge-positive' : 'badge-warning'); 
+            return `<div class="pending-card" style="margin-bottom: 8px; ${cardBorder} flex-direction: row; justify-content: space-between; align-items: flex-start;"><div><div class="pc-name">${u.fullname}</div><div class="pc-meta" style="margin-top:2px;">@${u.username} • ${u.role}</div><div style="margin-top:8px;"><span class="badge ${badgeClass}">${status}</span></div></div></div>`;
+        }
     }).join('');
 }
 
-let currentEditTarget = "";
-function openEditUser(username, name, role, status, fac) { currentEditTarget = username; document.getElementById('edit_u_user').value = username; document.getElementById('edit_u_name').value = name; document.getElementById('edit_u_role').value = role; document.getElementById('edit_u_status').value = status; document.getElementById('edit_u_fac').value = fac; document.getElementById('edit_u_pass').value = ""; document.getElementById('edit-user-modal').style.display = 'flex'; }
-function closeEditModal() { document.getElementById('edit-user-modal').style.display = 'none'; }
-
-async function saveUserChangesFull() {
-    const updatedData = { u: document.getElementById('edit_u_user').value, name: document.getElementById('edit_u_name').value, p: document.getElementById('edit_u_pass').value, role: document.getElementById('edit_u_role').value, status: document.getElementById('edit_u_status').value, fac: document.getElementById('edit_u_fac').value };
-    if (!updatedData.u || !updatedData.name) { showAppAlert("Required", "Username and Name cannot be blank.", "error"); return; }
-    const btn = document.getElementById('btn-save-user-full'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...'; btn.disabled = true;
-    try { await apiPost("updateUserFull", { oldUsername: currentEditTarget, updatedData: updatedData, adminRole: currentUser.role }); showAppAlert("Updated", "User details saved.", "success"); closeEditModal(); loadSettingsData(); } catch (e) { showAppAlert("Error", String(e), "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; }
+async function updateUserRoleInline(username, newRole) {
+    try { await apiPost("updateUserRoleInline", { targetUsername: username, newRole: newRole, adminRole: currentUser.role }); showAppAlert("Updated", username + " role changed.", "success"); loadSettingsData(); } catch (e) { showAppAlert("Error", String(e), "error"); }
 }
 
-async function deleteUserRecord() { customConfirm(`Are you sure you want to permanently delete @${currentEditTarget}?`, async () => { try { await apiPost("deleteUser", { targetUsername: currentEditTarget, adminRole: currentUser.role }); showAppAlert("Deleted", "User has been removed.", "success"); closeEditModal(); loadSettingsData(); } catch (e) { showAppAlert("Error", String(e), "error"); } }); }
+async function toggleUserStatusInline(username, isActive) {
+    let status = isActive ? 'ACTIVE' : 'REJECTED';
+    try { await apiPost("updateUserStatusInline", { targetUsername: username, newStatus: status, adminRole: currentUser.role }); showAppAlert("Updated", username + " is now " + status, "success"); loadSettingsData(); } catch (e) { showAppAlert("Error", String(e), "error"); }
+}
+
+async function deleteUserInline(username) {
+    customConfirm(`Are you sure you want to permanently delete @${username}?`, async () => { 
+        try { await apiPost("deleteUser", { targetUsername: username, adminRole: currentUser.role }); showAppAlert("Deleted", "User has been removed.", "success"); loadSettingsData(); } catch (e) { showAppAlert("Error", String(e), "error"); } 
+    }); 
+}
 async function decideUser(username, action) { customConfirm(action + " access for " + username + "?", async () => { try { await apiPost("approveUser", { targetUsername: username, userAction: action, adminRole: currentUser.role }); loadSettingsData(); } catch (e) { } }); }
 
 async function saveUser() {
@@ -4115,8 +4177,12 @@ window.saveMyProfile = async function () {
 
         if (newAvatar) {
             document.getElementById('my-profile-avatar').src = newAvatar;
-            const dAvatar = document.getElementById('pill-avatar');
-            if (dAvatar) dAvatar.innerHTML = `<img src="${newAvatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+            const topAvatars = document.querySelectorAll('.top-avatar, .fab-avatar, #user-avatar-text');
+            topAvatars.forEach(av => {
+                av.innerHTML = `<img src="${newAvatar}" style="width:100%; height:100%; border-radius:inherit; object-fit:cover;">`;
+                av.style.padding = '0';
+                av.style.overflow = 'hidden';
+            });
         }
 
         document.getElementById('my-profile-password').value = '';
