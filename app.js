@@ -964,6 +964,16 @@ window.addEventListener('error', function (e) {
     const loader = document.getElementById('app-loader');
     if (loader) loader.style.display = 'none';
 });
+window.addEventListener('unhandledrejection', function (e) {
+    console.error('Unhandled promise rejection:', e.reason);
+    const loader = document.getElementById('app-loader');
+    if (loader) loader.style.display = 'none';
+});
+// Hard failsafe: always hide loader after 5 seconds no matter what
+setTimeout(function() {
+    const loader = document.getElementById('app-loader');
+    if (loader) loader.style.display = 'none';
+}, 5000);
 
 document.addEventListener('DOMContentLoaded', () => {
     // Auto-Logout after 15 minutes of inactivity
@@ -1354,7 +1364,7 @@ function openTestDetails(id) {
     const config = availableTests[id]; if (!config) return;
     document.getElementById('test-buttons-container').style.display = 'none';
     const area = document.getElementById('test-details-area'); area.style.display = 'block';
-    area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> ${config.title}</div><div class="form-grid grid-1">${config.html}</div><div style="margin-top:20px; display:flex; gap:10px; position:relative; z-index:99999; padding-bottom:15px;"><button type="button" class="btn btn-secondary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); cancelDetail()">Cancel</button><button type="button" class="btn btn-primary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); confirmDetail('${id}')">Confirm</button></div>`;
+    area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> ${config.title}</div><div class="form-grid grid-1">${config.html}</div><div style="margin-top:6px; display:flex; gap:8px; position:relative; z-index:99999; padding-bottom:4px;"><button type="button" class="btn btn-secondary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); cancelDetail()">Cancel</button><button type="button" class="btn btn-primary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); confirmDetail('${id}')">Confirm</button></div>`;
 }
 function toggleSub(btn) { btn.classList.toggle('active'); }
 function cancelDetail() { document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-details-area').innerHTML = ''; document.getElementById('test-buttons-container').style.display = ''; }
