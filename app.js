@@ -315,7 +315,7 @@ function showAppAlert(title, message, type = 'info') {
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
+
     let iconClass = 'ph-info';
     if (type === 'success') iconClass = 'ph-check-circle';
     if (type === 'error') iconClass = 'ph-warning-circle';
@@ -971,7 +971,7 @@ window.addEventListener('unhandledrejection', function (e) {
     if (loader) loader.style.display = 'none';
 });
 // Hard failsafe: always hide loader after 5 seconds no matter what
-setTimeout(function() {
+setTimeout(function () {
     const loader = document.getElementById('app-loader');
     if (loader) loader.style.display = 'none';
 }, 5000);
@@ -1031,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const topName = document.getElementById('top-name');
             if (topName) topName.innerText = currentUser.fullName || currentUser.username;
-            
+
             const topRole = document.getElementById('top-role');
             if (topRole) topRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
 
@@ -1218,6 +1218,15 @@ function showPage(targetId) {
     document.querySelectorAll('.side-btn').forEach(item => { item.classList.remove('active'); if (item.id === 'side-nav-' + targetId) { item.classList.add('active'); } });
     if (targetId === 'workspace' && (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER' || role === 'VIEWER')) loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
+    if (targetId === 'registry') {
+        const landing = document.getElementById('registry-landing-view');
+        const main = document.getElementById('registry-main-content');
+        if (landing && main) {
+            landing.style.display = 'flex';
+            main.style.display = 'none';
+            document.querySelectorAll('#registry-tabs .chip').forEach(c => c.classList.remove('active'));
+        }
+    }
 }
 
 function applyPermissions() {
@@ -1367,8 +1376,8 @@ function openTestDetails(id) {
     const area = document.getElementById('test-details-area'); area.style.display = 'block';
     area.innerHTML = `<div style="font-weight: 700; color: var(--pri); margin-bottom: 8px;"><i class="ph ph-info"></i> ${config.title}</div><div class="form-grid grid-1">${config.html}</div><div style="margin-top:6px; display:flex; gap:8px; position:relative; z-index:99999; padding-bottom:4px;"><button type="button" class="btn btn-secondary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); cancelDetail()">Cancel</button><button type="button" class="btn btn-primary" style="flex:1; cursor:pointer;" onclick="event.preventDefault(); confirmDetail('${id}')">Confirm</button></div>`;
 }
-function toggleSub(btn) { 
-    btn.classList.toggle('active'); 
+function toggleSub(btn) {
+    btn.classList.toggle('active');
     let icon = btn.querySelector('i');
     if (icon) {
         if (btn.classList.contains('active')) {
@@ -1414,14 +1423,14 @@ function setSex(val) {
 }
 function setToggleValue(btn, inputId, val) {
     const input = btn.closest('.form-grid').querySelector(`[data-key="${inputId}"]`) || document.getElementById(inputId);
-    if(input) input.value = val;
+    if (input) input.value = val;
     const container = btn.closest('.compact-toggle');
-    if(container) {
+    if (container) {
         container.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 }
-function setSelectValue(id, val) { const el = document.getElementById(id); if (!el || !val) return; if(el.tagName === 'INPUT' && el.type === 'hidden') { if(id === 'p_sex') setSex(val); else el.value = val; return; } const searchVal = String(val).toUpperCase().trim(); for (let i = 0; i < el.options.length; i++) { if (el.options[i].value.toUpperCase().trim() === searchVal || el.options[i].text.toUpperCase().trim() === searchVal) { el.selectedIndex = i; return; } } }
+function setSelectValue(id, val) { const el = document.getElementById(id); if (!el || !val) return; if (el.tagName === 'INPUT' && el.type === 'hidden') { if (id === 'p_sex') setSex(val); else el.value = val; return; } const searchVal = String(val).toUpperCase().trim(); for (let i = 0; i < el.options.length; i++) { if (el.options[i].value.toUpperCase().trim() === searchVal || el.options[i].text.toUpperCase().trim() === searchVal) { el.selectedIndex = i; return; } } }
 function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
 function generateSmartID() { if (isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if (name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length - 1][0] : name.substring(0, 2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random() * 90 + 10)}`; }
 
@@ -2566,6 +2575,13 @@ window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
 
 async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = null, forceCol = null) {
     window.CURRENT_TEST_TYPE = type; currentRegistryPage = page;
+    const landing = document.getElementById('registry-landing-view');
+    const main = document.getElementById('registry-main-content');
+    if (landing && main) {
+        landing.style.display = 'none';
+        main.style.display = 'flex';
+    }
+
     const titleEl = document.getElementById('regTitle');
     if (titleEl) {
         titleEl.innerHTML = `<i class="ph ph-books" style="color:var(--pri);"></i> Laboratory Registry - ${type} <button onclick="window.REGISTRY_SORT_ORDER = window.REGISTRY_SORT_ORDER === 'ASC' ? 'DESC' : 'ASC'; openRegistryTab('${type}');" class="btn btn-secondary text-xs" style="margin-left:15px; padding:4px 8px;"><i class="ph ph-sort-ascending"></i> Toggle Sort (${window.REGISTRY_SORT_ORDER})</button>`;
@@ -4074,7 +4090,7 @@ function updateDashboardClock() {
     const timeEl = document.getElementById('top-time');
     const dateEl = document.getElementById('top-date');
     if (!timeEl || !dateEl) return;
-    
+
     const now = new Date();
     timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     dateEl.innerText = now.toLocaleDateString('en-US', { day: 'numeric', month: 'short', weekday: 'long' });
@@ -4083,7 +4099,7 @@ setInterval(updateDashboardClock, 1000);
 updateDashboardClock();
 
 
-window.toggleSelectCard = function(id, safeId, forceState) {
+window.toggleSelectCard = function (id, safeId, forceState) {
     const chk = document.getElementById('chk-' + safeId);
     if (!chk) return;
     if (typeof forceState !== 'undefined') {
