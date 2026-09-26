@@ -3501,3 +3501,115 @@ body.dark-mode .res-warning {
     color: var(--pri);
     flex-shrink: 0;
 }
+
+/* ========================================= */
+/* UI/UX IMPROVEMENTS (Toasts, Animations, Negative Space) */
+/* ========================================= */
+
+/* TOAST NOTIFICATIONS */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.toast {
+    min-width: 280px;
+    max-width: 400px;
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border-left: 5px solid var(--pri);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15);
+    padding: 14px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+}
+
+body.dark-mode .toast {
+    background: #35363a;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.info { border-left-color: var(--pri); }
+.toast.warning { border-left-color: var(--warning); }
+
+.toast-icon {
+    font-size: 24px;
+    margin-top: 2px;
+}
+.toast.success .toast-icon { color: var(--success); }
+.toast.error .toast-icon { color: var(--danger); }
+.toast.info .toast-icon { color: var(--pri); }
+.toast.warning .toast-icon { color: var(--warning); }
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+.toast-msg {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* HOVER ANIMATIONS */
+.btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.card, .stat-card, .dashboard-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover, .stat-card:hover, .dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-float);
+}
+
+.menu-item {
+    transition: background-color 0.2s, transform 0.2s ease;
+}
+.menu-item:hover {
+    transform: translateX(4px);
+}
+
+/* NEGATIVE SPACE / SPACING ENHANCEMENTS */
+.data-table th, .data-table td {
+    padding: 14px 18px !important; /* Increased padding */
+}
+
+.form-input, .form-select {
+    padding: 10px 14px !important; /* Taller, more breathable inputs */
+}
+
+.registry-drawer-content {
+    padding: 24px !important; /* More space in drawer */
+}
