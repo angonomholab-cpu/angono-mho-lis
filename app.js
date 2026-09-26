@@ -2191,10 +2191,12 @@ function toggleExpand(safeId) { const el = document.getElementById('expand-' + s
 
 const REGISTRY_EDIT_EXCLUDE = ['Test Code', 'Patient ID', 'Name', 'Age', 'Sex', 'Facility', 'Date Received', 'Date Examined', 'Date Released', 'Verified By'];
 
-function openRegistryEditModal(testCode) {
+async function openRegistryEditModal(testCode) {
     const row = (window.REGISTRY_ROWS_BY_CODE || {})[testCode];
     const headers = window.CURRENT_REGISTRY_HEADERS || [];
     if (!row) { showAppAlert("Error", "Record data not found. Please refresh the registry and try again.", "error"); return; }
+    
+    await ensureStaffList();
 
     let modal = document.getElementById('registry-edit-modal');
     if (!modal) {
