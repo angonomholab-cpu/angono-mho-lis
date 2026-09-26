@@ -293,7 +293,7 @@
         <!-- LEFT SIDEBAR -->
         <nav class="sidebar-nav">
             <div class="sidebar-logo">
-                <i class="ph ph-flask"></i>
+                <img src="./icon-192.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;">
             </div>
             <div class="sidebar-menu">
                 <button class="side-btn active" id="side-nav-workspace" onclick="showPage('workspace')" title="Workspace"><i class="ph ph-desktop"></i></button>
@@ -311,10 +311,14 @@
         <div class="main-area">
             <!-- TOP NAV BAR -->
             <header class="top-nav-bar">
-                <div class="top-nav-left">
+                <div class="top-nav-left" style="display: flex; align-items: center; gap: 15px;">
                     <div class="top-search">
                         <i class="ph ph-magnifying-glass"></i>
                         <input type="text" placeholder="Search patient..." oninput="runQuickSearch(this.value)" onclick="openQuickSearch()">
+                    </div>
+                    <div id="top-notif-bell" style="display:none; position:relative; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); width:48px; height:48px; border-radius:50%; box-shadow:var(--shadow-card); align-items:center; justify-content:center; transition: transform 0.2s ease;" onclick="typeof toggleAuditLogs === 'function' ? toggleAuditLogs() : null" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        <i class="ph ph-bell-ringing"></i>
+                        <span id="notif-red-dot" style="display:none; position:absolute; top:8px; right:10px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red;"></span>
                     </div>
                 </div>
                 <div class="top-nav-right">
