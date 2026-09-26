@@ -304,15 +304,40 @@ function toggleDssmCategory(selectEl) {
 
 function closeCustomAlert() { document.getElementById('custom-alert').style.display = 'none'; }
 function showAppAlert(title, message, type = 'info') {
-    const modal = document.getElementById('custom-alert');
-    if (!modal) return console.log(title, message);
-    document.getElementById('custom-alert-title').innerText = title;
-    document.getElementById('custom-alert-msg').innerText = message;
-    const iconEl = document.getElementById('custom-alert-icon');
-    if (type === 'success') { iconEl.className = 'ph ph-check-circle'; iconEl.style.color = 'var(--success)'; }
-    else if (type === 'error') { iconEl.className = 'ph ph-warning-circle'; iconEl.style.color = 'var(--danger)'; }
-    else { iconEl.className = 'ph ph-info'; iconEl.style.color = 'var(--pri)'; }
-    modal.style.display = 'flex';
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    let iconClass = 'ph-info';
+    if (type === 'success') iconClass = 'ph-check-circle';
+    if (type === 'error') iconClass = 'ph-warning-circle';
+    if (type === 'warning') iconClass = 'ph-warning';
+
+    toast.innerHTML = `
+        <i class="ph ${iconClass} toast-icon"></i>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-msg">${message}</div>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400); // Wait for transition
+    }, 3000);
 }
 function customConfirm(message, callback) { document.getElementById('custom-confirm-msg').innerText = message; document.getElementById('custom-confirm').style.display = 'flex'; confirmActionCallback = callback; }
 function closeCustomConfirm(isConfirmed) { document.getElementById('custom-confirm').style.display = 'none'; if (isConfirmed && confirmActionCallback) confirmActionCallback(); confirmActionCallback = null; }
