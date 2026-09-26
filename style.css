@@ -1853,37 +1853,44 @@ body.dark-mode .workspace-header {
     }
 
     /* Entry Form Layout on Phone (Ultra-Compact) */
+    /* Entry Form Layout on Phone (Side-by-Side 50/50) */
     .ap-split {
-        flex-direction: column !important;
-        height: auto !important;
-        overflow: visible !important;
+        flex-direction: row !important;
+        height: calc(100vh - 170px) !important;
+        overflow: hidden !important;
     }
 
     .ap-left {
-        border-right: none !important;
-        border-bottom: 1px solid var(--border-color) !important;
-        padding: 12px 10px 16px 10px !important;
+        flex: 1 !important;
+        width: 50% !important;
+        border-right: 1px solid var(--border-color) !important;
+        border-bottom: none !important;
+        padding: 8px 6px 16px 6px !important;
+        overflow-y: auto !important;
     }
 
     #regForm .field-group {
-        margin-bottom: 0 !important;
+        margin-bottom: 4px !important;
     }
 
     #regForm .field-label {
-        font-size: 0.68rem !important;
+        font-size: 0.65rem !important;
         margin-bottom: 2px !important;
     }
 
     #regForm .form-input,
     #regForm .form-select {
-        font-size: 15px !important;
-        height: 38px !important;
-        padding: 6px 10px !important;
-        border-radius: 8px !important;
+        font-size: 13.5px !important;
+        height: 34px !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
     }
 
     .ap-right {
-        padding: 12px 10px 80px 10px !important;
+        flex: 1 !important;
+        width: 50% !important;
+        padding: 8px 6px 80px 6px !important;
+        overflow-y: auto !important;
     }
 
     .sticky-footer {
@@ -3847,6 +3854,14 @@ body.dark-mode .toast {
     .main-content { padding: 0; }
     .fab-wrapper { display: flex !important; }
     .mobile-app-header { display: flex !important; }
+}
+
+/* Highly Distinct Selected State for Cards */
+.pc-selected {
+    border: 2px solid var(--pri) !important;
+    background-color: color-mix(in srgb, var(--pri) 12%, transparent) !important;
+    box-shadow: 0 0 16px color-mix(in srgb, var(--pri) 30%, transparent) !important;
+    transform: scale(0.985) !important;
 }
 
 @media (max-width: 768px) {
