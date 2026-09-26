@@ -1925,11 +1925,6 @@ body.dark-mode .workspace-header {
         font-size: 0.7rem !important;
     }
 
-    /* Hide email on mobile — rarely needed at point of entry */
-    #regForm > .field-group:has(#p_email) {
-        display: none !important;
-    }
-
     #regForm {
         gap: 3px !important;
     }
@@ -1964,6 +1959,51 @@ body.dark-mode .workspace-header {
         font-size: 0.6rem !important;
         margin-bottom: 4px !important;
         padding-bottom: 2px !important;
+    }
+
+    /* 📱 Test Details Area — compact for mobile */
+    #test-details-area {
+        padding: 8px !important;
+        margin-bottom: 4px !important;
+    }
+    #test-details-area > div:first-child {
+        font-size: 0.75rem !important;
+        margin-bottom: 4px !important;
+    }
+    #test-details-area .form-grid {
+        gap: 4px !important;
+    }
+    #test-details-area .field-group {
+        margin-bottom: 2px !important;
+    }
+    #test-details-area .field-label {
+        font-size: 0.58rem !important;
+        margin-bottom: 0 !important;
+    }
+    #test-details-area .form-input,
+    #test-details-area .form-select {
+        height: 26px !important;
+        font-size: 12px !important;
+        padding: 1px 6px !important;
+    }
+    #test-details-area .chip-group {
+        gap: 4px !important;
+        flex-wrap: wrap !important;
+    }
+    #test-details-area .chip {
+        font-size: 0.68rem !important;
+        padding: 3px 8px !important;
+    }
+    /* Cancel / Confirm buttons row */
+    #test-details-area > div:last-child {
+        margin-top: 6px !important;
+        padding-bottom: 0 !important;
+        gap: 6px !important;
+    }
+    #test-details-area .btn {
+        min-height: 30px !important;
+        font-size: 0.75rem !important;
+        padding: 4px 8px !important;
     }
 
     .sticky-footer {
