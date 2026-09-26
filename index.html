@@ -27,7 +27,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <style>
         .switch-row {
             display: flex;
@@ -436,7 +436,7 @@
                                                 <i class="ph ph-magnifying-glass"
                                                     style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--pri);"></i>
                                                 <input type="text" id="p_name" class="form-input"
-                                                    placeholder="Surname, First Middle"
+                                                    placeholder="Surname, First name Middle name"
                                                     oninput="generateSmartID(); runDirectSearch(this.value);"
                                                     style="padding-left: 32px; font-weight: bold;">
                                                 <div id="search-status"
@@ -462,11 +462,11 @@
                                                     <option value="Female">Female</option>
                                                 </select></div>
                                             <div class="field-group" style="flex:2;"><label class="field-label">Contact
-                                                    #</label><input type="text" id="p_contact" class="form-input"></div>
+                                                    #</label><input type="text" id="p_contact" class="form-input" oninput="formatContactNumber(this)" placeholder="xxxx-xxx-xxxx"></div>
                                         </div>
                                         <div class="field-group"><label class="field-label">Address</label><input
                                                 type="text" id="p_address" class="form-input"
-                                                placeholder="Brgy. / Address"></div>
+                                                placeholder="House number, Street, Subdivision"></div>
                                         <div class="field-group"><label class="field-label">Email Address (For Patient
                                                 Portal)</label><input type="email" id="p_email" class="form-input"
                                                 placeholder="patient@email.com"
@@ -2437,6 +2437,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        function formatContactNumber(el) {
+            let val = el.value.replace(/\D/g, '');
+            if (val.length > 11) val = val.substring(0, 11);
+            if (val.length > 7) {
+                el.value = val.substring(0,4) + '-' + val.substring(4,7) + '-' + val.substring(7);
+            } else if (val.length > 4) {
+                el.value = val.substring(0,4) + '-' + val.substring(4);
+            } else {
+                el.value = val;
+            }
+        }
+    
         // 🔴 PALITAN ITO ng URL at Anon Key mula sa Supabase Project Settings > API
         const SUPABASE_URL = "https://mtohvtmupjfdabrrpnii.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b2h2dG11cGpmZGFicnJwbmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5Njg2MzQsImV4cCI6MjEwNTU0NDYzNH0.lh5n2LY4x9_kyPcgUOdtDUxEpiBClTMDCKNSzQTTH64";
@@ -2446,7 +2458,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
