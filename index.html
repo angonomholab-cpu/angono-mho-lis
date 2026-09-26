@@ -1734,7 +1734,7 @@
                                 </div>
                             </div>
                             <div id="list-users"
-                                style="padding: 16px; display:flex; flex-direction:column; gap:10px;">
+                                style="padding: 16px; display:flex; flex-direction:column; gap:10px; max-height: calc(100vh - 200px); overflow-y: auto;">
                             </div>
                         </div>
 
@@ -1750,7 +1750,7 @@
                                     style="color: var(--success);"><i class="ph ph-plus-circle"></i></button>
                             </div>
                             <div id="staffListContainer"
-                                style="padding: 16px; display:flex; flex-direction:column; gap:10px;">
+                                style="padding: 16px; display:flex; flex-direction:column; gap:10px; max-height: calc(100vh - 200px); overflow-y: auto;">
                             </div>
                             <div id="staff-form"
                                 style="display:none; padding: 16px; border-top: 1px solid var(--border-color); background: var(--bg-body);">
@@ -2483,7 +2483,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=26"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
