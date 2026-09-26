@@ -1349,7 +1349,8 @@ function applyPermissions() {
         if (sideSet) sideSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'VIEWER') {
-        if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
+        if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
+        if (sideWork) sideWork.style.display = 'flex'; if (sideReg) sideReg.style.display = 'flex'; if (sideRep) sideRep.style.display = 'flex';
         if (navSet) navSet.style.display = 'flex';
         if (sideSet) sideSet.style.display = 'flex';
         if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
