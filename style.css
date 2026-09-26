@@ -1961,49 +1961,51 @@ body.dark-mode .workspace-header {
         padding-bottom: 2px !important;
     }
 
-    /* 📱 Test Details Area — compact for mobile */
+    /* 📱 Test Details Area — ultra compact for mobile, no scroll */
     #test-details-area {
-        padding: 8px !important;
-        margin-bottom: 4px !important;
+        padding: 6px !important;
+        margin-bottom: 2px !important;
+        border-width: 1px !important;
     }
     #test-details-area > div:first-child {
-        font-size: 0.75rem !important;
-        margin-bottom: 4px !important;
-    }
-    #test-details-area .form-grid {
-        gap: 4px !important;
-    }
-    #test-details-area .field-group {
+        font-size: 0.7rem !important;
         margin-bottom: 2px !important;
     }
+    #test-details-area .form-grid {
+        gap: 2px !important;
+    }
+    #test-details-area .field-group {
+        margin-bottom: 1px !important;
+    }
     #test-details-area .field-label {
-        font-size: 0.58rem !important;
+        font-size: 0.55rem !important;
         margin-bottom: 0 !important;
     }
     #test-details-area .form-input,
     #test-details-area .form-select {
-        height: 26px !important;
-        font-size: 12px !important;
-        padding: 1px 6px !important;
+        height: 24px !important;
+        font-size: 11.5px !important;
+        padding: 1px 5px !important;
     }
     #test-details-area .chip-group {
-        gap: 4px !important;
+        gap: 3px !important;
         flex-wrap: wrap !important;
     }
     #test-details-area .chip {
-        font-size: 0.68rem !important;
-        padding: 3px 8px !important;
+        font-size: 0.63rem !important;
+        padding: 2px 6px !important;
+        min-height: 22px !important;
     }
-    /* Cancel / Confirm buttons row */
+    /* Cancel / Confirm buttons row — override inline margin-top:20px */
     #test-details-area > div:last-child {
-        margin-top: 6px !important;
+        margin-top: 4px !important;
         padding-bottom: 0 !important;
-        gap: 6px !important;
+        gap: 4px !important;
     }
     #test-details-area .btn {
-        min-height: 30px !important;
-        font-size: 0.75rem !important;
-        padding: 4px 8px !important;
+        min-height: 28px !important;
+        font-size: 0.72rem !important;
+        padding: 3px 6px !important;
     }
 
     .sticky-footer {
@@ -2183,6 +2185,11 @@ body.dark-mode .workspace-header {
     #login-overlay {
         align-items: center !important;
         padding: 10px !important;
+    }
+
+    #app-loader {
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     .modal-backdrop:not(#login-overlay) .auth-card,
