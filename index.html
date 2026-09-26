@@ -288,8 +288,52 @@
         </button>
     </div>
 
-    <main class="main-content">
-        <!-- 🌟 MOBILE APP HEADER BAR (Visible only on screens <= 900px) -->
+    <!-- MODERN DASHBOARD LAYOUT -->
+    <div class="app-layout">
+        <!-- LEFT SIDEBAR -->
+        <nav class="sidebar-nav">
+            <div class="sidebar-logo">
+                <i class="ph ph-flask"></i>
+            </div>
+            <div class="sidebar-menu">
+                <button class="side-btn active" id="side-nav-workspace" onclick="showPage('workspace')" title="Workspace"><i class="ph ph-desktop"></i></button>
+                <button class="side-btn" id="side-nav-registry" onclick="showPage('registry')" title="Lab Registry"><i class="ph ph-books"></i></button>
+                <button class="side-btn" id="side-nav-reports" onclick="showPage('reports')" title="Reports"><i class="ph ph-chart-bar"></i></button>
+                <button class="side-btn" id="side-nav-settings" onclick="showPage('settings')" title="Settings"><i class="ph ph-gear-six"></i></button>
+            </div>
+            <div class="sidebar-bottom">
+                <button class="side-btn" onclick="toggleDarkMode()" title="Light/Dark Mode"><i class="ph ph-moon-stars" id="side-theme-icon"></i></button>
+                <button class="side-btn logout-btn" onclick="logoutUser()" title="Sign Out"><i class="ph ph-sign-out"></i></button>
+            </div>
+        </nav>
+
+        <!-- MAIN AREA -->
+        <div class="main-area">
+            <!-- TOP NAV BAR -->
+            <header class="top-nav-bar">
+                <div class="top-nav-left">
+                    <div class="top-search">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" placeholder="Search patient..." oninput="runQuickSearch(this.value)" onclick="openQuickSearch()">
+                    </div>
+                </div>
+                <div class="top-nav-right">
+                    <div class="top-datetime" id="top-datetime">
+                        <span id="top-time">--:--</span>
+                        <span id="top-date">Loading...</span>
+                    </div>
+                    <div class="top-profile">
+                        <div class="top-profile-info">
+                            <span id="top-name">Hi, User</span>
+                            <span id="top-role">Glad to see you again!</span>
+                        </div>
+                        <div class="top-avatar"><i class="ph ph-user"></i></div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <!-- 🌟 MOBILE APP HEADER BAR (Visible only on screens <= 900px) -->
         <header class="mobile-app-header" id="mobile-app-header">
             <div class="mah-brand" onclick="showPage('workspace')">
                 <div class="mah-logo"><i class="ph ph-flask"></i></div>
@@ -1621,7 +1665,9 @@
                 </div>
             </div>
         </div>
-    </main>
+            </main>
+        </div>
+    </div>
 
     <div id="login-overlay" class="modal-backdrop">
         <!-- Floating ambient glowing orbs -->
