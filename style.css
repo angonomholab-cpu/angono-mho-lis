@@ -3874,19 +3874,52 @@ body.dark-mode .toast {
     }
     
     /* 📱 Mobile Specific: Ultra-Shrink Entry Form */
-    .ap-left { padding: 6px 8px 10px 8px !important; }
+    .ap-left { padding: 4px 6px 8px 6px !important; }
+    
+    #new-entry-header h3, #profile-header h3 { font-size: 0.75rem !important; }
+    
+    #regForm .field-group { margin-bottom: 2px !important; }
+    
+    #regForm .field-label { font-size: 0.55rem !important; margin-bottom: 0 !important; }
+    
     #regForm .form-input, #regForm .form-select {
-        height: 32px !important;
-        font-size: 14px !important;
+        height: 28px !important;
+        font-size: 12px !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+    }
+    
+    .sticky-footer {
         padding: 4px 8px !important;
     }
-    .sticky-footer {
-        padding: 6px 10px !important;
-    }
+    
     #save-btn-action {
-        min-height: 34px !important;
-        font-size: 0.82rem !important;
+        min-height: 30px !important;
+        font-size: 0.78rem !important;
+        padding: 4px 10px !important;
     }
+    
+    /* 📱 Mobile Specific: Test Selection Buttons */
+    .test-btn-vert {
+        min-height: 38px !important;
+        padding: 4px 2px !important;
+        gap: 2px !important;
+    }
+    .test-btn-vert i { font-size: 1rem !important; }
+    .test-btn-vert span { font-size: 0.62rem !important; }
+
+    /* 📱 Mobile Specific: Test Details Confirm/Cancel Buttons */
+    #test-details-area .btn {
+        padding: 4px 6px !important;
+        font-size: 0.7rem !important;
+        min-height: 28px !important;
+    }
+    #test-details-area .form-input, #test-details-area .form-select {
+        height: 28px !important;
+        font-size: 12px !important;
+        padding: 2px 6px !important;
+    }
+    #test-details-area .field-label { font-size: 0.58rem !important; margin-bottom: 0 !important; }
     
     /* 📱 Mobile Specific: Shrink Pending Card Expansion Area */
     .pc-expand-area .form-input, .pc-expand-area .form-select {
@@ -3907,8 +3940,8 @@ body.dark-mode .toast {
     }
     
     /* 📱 Mobile Specific: Shrink Pending Card Texts */
-    .pc-name { font-size: 0.78rem !important; }
-    .pc-meta { font-size: 0.62rem !important; }
-    .pending-card, .completed-card { padding: 6px 8px !important; }
-    .btn-icon { width: 28px !important; height: 28px !important; font-size: 0.95rem !important; }
+    .pc-name { font-size: 0.75rem !important; }
+    .pc-meta { font-size: 0.6rem !important; }
+    .pending-card, .completed-card { padding: 4px 6px !important; }
+    .btn-icon { width: 26px !important; height: 26px !important; font-size: 0.9rem !important; }
 }
