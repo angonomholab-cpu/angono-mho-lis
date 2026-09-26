@@ -1018,20 +1018,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('login-overlay').style.display = 'none';
 
-            const dName = document.getElementById('display-full-name');
-            if (dName) dName.innerText = currentUser.fullName || currentUser.username;
+            const topName = document.getElementById('top-name');
+            if (topName) topName.innerText = currentUser.fullName || currentUser.username;
+            
+            const topRole = document.getElementById('top-role');
+            if (topRole) topRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
 
-            const dRole = document.getElementById('display-role-facility');
-            if (dRole) dRole.innerText = `${currentUser.role} | ${currentUser.facility}`;
-
-            const dAvatar = document.getElementById('pill-avatar');
-            if (dAvatar) {
+            const topAvatars = document.querySelectorAll('.top-avatar, .fab-avatar');
+            topAvatars.forEach(av => {
                 if (currentUser.avatar) {
-                    dAvatar.innerHTML = `<img src="${currentUser.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+                    av.innerHTML = `<img src="${currentUser.avatar}" style="width:100%; height:100%; border-radius:14px; object-fit:cover;">`;
                 } else {
-                    dAvatar.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
+                    av.innerHTML = (currentUser.fullName || currentUser.username).charAt(0).toUpperCase();
                 }
-            }
+            });
+
             if (currentUser.theme) {
                 document.documentElement.setAttribute('data-theme', currentUser.theme);
             }
@@ -1203,6 +1204,7 @@ function showPage(targetId) {
     ALL_PAGES.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     const target = document.getElementById(elId); if (target) target.style.display = 'block';
     document.querySelectorAll('.fab-btn').forEach(item => { item.style.background = ''; item.style.color = ''; if (item.id === 'fab-nav-' + targetId) { item.style.background = 'var(--pri)'; item.style.color = 'white'; } });
+    document.querySelectorAll('.side-btn').forEach(item => { item.classList.remove('active'); if (item.id === 'side-nav-' + targetId) { item.classList.add('active'); } });
     if (targetId === 'workspace' && (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER' || role === 'VIEWER')) loadPendingData();
     if (targetId === 'settings' && typeof loadSettingsData === 'function') loadSettingsData();
 }
@@ -1210,9 +1212,11 @@ function showPage(targetId) {
 function applyPermissions() {
     const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_');
     const navWork = document.getElementById('fab-nav-workspace'); const navReg = document.getElementById('fab-nav-registry'); const navRep = document.getElementById('fab-nav-reports'); const navSet = document.getElementById('fab-nav-settings');
+    const sideWork = document.getElementById('side-nav-workspace'); const sideReg = document.getElementById('side-nav-registry'); const sideRep = document.getElementById('side-nav-reports'); const sideSet = document.getElementById('side-nav-settings');
     const colEntry = document.getElementById('col-entry'); const colPending = document.getElementById('col-pending'); const colCompleted = document.getElementById('col-completed'); const colRepeat = document.getElementById('col-repeat');
 
     if (navWork) navWork.style.display = 'none'; if (navReg) navReg.style.display = 'none'; if (navRep) navRep.style.display = 'none'; if (navSet) navSet.style.display = 'none';
+    if (sideWork) sideWork.style.display = 'none'; if (sideReg) sideReg.style.display = 'none'; if (sideRep) sideRep.style.display = 'none'; if (sideSet) sideSet.style.display = 'none';
     if (colEntry) colEntry.style.display = 'none'; if (colPending) colPending.style.display = 'none'; if (colCompleted) colCompleted.style.display = 'none'; if (colRepeat) colRepeat.style.display = 'none';
     const mwnEntry = document.getElementById('mwn-btn-entry');
     if (mwnEntry) {
@@ -1226,7 +1230,9 @@ function applyPermissions() {
     if (role === 'PATIENT') { const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; }
     else if (role === 'ADMIN') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
+        if (sideWork) sideWork.style.display = 'flex'; if (sideReg) sideReg.style.display = 'flex'; if (sideRep) sideRep.style.display = 'flex';
         if (navSet) navSet.style.display = 'flex';
+        if (sideSet) sideSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
 
         let bell = document.getElementById('notif-bell');
@@ -1246,7 +1252,9 @@ function applyPermissions() {
 
     } else if (role === 'STAFF') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
+        if (sideWork) sideWork.style.display = 'flex'; if (sideReg) sideReg.style.display = 'flex'; if (sideRep) sideRep.style.display = 'flex';
         if (navSet) navSet.style.display = 'flex';
+        if (sideSet) sideSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
         const bell = document.getElementById('notif-bell');
         if (bell) bell.style.display = 'none';
@@ -1254,10 +1262,12 @@ function applyPermissions() {
     } else if (role === 'ENCODER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
         if (navSet) navSet.style.display = 'flex';
+        if (sideSet) sideSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'VIEWER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
         if (navSet) navSet.style.display = 'flex';
+        if (sideSet) sideSet.style.display = 'flex';
         if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
@@ -4025,3 +4035,15 @@ window.saveMyProfile = async function () {
         btn.disabled = false;
     }
 }
+// Update Top Bar Clock
+function updateDashboardClock() {
+    const timeEl = document.getElementById('top-time');
+    const dateEl = document.getElementById('top-date');
+    if (!timeEl || !dateEl) return;
+    
+    const now = new Date();
+    timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    dateEl.innerText = now.toLocaleDateString('en-US', { day: 'numeric', month: 'short', weekday: 'long' });
+}
+setInterval(updateDashboardClock, 1000);
+updateDashboardClock();
