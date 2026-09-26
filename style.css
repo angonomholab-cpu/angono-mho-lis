@@ -1426,11 +1426,11 @@ body.dark-mode .auth-card p {
 .page-area {
     display: none;
     height: 100%;
-    animation: fadeInSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: smoothFade 0.4s ease forwards;
 }
-@keyframes fadeInSlideUp {
-    from { opacity: 0; transform: translateY(15px) scale(0.99); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes smoothFade {
+    0% { opacity: 0; filter: blur(4px); transform: scale(0.99); }
+    100% { opacity: 1; filter: blur(0); transform: scale(1); }
 }
 
 .workspace-grid {
