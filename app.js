@@ -2091,7 +2091,7 @@ function renderLists() {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = "";
         try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); if (d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch (e) { }
 
-        let actionsHtml = ''; let checkboxHtml = (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') ? `<div style="padding-top:2px;"><input type="checkbox" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);"></div>` : '';
+        let actionsHtml = ''; let checkboxHtml = (role === 'ADMIN' || role === 'STAFF' || role === 'ENCODER') ? `<div class="pc-chk-box" style="padding-top:2px;"><input type="checkbox" id="chk-${safeId}" class="chk-pending" value="${item.id}" style="width:16px; height:16px; accent-color:var(--pri);" onclick="event.stopPropagation(); toggleSelectCard(this.value, '${safeId}', this.checked)"></div>` : '';
 
         if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) { actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`; }
 
@@ -2112,7 +2112,7 @@ function renderLists() {
 
         const displaySerial = item.testCode || item.id;
 
-        return `<div class="pending-card" id="card-${safeId}"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${displaySerial}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
+        return `<div class="pending-card pc-interactive" id="card-${safeId}" ondblclick="toggleSelectCard('${item.id}', '${safeId}')" oncontextmenu="event.preventDefault(); toggleSelectCard('${item.id}', '${safeId}');"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">${checkboxHtml}<div ${clickAttr}><div class="pc-name">${item.name} <span style="color:var(--text-muted); font-size:0.7rem;">${subTxt}</span> ${repeatBadge}</div><div class="pc-meta" style="margin-top: 6px;"><span style="background:var(--bg-subtle); color:var(--sec); padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold; border:1px solid var(--border-color); margin-right: 5px;">${displaySerial}</span>${item.test} • By: <span style="color:var(--pri);">${item.encoder || 'System'}</span></div></div>${actionsHtml}</div>${expandAreaHtml}</div>`;
     }).join('');
 
     pList.innerHTML = batchActionsHtml + pendingCardsHtml;
@@ -4040,3 +4040,20 @@ function updateDashboardClock() {
 }
 setInterval(updateDashboardClock, 1000);
 updateDashboardClock();
+
+
+window.toggleSelectCard = function(id, safeId, forceState) {
+    const chk = document.getElementById('chk-' + safeId);
+    if (!chk) return;
+    if (typeof forceState !== 'undefined') {
+        chk.checked = forceState;
+    } else {
+        chk.checked = !chk.checked;
+    }
+    const card = document.getElementById('card-' + safeId);
+    if (chk.checked) {
+        card.classList.add('pc-selected');
+    } else {
+        card.classList.remove('pc-selected');
+    }
+};
