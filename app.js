@@ -610,7 +610,7 @@ async function apiGet(action, params = {}) {
                             "Test Code": r.test_code || r.id,
                             "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
                             "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
-                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : ""),
                             "Patient Name": r.patient_name || "",
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.Sex || d.sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
@@ -647,7 +647,7 @@ async function apiGet(action, params = {}) {
                             "Test Code": r.test_code || r.id,
                             "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
                             "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
-                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : ""),
                             "Patient Name": r.patient_name || "",
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.Sex || d.sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
@@ -676,7 +676,7 @@ async function apiGet(action, params = {}) {
                             "Test Code": r.test_code || r.id,
                             "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
                             "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
-                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : "",
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : ""),
                             "Patient Name": r.patient_name || "",
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.sex || d.Sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
@@ -728,7 +728,11 @@ async function apiGet(action, params = {}) {
                     // Inject Date Released right after Date Examined for any view that misses it
                     if (row["Date Released"] === undefined && row["date_released"] === undefined) {
                         const tid = row["Test Code"] || row.id || row.test_code;
-                        const dr = drMap[tid] ? new Date(drMap[tid]).toLocaleDateString() : "";
+                        let dr = drMap[tid] ? new Date(drMap[tid]).toLocaleDateString() : "";
+                        if (dr === "") {
+                            const fallback = row["Date Examined"] || row["Date Exam"] || row.date_examined;
+                            if (fallback) dr = parseAnyDate(fallback) ? new Date(parseAnyDate(fallback)).toLocaleDateString() : fallback;
+                        }
                         const newRow = {};
                         for (const key in row) {
                             newRow[key] = row[key];
