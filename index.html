@@ -27,7 +27,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=17">
     <style>
         .switch-row {
             display: flex;
@@ -668,11 +668,30 @@
                 <div id="page-registry" class="page-area">
                     <!-- 🟢 UPDATED: Inalis ang report-card padding para masagad ang width/height 🟢 -->
                     <div
-                        style="height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 12px 16px;">
+                        style="height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 12px 16px; position: relative;">
 
-                        <!-- ROW 1: TITLE & TABS -->
-                        <div
-                            style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 8px; margin-bottom: 8px; overflow-x: auto; flex-shrink: 0;">
+                        <!-- REGISTRY LANDING VIEW -->
+                        <div id="registry-landing-view" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-surface); border-radius: var(--radius-lg); z-index: 10; padding: 20px;">
+                            <h2 style="font-size: 1.5rem; color: var(--pri); margin-bottom: 20px;"><i class="ph ph-books"></i> Select Registry</h2>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; width: 100%; max-width: 800px; justify-content: center;">
+                                <button class="btn btn-secondary" onclick="openRegistryTab('GXP')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">GXP MTB</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('DSSM')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">DSSM</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('GXVL')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Viral Load</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('SERO')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Serology</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('HEMA')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Hematology</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('CHEM')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Chemistry</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('UA')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Urinalysis</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('FA')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Fecalysis</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('DENGUE')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Dengue NS1</button>
+                                <button class="btn btn-secondary" onclick="openRegistryTab('GRAM')" style="height:80px; font-size:1.1rem; font-weight:bold; box-shadow:var(--shadow-card);">Gram Stain</button>
+                            </div>
+                        </div>
+
+                        <!-- MAIN REGISTRY CONTENT -->
+                        <div id="registry-main-content" style="display: none; flex-direction: column; height: 100%;">
+                            <!-- ROW 1: TITLE & TABS -->
+                            <div
+                                style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid var(--pri); padding-bottom: 8px; margin-bottom: 8px; overflow-x: auto; flex-shrink: 0;">
                             <h2 id="regTitle" style="font-size: 1.1rem; margin: 0; white-space: nowrap;"><i
                                     class="ph ph-books" style="color: var(--pri);"></i> Laboratory Registry</h2>
                             <div id="registry-tabs" class="chip-group" style="flex-wrap: nowrap; gap: 4px;">
@@ -767,7 +786,7 @@
                                 Please
                                 select a registry category above.</div>
                         </div>
-
+                        </div>
                     </div>
                 </div>
 
@@ -2464,7 +2483,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=15"></script>
+    <script src="app.js?v=17"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
