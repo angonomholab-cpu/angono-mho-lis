@@ -1235,19 +1235,10 @@ function applyPermissions() {
         if (sideSet) sideSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
 
-        let bell = document.getElementById('notif-bell');
-        if (!bell) {
-            bell = document.createElement('div');
-            bell.id = 'notif-bell';
-            bell.innerHTML = '<i class="ph ph-bell-ringing"></i><span id="notif-red-dot" style="display:none; position:absolute; top:-5px; right:-5px; background:var(--danger); width:10px; height:10px; border-radius:50%; box-shadow:0 0 5px red;"></span>';
-            bell.style.cssText = 'position:fixed; top:15px; right:70px; z-index:99999; font-size:1.6rem; color:var(--pri); cursor:pointer; background:var(--bg-surface); padding:6px; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;';
-            bell.onmouseover = () => bell.style.transform = 'scale(1.1)';
-            bell.onmouseout = () => bell.style.transform = 'scale(1)';
-            bell.onclick = toggleAuditLogs;
-            document.body.appendChild(bell);
-        } else {
-            bell.style.display = 'flex';
-        }
+        let topBell = document.getElementById('top-notif-bell');
+        if (topBell) topBell.style.display = 'flex';
+        let oldBell = document.getElementById('notif-bell');
+        if (oldBell) oldBell.remove();
         if (typeof checkNewNotifs === 'function') checkNewNotifs();
 
     } else if (role === 'STAFF') {
@@ -1256,8 +1247,10 @@ function applyPermissions() {
         if (navSet) navSet.style.display = 'flex';
         if (sideSet) sideSet.style.display = 'flex';
         if (colEntry) colEntry.style.display = 'flex'; if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
-        const bell = document.getElementById('notif-bell');
-        if (bell) bell.style.display = 'none';
+        const oldBell = document.getElementById('notif-bell');
+        if (oldBell) oldBell.style.display = 'none';
+        const topBell = document.getElementById('top-notif-bell');
+        if (topBell) topBell.style.display = 'none';
 
     } else if (role === 'ENCODER') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex';
