@@ -633,6 +633,16 @@ async function apiGet(action, params = {}) {
                 if (params.type === 'DSSM' && tName === 'lab_tests') {
                     data = data.map(r => {
                         const d = typeof r.details === 'string' ? JSON.parse(r.details || '{}') : (r.details || {});
+                        let tbCase = d["TB Case Number"] || d.tb_case || "";
+                        let reason = d["Reason for Examination"] || d.Category || d.reason || "";
+                        let history = d["History of Treatment"] || d.history || "";
+
+                        // 🟢 AUTO-FIX for legacy data: if TB Case Number contains "new"
+                        if (String(tbCase).toLowerCase().includes("new")) {
+                            if (!reason || reason === "") reason = "Diagnosis";
+                            if (!history || history === "") history = "New";
+                        }
+
                         return {
                             "Test Code": r.test_code || r.id,
                             "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
@@ -642,9 +652,9 @@ async function apiGet(action, params = {}) {
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.Sex || d.sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
                             "Facility": r.facility || d.Facility || d.facility || (pMap[r.patient_id] ? pMap[r.patient_id].facility : "") || "",
-                            "TB Case Number": d["TB Case Number"] || d.tb_case || "",
-                            "Reason for Examination": d["Reason for Examination"] || d.reason || "",
-                            "History of Treatment": d["History of Treatment"] || d.history || "",
+                            "TB Case Number": tbCase,
+                            "Reason for Examination": reason,
+                            "History of Treatment": history,
                             "Month of Treatment": d["Month of Treatment"] || d.monthTreat || "",
                             "Smear 1": d.Smear1 || "",
                             "Smear 1 Count": d.Smear1_Count || d.smear1_count || "",
@@ -692,7 +702,20 @@ async function apiGet(action, params = {}) {
                 if (filteredData.length === 0) return { status: "success", data: { headers: ["NOTICE"], rows: [["No completed records found (requires Date Examined)"]], totalPages: 1, currentPage: 1, totalRows: 0 } };
 
                 // Auto-fill Age for other logbooks (CHEM, HEMA, UA, FA, DENGUE, GRAM, GXVL) if missing
-                filteredData.forEach(row => {
+                // AND ensure Date Released is always present
+                const testIds = filteredData.map(r => r["Test Code"] || r.id || r.test_code).filter(Boolean);
+                let drMap = {};
+                if (testIds.length > 0) {
+                    try {
+                        for (let i = 0; i < testIds.length; i += 500) {
+                            const chunk = testIds.slice(i, i + 500);
+                            const { data: drData } = await sb.from('lab_tests').select('id, date_released').in('id', chunk);
+                            if (drData) drData.forEach(d => { drMap[d.id] = d.date_released; });
+                        }
+                    } catch (e) { }
+                }
+
+                filteredData = filteredData.map(row => {
                     let curAge = row.Age !== undefined ? row.Age : row.age;
                     if (!curAge || String(curAge).trim() === '' || String(curAge).trim() === '0') {
                         const compAge = resolveAge(row);
@@ -701,6 +724,22 @@ async function apiGet(action, params = {}) {
                             if (row.age !== undefined) row.age = compAge;
                         }
                     }
+
+                    // Inject Date Released right after Date Examined for any view that misses it
+                    if (row["Date Released"] === undefined && row["date_released"] === undefined) {
+                        const tid = row["Test Code"] || row.id || row.test_code;
+                        const dr = drMap[tid] ? new Date(drMap[tid]).toLocaleDateString() : "";
+                        const newRow = {};
+                        for (const key in row) {
+                            newRow[key] = row[key];
+                            if (key === "Date Examined" || key === "Date Exam" || key === "date_examined") {
+                                newRow["Date Released"] = dr;
+                            }
+                        }
+                        if (newRow["Date Released"] === undefined) newRow["Date Released"] = dr;
+                        return newRow;
+                    }
+                    return row;
                 });
 
                 const headers = Object.keys(filteredData[0]).filter(h => !['details', 'count'].includes(h));
