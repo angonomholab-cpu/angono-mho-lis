@@ -2205,11 +2205,54 @@ function openRegistryEditModal(testCode) {
     }
 
     let fieldsHtml = '';
+    
+    const gradings = ['Negative', 'Trace', '1+', '2+', '3+', '4+'];
+    const dropdownOptions = {
+        'Reason for Examination': ['Diagnosis', 'Baseline', 'Follow-up'],
+        'History of Treatment': ['', 'New', 'Retreatment'],
+        'Appearance': ['Watery', 'Salivary', 'Mucosalivary', 'Mucopurulent', 'Purulent', 'Blood-Streaked', 'Blood-stained'],
+        'Diagnosis': ['Negative', 'Positive'],
+        'Smear 1': ['', '0', '+N', '1+', '2+', '3+'],
+        'Smear 2': ['', '0', '+N', '1+', '2+', '3+'],
+        'MTB Result': ['N', 'T', 'TT', 'TI', 'RR', 'I'],
+        'ResultCode': ['N', 'T', 'TT', 'TI', 'RR', 'I'],
+        'Grade': ['', 'Very Low', 'Low', 'Medium', 'High'],
+        'Repeat': ['Standard', 'INITIAL'],
+        'Test Type': ['Standard', 'INITIAL'],
+        'Consistency': ['Formed', 'Soft', 'Loose', 'Watery'],
+        'Color': ['Brown', 'Yellow', 'Green', 'Black', 'Red'],
+        'Protein': gradings,
+        'Glucose': gradings,
+        'HIV': ['NONREACTIVE', 'REACTIVE'],
+        'HBSAG': ['NONREACTIVE', 'REACTIVE'],
+        'SYPHILIS': ['NONREACTIVE', 'REACTIVE'],
+        'Dengue NS1': ['', 'Negative', 'Positive'],
+        'Dengue IgG': ['', 'Negative', 'Positive'],
+        'Dengue IgM': ['', 'Negative', 'Positive'],
+        'ABO': ['A', 'B', 'AB', 'O'],
+        'Rh': ['Positive', 'Negative'],
+        'Performed By': (window.globalStaffList || []).map(s => s.name)
+    };
+
     headers.forEach((h, i) => {
         if (REGISTRY_EDIT_EXCLUDE.includes(h)) return;
         const val = row[i] == null ? '' : row[i];
         const safeVal = String(val).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-        fieldsHtml += `<div class="field-group"><label class="field-label">${h}</label><input type="text" class="form-input reg-edit-field" data-key="${h}" value="${safeVal}"></div>`;
+        
+        let matchKey = Object.keys(dropdownOptions).find(k => k.toLowerCase() === h.toLowerCase() || k.toLowerCase() === h.replace(/\s+/g, '').toLowerCase());
+        
+        if (matchKey) {
+            const opts = dropdownOptions[matchKey];
+            let optionsHtml = opts.map(opt => `<option value="${opt}" ${String(val).toUpperCase() === String(opt).toUpperCase() ? 'selected' : ''}>${opt}</option>`).join('');
+            
+            const valExists = opts.some(opt => String(opt).toUpperCase() === String(val).toUpperCase());
+            if (val && !valExists) {
+                optionsHtml = `<option value="${safeVal}" selected>${safeVal}</option>` + optionsHtml;
+            }
+            fieldsHtml += `<div class="field-group"><label class="field-label">${h}</label><select class="form-select reg-edit-field" data-key="${h}">${optionsHtml}</select></div>`;
+        } else {
+            fieldsHtml += `<div class="field-group"><label class="field-label">${h}</label><input type="text" class="form-input reg-edit-field" data-key="${h}" value="${safeVal}"></div>`;
+        }
     });
     if (!fieldsHtml) fieldsHtml = '<div style="color:var(--text-muted); font-size:0.85rem;">Walang editable fields para sa test type na ito.</div>';
 
