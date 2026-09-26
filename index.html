@@ -27,7 +27,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
     <style>
         .switch-row {
             display: flex;
@@ -455,12 +455,18 @@
                                                     class="form-input"></div>
                                         </div>
                                         <div style="display:flex; gap:8px;">
-                                            <div class="field-group" style="flex:1;"><label
-                                                    class="field-label">Sex</label><select id="p_sex"
-                                                    class="form-select">
-                                                    <option value="Male">Male</option>
-                                                    <option value="Female">Female</option>
-                                                </select></div>
+                                            <div class="field-group" style="flex:0 0 auto;">
+                                                    <label class="field-label">Sex</label>
+                                                    <input type="hidden" id="p_sex" value="Male">
+                                                    <div class="sex-toggle" id="sex-toggle">
+                                                        <button type="button" class="sex-btn active" data-val="Male" onclick="setSex('Male')">
+                                                            <i class="ph ph-gender-male"></i>
+                                                        </button>
+                                                        <button type="button" class="sex-btn" data-val="Female" onclick="setSex('Female')">
+                                                            <i class="ph ph-gender-female"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             <div class="field-group" style="flex:2;"><label class="field-label">Contact
                                                     #</label><input type="text" id="p_contact" class="form-input" oninput="formatContactNumber(this)" placeholder="xxxx-xxx-xxxx"></div>
                                         </div>
@@ -2458,7 +2464,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
