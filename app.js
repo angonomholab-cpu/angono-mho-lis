@@ -3027,10 +3027,12 @@ function renderSettings(users) {
         let cardBorder = isPending ? 'border-color: var(--warning); background: var(--warning-bg);' : 'border-color: var(--border-color);';
         
         if (isAdmin) {
+            let allRoles = ['STAFF', 'ENCODER', 'ADMIN', 'VIEWER', 'DOH_TB', 'NTP_CHECKER'];
+            if (!allRoles.includes(u.role) && u.role) allRoles.push(u.role);
+            let roleOptions = allRoles.map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
+
             let roleSelect = `<select class="form-input text-xs" style="width:auto; padding:2px 6px; margin:0; display:inline-block;" onchange="updateUserRoleInline('${u.username}', this.value)">
-                <option value="STAFF" ${u.role==='STAFF'?'selected':''}>STAFF</option>
-                <option value="ENCODER" ${u.role==='ENCODER'?'selected':''}>ENCODER</option>
-                <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
+                ${roleOptions}
             </select>`;
             
             let toggleHtml = isPending ? 
@@ -3041,17 +3043,15 @@ function renderSettings(users) {
                     <span style="font-size:0.75rem; font-weight:bold; color:${status==='ACTIVE'?'var(--success)':'var(--danger)'};">${status==='ACTIVE'?'Active':'Rejected'}</span>
                  </div>`;
                  
-            return `<div class="pending-card" style="margin-bottom: 12px; ${cardBorder} flex-direction: column; gap:10px; box-shadow: var(--shadow-card);">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-                            <div>
-                                <div class="pc-name" style="font-size:1.1rem; color:var(--text-main);">${u.fullname}</div>
-                                <div class="pc-meta" style="margin-top:2px;">@${u.username} • Last Online: <strong style="color:var(--text-main);">${u.last_login ? new Date(u.last_login).toLocaleString() : 'N/A'}</strong></div>
-                            </div>
-                            <button onclick="deleteUserInline('${u.username}')" class="btn-icon" style="color:var(--danger); background:rgba(239, 68, 68, 0.1);" title="Delete User"><i class="ph ph-trash"></i></button>
+            return `<div class="pending-card" style="margin-bottom: 8px; padding: 10px 14px; ${cardBorder} flex-direction: row; justify-content:space-between; align-items:center; gap:12px; box-shadow: var(--shadow-card); flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <div class="pc-name" style="font-size:0.9rem; color:var(--text-main);">${u.fullname}</div>
+                            <div class="pc-meta" style="font-size:0.7rem; margin-top:2px;">@${u.username} • Last: <strong style="color:var(--text-main);">${u.last_login ? new Date(u.last_login).toLocaleString() : 'N/A'}</strong></div>
                         </div>
-                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding-top:10px; border-top:1px dashed var(--border-color);">
-                            <div style="display:flex; align-items:center; gap:8px;"><strong style="font-size:0.75rem; color:var(--text-muted);">Role:</strong> ${roleSelect}</div>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap: wrap;">
+                            ${roleSelect}
                             ${toggleHtml}
+                            <button onclick="deleteUserInline('${u.username}')" class="btn-icon" style="color:var(--danger); background:rgba(239, 68, 68, 0.1); padding:4px;" title="Delete User"><i class="ph ph-trash"></i></button>
                         </div>
                     </div>`;
         } else {
