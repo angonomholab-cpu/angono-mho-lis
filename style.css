@@ -3892,8 +3892,7 @@ body.dark-mode .toast {
 /* NEGATIVE SPACE / SPACING ENHANCEMENTS */
 .data-table th,
 .data-table td {
-    padding: 14px 18px !important;
-    /* Increased padding */
+    padding: 6px 8px !important;
 }
 
 .form-input,
@@ -4265,7 +4264,7 @@ body.dark-mode .toast {
     /* 📱 Mobile Specific: Shrink Registry Data Table */
     .data-table th,
     .data-table td {
-        padding: 6px 8px !important;
-        font-size: 0.75rem !important;
+        padding: 4px 4px !important;
+        font-size: 0.65rem !important;
     }
 }
