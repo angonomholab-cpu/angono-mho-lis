@@ -1630,8 +1630,10 @@ body.dark-mode .workspace-header {
 .ap-split {
     display: flex;
     height: calc(100% - 50px);
-    overflow: hidden;
-    gap: 12px;
+    overflow: visible;
+    gap: 16px;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .ap-left {
@@ -3197,8 +3199,8 @@ body.dark-mode .res-warning {
 .patient-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
+    gap: 12px;
+    padding: 16px;
     overflow-y: auto;
     flex: 1;
 }
