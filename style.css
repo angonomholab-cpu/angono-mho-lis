@@ -2642,8 +2642,8 @@ body.dark-mode .workspace-header {
 .btn-secondary:hover {
     background: var(--pri);
     color: white !important;
-    transform: translateY(-2px);
-    box-shadow: var(--glass-shadow-hover);
+    transform: scale(0.98);
+    box-shadow: var(--shadow-in-sm);
 }
 
 .btn-primary {
@@ -2653,8 +2653,8 @@ body.dark-mode .workspace-header {
 .btn-primary:hover {
     background: var(--pri);
     color: white !important;
-    transform: translateY(-2px);
-    box-shadow: var(--glass-shadow-hover);
+    transform: scale(0.98);
+    box-shadow: var(--shadow-in-sm);
 }
 
 .btn:active,
@@ -2684,8 +2684,8 @@ body.dark-mode .workspace-header {
 
 .btn-icon:hover {
     color: var(--pri);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-out);
+    transform: scale(0.96);
+    box-shadow: var(--shadow-in-sm);
 }
 
 .btn-icon:active {
