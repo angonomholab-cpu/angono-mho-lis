@@ -2221,12 +2221,12 @@
                     <div id="staff-login-form">
                         <div class="form-group" style="margin-bottom:12px; text-align:left;">
                             <label class="auth-label">Username</label>
-                            <input type="text" id="login_user" class="form-input" placeholder="Enter staff username">
+                            <input type="text" id="login_user" class="form-input" placeholder="Enter staff username" onkeyup="if(event.key==='Enter') attemptLogin()">
                         </div>
                         <div class="form-group" style="margin-bottom:16px; text-align:left;">
                             <label class="auth-label">Password</label>
                             <div class="pass-wrapper">
-                                <input type="password" id="login_pass" class="form-input" placeholder="••••••••">
+                                <input type="password" id="login_pass" class="form-input" placeholder="••••••••" onkeyup="if(event.key==='Enter') attemptLogin()">
                                 <i class="ph ph-eye" onclick="togglePass('login_pass', this)"></i>
                             </div>
                         </div>
@@ -2249,12 +2249,12 @@
                             <label class="auth-label">Registered Email Address</label>
                             <input type="email" id="pat_user" class="form-input"
                                 placeholder="e.g. juan.delacruz@email.com"
-                                onblur="this.value = this.value.toLowerCase()">
+                                onblur="this.value = this.value.toLowerCase()" onkeyup="if(event.key==='Enter') attemptPatientLogin()">
                         </div>
                         <div class="form-group" style="margin-bottom:16px; text-align:left;">
                             <label class="auth-label">Password</label>
                             <div class="pass-wrapper">
-                                <input type="password" id="pat_pass" class="form-input" placeholder="••••••••">
+                                <input type="password" id="pat_pass" class="form-input" placeholder="••••••••" onkeyup="if(event.key==='Enter') attemptPatientLogin()">
                                 <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
                             </div>
                         </div>
