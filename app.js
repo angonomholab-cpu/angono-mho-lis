@@ -1065,23 +1065,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener(evt, window.resetInactivityTimer, { passive: true })
     );
     try {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .pending-card, .completed-card, .history-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; background-color: var(--bg-surface) !important; }
-            .pending-card:hover, .completed-card:hover, .history-card:hover { transform: translateY(-4px) scale(1.015); box-shadow: 0 10px 30px rgba(59, 130, 246, 0.25) !important; background-color: var(--bg-subtle) !important; border-left: 5px solid var(--pri) !important; z-index: 5; position: relative;}
-            .dark-mode .pending-card:hover, .dark-mode .completed-card:hover, .dark-mode .history-card:hover { box-shadow: 0 10px 30px rgba(59, 130, 246, 0.45) !important; background-color: #1e293b !important; }
-            
-            #col-pending, #col-completed, #col-repeat, #col-entry { transition: box-shadow 0.3s ease, border 0.3s ease; border-radius: 8px; border: 1px solid transparent; }
-            #col-pending:hover, #col-completed:hover, #col-repeat:hover, #col-entry:hover { box-shadow: 0 0 25px rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); }
-            
-            .btn, .btn-icon, .chip { transition: all 0.2s ease; }
-            .btn:hover, .chip:hover { filter: brightness(1.1); transform: scale(1.02); }
-            .btn-icon:hover { transform: scale(1.15); }
-            
-            .data-table tbody tr { transition: all 0.15s ease-in-out; }
-            .data-table tbody tr:hover { transform: scale(1.005); background-color: rgba(59, 130, 246, 0.08) !important; box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 2; position: relative; }
-        `;
-        document.head.appendChild(style);
+
 
         if (localStorage.getItem('mho-theme') === 'dark') {
             document.body.classList.add('dark-mode');
