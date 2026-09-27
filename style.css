@@ -56,7 +56,7 @@
     --shadow-in: var(--input-shadow);
     --shadow-out-sm: 4px 4px 12px rgba(163, 177, 198, 0.4), -4px -4px 12px rgba(255, 255, 255, 0.9);
     --shadow-in-sm: inset 2px 2px 4px rgba(163, 177, 198, 0.3), inset -2px -2px 4px rgba(255, 255, 255, 0.5);
-    --shadow-in-colored: inset 4px 4px 8px rgba(0, 0, 0, 0.35), inset -4px -4px 8px rgba(255, 255, 255, 0.4);
+    --shadow-in-colored: inset 5px 5px 12px rgba(0, 0, 0, 0.5), inset -5px -5px 12px rgba(255, 255, 255, 0.65);
     --shadow-float: var(--glass-shadow-hover);
     --shadow-card: var(--glass-shadow);
     --blur-effect: blur(16px);
@@ -102,7 +102,7 @@ body.dark-mode {
     --shadow-in: var(--input-shadow);
     --shadow-out-sm: 5px 5px 15px rgba(0, 0, 0, 0.4), -5px -5px 15px rgba(55, 60, 70, 0.1);
     --shadow-in-sm: inset 2px 2px 4px rgba(0, 0, 0, 0.4), inset -2px -2px 4px rgba(55, 60, 70, 0.2);
-    --shadow-in-colored: inset 4px 4px 8px rgba(0, 0, 0, 0.45), inset -4px -4px 8px rgba(255, 255, 255, 0.15);
+    --shadow-in-colored: inset 5px 5px 12px rgba(0, 0, 0, 0.8), inset -5px -5px 12px rgba(255, 255, 255, 0.2);
     --shadow-card: var(--glass-shadow);
     --shadow-float: var(--glass-shadow-hover);
     --glass-border: rgba(255, 255, 255, 0.08);
@@ -2368,15 +2368,15 @@ body.dark-mode .workspace-header {
 }
 
 .test-btn-vert.active {
-    background: transparent;
+    background: var(--pri);
     transform: scale(0.96);
-    box-shadow: var(--btn-pressed), inset 0 0 16px var(--shadow-glow);
-    border: 2px solid var(--pri);
+    box-shadow: var(--shadow-in-colored);
+    border: none;
 }
 
 .test-btn-vert.active i,
 .test-btn-vert.active span {
-    color: var(--pri) !important;
+    color: white !important;
 }
 
 .test-btn-vert i {
@@ -2554,32 +2554,32 @@ body.dark-mode .workspace-header {
 
 .toggle-btn.active,
 .sex-btn.active {
-    background: transparent;
-    color: var(--pri);
-    box-shadow: var(--btn-pressed);
+    background: var(--pri);
+    color: white !important;
+    box-shadow: var(--shadow-in-colored);
     transform: scale(0.96);
 }
 
 /* Sex specifically */
 .sex-btn[data-val="Male"].active {
-    color: #2563eb;
-    /* blue-600 */
+    background: #2563eb;
+    color: white !important;
 }
 
 .sex-btn[data-val="Female"].active {
-    color: #db2777;
-    /* pink-600 */
+    background: #db2777;
+    color: white !important;
 }
 
 /* Dark Mode Overrides for Sex Toggle */
 .dark-mode .sex-btn[data-val="Male"].active {
-    color: #60a5fa;
-    /* blue-400 */
+    background: #3b82f6; /* blue-500 */
+    color: white !important;
 }
 
 .dark-mode .sex-btn[data-val="Female"].active {
-    color: #f472b6;
-    /* pink-400 */
+    background: #ec4899; /* pink-500 */
+    color: white !important;
 }
 
 .search-results-container {
