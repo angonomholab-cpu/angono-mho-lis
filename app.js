@@ -1974,6 +1974,9 @@ async function saveHistoryEdit(patientId, testType, uniqueId) { const inputs = d
 
 function clearForm() {
     document.getElementById('regForm').reset(); labOrders = {}; document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary(); document.getElementById('finalPatientId').value = ""; isExistingPatient = false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const reqDateEl = document.getElementById('p_req_date');
+    if(reqDateEl) reqDateEl.value = todayStr;
     document.getElementById('history-section').style.display = 'none'; document.getElementById('new-entry-header').style.display = 'flex'; document.getElementById('profile-header').style.display = 'none';
     editingPendingId = null; document.getElementById('col-entry').classList.remove('edit-mode-pane'); document.getElementById('entry-main-header').classList.remove('edit-mode-header'); document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-user-plus"></i> Patient Entry</h2><button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>`;
     document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'grid';
@@ -1990,7 +1993,8 @@ async function finalSubmit() {
 
     let finalTestsArray = []; const pAge = document.getElementById('p_age').value || ""; const pSex = document.getElementById('p_sex').value || ""; const pFacility = document.getElementById('p_facility').value || "";
 
-    const d = new Date();
+    const reqDateEl = document.getElementById('p_req_date');
+    const d = (reqDateEl && reqDateEl.value) ? new Date(reqDateEl.value) : new Date();
     const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 
     let sequenceCounters = {};
@@ -2023,7 +2027,7 @@ async function finalSubmit() {
             test_code: generatedTestCode,
             name: availableTests[key].testName,
             code: availableTests[key].testCode,
-            details: { ...labOrders[key].details, age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value }
+            details: { ...labOrders[key].details, request_date: reqDateEl ? reqDateEl.value : "", age: pAge, sex: pSex, facility: pFacility, address: document.getElementById('p_address').value, contact: document.getElementById('p_contact').value, bday: document.getElementById('p_bday').value }
         };
         if (labOrders[key].subTests && labOrders[key].subTests.length > 0) { entry.details["Requested Tests"] = labOrders[key].subTests.join(', '); }
         finalTestsArray.push(entry);
@@ -2247,8 +2251,11 @@ function renderLists() {
             if (role === 'ADMIN' || role === 'STAFF') {
                 savePrintBtn = `<button class="btn-secondary" style="flex:1;" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button>`;
             }
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dateExaminedHtml = `<div class="field-group" style="margin-bottom:12px;"><label class="field-label">Date Examined / Result Date</label><input type="date" id="date-exam-${safeId}" class="form-input" value="${todayStr}" title="Change this for late result entries"></div>`;
 
-            expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area" style="display:none; padding:10px;"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>${savePrintBtn}</div><div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
+            expandAreaHtml = `<div id="expand-${safeId}" class="pc-expand-area" style="display:none; padding:10px;"><div style="display:flex; gap:10px; margin-bottom: 16px;"><button class="btn-primary" style="flex:1;" onclick="saveResult('${item.id}', '${safeId}', this)"><i class="ph ph-floppy-disk"></i> Save Only</button>${savePrintBtn}</div>${dateExaminedHtml}<div>${getResultTemplate(tCode, safeId, item)}</div></div>`;
         } else {
             clickAttr = `style="flex-grow:1;"`;
         }
@@ -2293,7 +2300,9 @@ async function saveResult(id, safeId, btn) {
     const preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
     newResults["Performed By"] = performerName;
     newResults["Prepared By"] = preparedByName;
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    const dateExamEl = document.getElementById('date-exam-' + safeId);
+    const dateExamStr = dateExamEl && dateExamEl.value ? new Date(dateExamEl.value).toISOString() : new Date().toISOString();
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: dateExamStr }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: performerName, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") {
@@ -2315,7 +2324,9 @@ async function saveAndPrintResult(id, safeId, btn) {
     const preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
     newResults["Performed By"] = performerName;
     newResults["Prepared By"] = preparedByName;
-    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: new Date().toISOString() }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+    const dateExamEl = document.getElementById('date-exam-' + safeId);
+    const dateExamStr = dateExamEl && dateExamEl.value ? new Date(dateExamEl.value).toISOString() : new Date().toISOString();
+    let finalStr = JSON.stringify({ ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: dateExamStr }); const oldText = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
     try {
         const res = await apiPost("saveLabResult", { patientId: item.patientId, testId: id, jsonDetails: finalStr, encodedBy: performerName, updatedName: item.name, updatedTest: item.test });
         if (res.status === "success") {
