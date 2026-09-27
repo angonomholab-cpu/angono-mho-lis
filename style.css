@@ -54,7 +54,7 @@
     /* Legacy Variables mapped to new system to prevent breaking */
     --shadow-out: var(--glass-shadow);
     --shadow-in: var(--input-shadow);
-    --shadow-out-sm: 5px 5px 15px rgba(163, 177, 198, 0.15), -5px -5px 15px rgba(255, 255, 255, 0.5);
+    --shadow-out-sm: 4px 4px 12px rgba(163, 177, 198, 0.4), -4px -4px 12px rgba(255, 255, 255, 0.9);
     --shadow-in-sm: inset 2px 2px 4px rgba(163, 177, 198, 0.3), inset -2px -2px 4px rgba(255, 255, 255, 0.5);
     --shadow-float: var(--glass-shadow-hover);
     --shadow-card: var(--glass-shadow);
@@ -1631,28 +1631,32 @@ body.dark-mode .workspace-header {
     display: flex;
     height: calc(100% - 50px);
     overflow: hidden;
+    gap: 12px;
 }
 
 .ap-left {
     flex: 1.2;
     padding: 16px 18px;
     overflow-y: auto;
-    border-right: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     padding-bottom: 80px;
     position: relative;
     background: var(--bg-surface);
+    box-shadow: var(--shadow-out);
 }
 
 .ap-right {
     flex: 0.8;
     padding: 16px 18px;
     overflow-y: auto;
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
-    background: var(--bg-body);
+    background: var(--bg-surface);
     padding-bottom: 80px;
+    box-shadow: var(--shadow-out);
 }
 
 .sticky-footer {
@@ -2500,8 +2504,10 @@ body.dark-mode .workspace-header {
 .compact-toggle,
 .sex-toggle {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
     background: transparent;
     padding: 6px;
     border-radius: var(--radius-pill);
@@ -2518,6 +2524,7 @@ body.dark-mode .workspace-header {
     padding: 10px 4px;
     font-size: 0.8rem;
     font-weight: 700;
+    white-space: nowrap;
     color: var(--text-muted);
     cursor: pointer;
     transition: all 0.2s ease;
