@@ -511,9 +511,11 @@ h4 {
     overflow: hidden;
     contain: paint;
     border-radius: 28px 0 0 28px;
-    background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop') no-repeat center center;
-    background-size: 150% 150%;
-    animation: ambientLoginFlow 30s ease-in-out infinite alternate;
+    background:
+        radial-gradient(120% 90% at 28% 28%, color-mix(in srgb, var(--pri) 45%, transparent) 0%, transparent 75%),
+        linear-gradient(145deg, #042f2e 0%, #064e3b 40%, #0a1b24 100%);
+    background-size: 200% 200%;
+    animation: ambientLoginFlow 15s ease-in-out infinite alternate;
     min-height: 340px;
     display: flex;
     flex-direction: column;
