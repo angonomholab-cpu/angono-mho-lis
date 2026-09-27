@@ -5,11 +5,10 @@
     --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
     /* ── Base Palette ── */
-    --bg-body: #e0eaf5;
-    /* Will be used as fallback for gradient */
-    --bg-surface: rgba(255, 255, 255, 0.45);
-    --bg-subtle: rgba(255, 255, 255, 0.2);
-    --bg-hover: rgba(255, 255, 255, 0.6);
+    --bg-body: #e8eaf0;
+    --bg-surface: #e8eaf0;
+    --bg-subtle: rgba(255, 255, 255, 0.3);
+    --bg-hover: rgba(255, 255, 255, 0.7);
 
     /* ── Typography (Dark Slate) ── */
     --text-main: #334155;
@@ -67,8 +66,8 @@ body.dark-mode {
     color-scheme: dark;
 
     /* ── Dark Base (Deep charcoal, not pure black) ── */
-    --bg-body: #1e293b;
-    --bg-surface: rgba(15, 23, 42, 0.45);
+    --bg-body: #26272b;
+    --bg-surface: #26272b;
     --bg-subtle: rgba(15, 23, 42, 0.2);
     --bg-hover: rgba(15, 23, 42, 0.6);
 
@@ -2430,33 +2429,34 @@ body.dark-mode .workspace-header {
 }
 
 .field-label {
-    font-size: 0.68rem;
-    font-weight: 700;
+    font-size: 0.62rem;
+    font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
 }
 
 .form-input,
 .form-select {
     width: 100%;
-    padding: 11px 16px;
-    font-size: 0.85rem;
+    padding: 10px 18px;
+    font-size: 0.8rem;
     font-family: inherit;
-    background: var(--input-bg);
+    background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
     color: var(--text-main);
     transition: all 0.2s ease;
     box-sizing: border-box;
-    box-shadow: var(--input-shadow);
+    box-shadow: var(--shadow-in-sm);
 }
 
 .form-input:focus,
 .form-select:focus {
-    background: var(--input-bg);
+    background: transparent;
     outline: none;
-    box-shadow: var(--input-shadow), 0 0 0 2px color-mix(in srgb, var(--pri) 25%, transparent);
+    box-shadow: var(--shadow-in-sm), 0 0 0 2px color-mix(in srgb, var(--pri) 25%, transparent);
 }
 
 .form-select option {
@@ -2470,11 +2470,11 @@ body.dark-mode .workspace-header {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    background: var(--bg-body);
+    background: transparent;
     padding: 6px;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-pill);
     border: none;
-    box-shadow: var(--shadow-out);
+    box-shadow: var(--shadow-in-sm);
 }
 
 .toggle-btn,
@@ -2482,7 +2482,7 @@ body.dark-mode .workspace-header {
     flex: 1;
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
     padding: 10px 4px;
     font-size: 0.8rem;
     font-weight: 700;
@@ -2511,10 +2511,10 @@ body.dark-mode .workspace-header {
 
 .toggle-btn.active,
 .sex-btn.active {
-    background: var(--bg-body);
+    background: transparent;
     color: var(--pri);
-    box-shadow: var(--btn-pressed);
-    transform: scale(0.96);
+    box-shadow: var(--shadow-in-sm);
+    transform: translateY(1px);
 }
 
 /* Sex specifically */
@@ -2583,7 +2583,7 @@ body.dark-mode .workspace-header {
     padding: 11px 20px;
     font-weight: 700;
     font-size: 0.85rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
     border: none;
     border-top: var(--glass-border-top);
     border-left: var(--glass-border-left);
