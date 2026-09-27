@@ -2591,14 +2591,14 @@ body.dark-mode .workspace-header {
     background: #ef4444; /* red-500 */
 }
 .toggle-btn[data-val="+N"].active {
-    background: #fca5a5; /* red-300 */
+    background: #fecaca; /* red-200 */
     color: #7f1d1d !important;
 }
 .toggle-btn[data-val="1+"].active {
     background: #f87171; /* red-400 */
 }
 .toggle-btn[data-val="3+"].active {
-    background: #991b1b; /* red-800 */
+    background: #7f1d1d; /* red-900 */
 }
 .toggle-btn[data-val="Negative"].active,
 .toggle-btn[data-val="0"].active {
@@ -2606,14 +2606,14 @@ body.dark-mode .workspace-header {
 }
 
 .dark-mode .toggle-btn[data-val="+N"].active {
-    background: #7f1d1d;
-    color: #fca5a5 !important;
+    background: #450a0a; /* extremely dark (pale equivalent in dark mode) */
+    color: #fecaca !important;
 }
 .dark-mode .toggle-btn[data-val="1+"].active {
-    background: #991b1b;
+    background: #7f1d1d;
 }
 .dark-mode .toggle-btn[data-val="3+"].active {
-    background: #450a0a;
+    background: #b91c1c;
 }
 
 .search-results-container {
