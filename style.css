@@ -49,15 +49,15 @@
     /* ── Pressed Neumorphism (For Inputs/Active States) ── */
     --input-bg: rgba(255, 255, 255, 0.2);
     --input-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.4), inset -4px -4px 8px rgba(255, 255, 255, 0.7);
-    --btn-pressed: inset 6px 6px 12px rgba(163, 177, 198, 0.65), inset -6px -6px 12px rgba(255, 255, 255, 0.95);
-    --btn-convex: 5px 5px 10px rgba(163, 177, 198, 0.3), -5px -5px 10px rgba(255, 255, 255, 0.8), inset 2px 2px 5px rgba(255, 255, 255, 0.9), inset -2px -2px 5px rgba(163, 177, 198, 0.25);
+    --btn-pressed: inset 6px 6px 12px rgba(163, 177, 198, 0.65), inset -6px -6px 12px rgba(255, 255, 255, 0.5);
+    --btn-convex: 5px 5px 10px rgba(163, 177, 198, 0.3), -5px -5px 10px rgba(255, 255, 255, 0.8), inset 2px 2px 5px rgba(255, 255, 255, 0.4), inset -2px -2px 5px rgba(163, 177, 198, 0.15);
 
     /* Legacy Variables mapped to new system to prevent breaking */
     --shadow-out: var(--glass-shadow);
     --shadow-in: var(--input-shadow);
-    --shadow-out-sm: 4px 4px 12px rgba(163, 177, 198, 0.4), -4px -4px 12px rgba(255, 255, 255, 0.9);
-    --shadow-in-sm: inset 2px 2px 4px rgba(163, 177, 198, 0.3), inset -2px -2px 4px rgba(255, 255, 255, 0.5);
-    --shadow-in-colored: inset 5px 5px 12px rgba(0, 0, 0, 0.5), inset -5px -5px 12px rgba(255, 255, 255, 0.65);
+    --shadow-out-sm: 4px 4px 12px rgba(163, 177, 198, 0.4), -4px -4px 12px rgba(255, 255, 255, 0.7);
+    --shadow-in-sm: inset 2px 2px 4px rgba(163, 177, 198, 0.3), inset -2px -2px 4px rgba(255, 255, 255, 0.4);
+    --shadow-in-colored: inset 5px 5px 12px rgba(0, 0, 0, 0.5), inset -5px -5px 12px rgba(255, 255, 255, 0.2);
     --shadow-float: var(--glass-shadow-hover);
     --shadow-card: var(--glass-shadow);
     --blur-effect: blur(16px);
@@ -97,8 +97,8 @@ body.dark-mode {
 
     --input-bg: rgba(0, 0, 0, 0.2);
     --input-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -4px -4px 8px rgba(55, 60, 70, 0.3);
-    --btn-pressed: inset 6px 6px 12px rgba(0, 0, 0, 0.9), inset -6px -6px 12px rgba(55, 60, 70, 0.4);
-    --btn-convex: 5px 5px 10px rgba(0, 0, 0, 0.5), -5px -5px 10px rgba(55, 60, 70, 0.15), inset 2px 2px 5px rgba(55, 60, 70, 0.15), inset -2px -2px 5px rgba(0, 0, 0, 0.4);
+    --btn-pressed: inset 6px 6px 12px rgba(0, 0, 0, 0.9), inset -6px -6px 12px rgba(55, 60, 70, 0.2);
+    --btn-convex: 5px 5px 10px rgba(0, 0, 0, 0.5), -5px -5px 10px rgba(55, 60, 70, 0.15), inset 2px 2px 5px rgba(55, 60, 70, 0.05), inset -2px -2px 5px rgba(0, 0, 0, 0.3);
 
     --shadow-out: var(--glass-shadow);
     --shadow-in: var(--input-shadow);
@@ -2583,6 +2583,37 @@ body.dark-mode .workspace-header {
 .dark-mode .sex-btn[data-val="Female"].active {
     background: #ec4899; /* pink-500 */
     color: white !important;
+}
+
+/* Custom Result Toggles */
+.toggle-btn[data-val="Positive"].active,
+.toggle-btn[data-val="2+"].active {
+    background: #ef4444; /* red-500 */
+}
+.toggle-btn[data-val="+N"].active {
+    background: #fca5a5; /* red-300 */
+    color: #7f1d1d !important;
+}
+.toggle-btn[data-val="1+"].active {
+    background: #f87171; /* red-400 */
+}
+.toggle-btn[data-val="3+"].active {
+    background: #991b1b; /* red-800 */
+}
+.toggle-btn[data-val="Negative"].active,
+.toggle-btn[data-val="0"].active {
+    background: var(--sec); /* emerald */
+}
+
+.dark-mode .toggle-btn[data-val="+N"].active {
+    background: #7f1d1d;
+    color: #fca5a5 !important;
+}
+.dark-mode .toggle-btn[data-val="1+"].active {
+    background: #991b1b;
+}
+.dark-mode .toggle-btn[data-val="3+"].active {
+    background: #450a0a;
 }
 
 .search-results-container {
