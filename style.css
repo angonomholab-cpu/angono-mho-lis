@@ -56,6 +56,7 @@
     --shadow-in: var(--input-shadow);
     --shadow-out-sm: 4px 4px 12px rgba(163, 177, 198, 0.4), -4px -4px 12px rgba(255, 255, 255, 0.9);
     --shadow-in-sm: inset 2px 2px 4px rgba(163, 177, 198, 0.3), inset -2px -2px 4px rgba(255, 255, 255, 0.5);
+    --shadow-in-colored: inset 4px 4px 8px rgba(0, 0, 0, 0.35), inset -4px -4px 8px rgba(255, 255, 255, 0.4);
     --shadow-float: var(--glass-shadow-hover);
     --shadow-card: var(--glass-shadow);
     --blur-effect: blur(16px);
@@ -101,6 +102,7 @@ body.dark-mode {
     --shadow-in: var(--input-shadow);
     --shadow-out-sm: 5px 5px 15px rgba(0, 0, 0, 0.4), -5px -5px 15px rgba(55, 60, 70, 0.1);
     --shadow-in-sm: inset 2px 2px 4px rgba(0, 0, 0, 0.4), inset -2px -2px 4px rgba(55, 60, 70, 0.2);
+    --shadow-in-colored: inset 4px 4px 8px rgba(0, 0, 0, 0.45), inset -4px -4px 8px rgba(255, 255, 255, 0.15);
     --shadow-card: var(--glass-shadow);
     --shadow-float: var(--glass-shadow-hover);
     --glass-border: rgba(255, 255, 255, 0.08);
@@ -2368,7 +2370,7 @@ body.dark-mode .workspace-header {
 .test-btn-vert.active {
     background: transparent;
     transform: scale(0.96);
-    box-shadow: var(--shadow-in-sm), inset 0 0 16px var(--shadow-glow);
+    box-shadow: var(--btn-pressed), inset 0 0 16px var(--shadow-glow);
     border: 2px solid var(--pri);
 }
 
@@ -2554,8 +2556,8 @@ body.dark-mode .workspace-header {
 .sex-btn.active {
     background: transparent;
     color: var(--pri);
-    box-shadow: var(--shadow-in-sm);
-    transform: translateY(1px);
+    box-shadow: var(--btn-pressed);
+    transform: scale(0.96);
 }
 
 /* Sex specifically */
@@ -2643,7 +2645,7 @@ body.dark-mode .workspace-header {
     background: var(--pri);
     color: white !important;
     transform: scale(0.98);
-    box-shadow: var(--shadow-in-sm);
+    box-shadow: var(--shadow-in-colored);
 }
 
 .btn-primary {
@@ -2654,7 +2656,7 @@ body.dark-mode .workspace-header {
     background: var(--pri);
     color: white !important;
     transform: scale(0.98);
-    box-shadow: var(--shadow-in-sm);
+    box-shadow: var(--shadow-in-colored);
 }
 
 .btn:active,
@@ -2662,7 +2664,7 @@ body.dark-mode .workspace-header {
 .btn-secondary:active {
     background: var(--pri-hover);
     color: white !important;
-    box-shadow: var(--btn-pressed) !important;
+    box-shadow: var(--shadow-in-colored) !important;
     transform: scale(0.96) translateY(0);
 }
 
@@ -2685,11 +2687,11 @@ body.dark-mode .workspace-header {
 .btn-icon:hover {
     color: var(--pri);
     transform: scale(0.96);
-    box-shadow: var(--shadow-in-sm);
+    box-shadow: var(--btn-pressed);
 }
 
 .btn-icon:active {
-    box-shadow: var(--shadow-in-sm);
+    box-shadow: var(--btn-pressed);
     transform: scale(0.93) translateY(1px);
 }
 
