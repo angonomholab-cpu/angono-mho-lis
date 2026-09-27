@@ -2360,15 +2360,15 @@ body.dark-mode .workspace-header {
 }
 
 .test-btn-vert.active {
-    background: var(--pri);
-    transform: scale(0.97);
-    box-shadow: inset 4px 4px 8px rgba(0,0,0,0.15), inset -4px -4px 8px rgba(255,255,255,0.2);
-    border: 1px solid transparent;
+    background: transparent;
+    transform: scale(0.96);
+    box-shadow: var(--shadow-in-sm), inset 0 0 16px var(--shadow-glow);
+    border: 2px solid var(--pri);
 }
 
 .test-btn-vert.active i,
 .test-btn-vert.active span {
-    color: #ffffff !important;
+    color: var(--pri) !important;
 }
 
 .test-btn-vert i {
