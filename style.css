@@ -5,10 +5,10 @@
     --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
     /* ── Base Palette ── */
-    --bg-body: #e8eaf0;
-    --bg-surface: #e8eaf0;
-    --bg-subtle: rgba(255, 255, 255, 0.3);
-    --bg-hover: rgba(255, 255, 255, 0.7);
+    --bg-body: #dce0e8;
+    --bg-surface: #eff1f5;
+    --bg-subtle: rgba(255, 255, 255, 0.4);
+    --bg-hover: rgba(255, 255, 255, 0.8);
 
     /* ── Typography (Dark Slate) ── */
     --text-main: #334155;
@@ -66,10 +66,10 @@ body.dark-mode {
     color-scheme: dark;
 
     /* ── Dark Base (Deep charcoal, not pure black) ── */
-    --bg-body: #26272b;
+    --bg-body: #191a1d;
     --bg-surface: #26272b;
-    --bg-subtle: rgba(15, 23, 42, 0.2);
-    --bg-hover: rgba(15, 23, 42, 0.6);
+    --bg-subtle: rgba(15, 23, 42, 0.3);
+    --bg-hover: rgba(15, 23, 42, 0.7);
 
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
@@ -2316,8 +2316,8 @@ body.dark-mode .workspace-header {
 }
 
 .test-btn-vert {
-    background: var(--bg-body);
-    border: none;
+    background: var(--bg-surface);
+    border: 1px solid transparent;
     border-radius: var(--radius-md);
     padding: 13px 8px;
     display: flex;
@@ -2336,7 +2336,20 @@ body.dark-mode .workspace-header {
 
 .test-btn-vert:hover {
     transform: scale(0.97);
-    box-shadow: var(--shadow-in);
+    box-shadow: var(--shadow-out-sm);
+    border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+}
+
+.test-btn-vert.active {
+    background: transparent;
+    transform: scale(0.97);
+    box-shadow: var(--shadow-in-sm);
+    border: 1px solid var(--pri);
+}
+
+.test-btn-vert.active i,
+.test-btn-vert.active span {
+    color: var(--pri) !important;
 }
 
 .test-btn-vert i {

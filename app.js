@@ -1976,7 +1976,7 @@ function clearForm() {
     document.getElementById('regForm').reset(); labOrders = {}; document.querySelectorAll('.test-btn-vert.active').forEach(b => b.classList.remove('active')); updateSummary(); document.getElementById('finalPatientId').value = ""; isExistingPatient = false;
     const todayStr = new Date().toISOString().split('T')[0];
     const reqDateEl = document.getElementById('p_req_date');
-    if(reqDateEl) reqDateEl.value = todayStr;
+    if (reqDateEl) reqDateEl.value = todayStr;
     document.getElementById('history-section').style.display = 'none'; document.getElementById('new-entry-header').style.display = 'flex'; document.getElementById('profile-header').style.display = 'none';
     editingPendingId = null; document.getElementById('col-entry').classList.remove('edit-mode-pane'); document.getElementById('entry-main-header').classList.remove('edit-mode-header'); document.getElementById('entry-main-header').innerHTML = `<h2><i class="ph ph-user-plus"></i> Patient Entry</h2><button class="btn-icon" onclick="clearForm()" title="Clear Form"><i class="ph ph-eraser"></i></button>`;
     document.getElementById('test-details-area').style.display = 'none'; document.getElementById('test-buttons-container').style.display = 'grid';
@@ -2251,7 +2251,7 @@ function renderLists() {
             if (role === 'ADMIN' || role === 'STAFF') {
                 savePrintBtn = `<button class="btn-secondary" style="flex:1;" onclick="saveAndPrintResult('${item.id}', '${safeId}', this)"><i class="ph ph-printer"></i> Save & Print</button>`;
             }
-            
+
             const todayStr = new Date().toISOString().split('T')[0];
             const dateExaminedHtml = `<div class="field-group" style="margin-bottom:12px;"><label class="field-label">Date Examined / Result Date</label><input type="date" id="date-exam-${safeId}" class="form-input" value="${todayStr}" title="Change this for late result entries"></div>`;
 
