@@ -2586,34 +2586,23 @@ body.dark-mode .workspace-header {
 }
 
 /* Custom Result Toggles */
-.toggle-btn[data-val="Positive"].active,
-.toggle-btn[data-val="2+"].active {
-    background: #ef4444; /* red-500 */
-}
 .toggle-btn[data-val="+N"].active {
-    background: #fecaca; /* red-200 */
+    background: #fecaca; /* red-200 (Pale) */
     color: #7f1d1d !important;
 }
 .toggle-btn[data-val="1+"].active {
-    background: #f87171; /* red-400 */
+    background: #f87171; /* red-400 (Light Red) */
+}
+.toggle-btn[data-val="Positive"].active,
+.toggle-btn[data-val="2+"].active {
+    background: #dc2626; /* red-600 (Medium Dark Red) */
 }
 .toggle-btn[data-val="3+"].active {
-    background: #7f1d1d; /* red-900 */
+    background: #7f1d1d; /* red-900 (Deep Dark Red) */
 }
 .toggle-btn[data-val="Negative"].active,
 .toggle-btn[data-val="0"].active {
     background: var(--sec); /* emerald */
-}
-
-.dark-mode .toggle-btn[data-val="+N"].active {
-    background: #450a0a; /* extremely dark (pale equivalent in dark mode) */
-    color: #fecaca !important;
-}
-.dark-mode .toggle-btn[data-val="1+"].active {
-    background: #7f1d1d;
-}
-.dark-mode .toggle-btn[data-val="3+"].active {
-    background: #b91c1c;
 }
 
 .search-results-container {
