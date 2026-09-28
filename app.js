@@ -3058,7 +3058,17 @@ async function loadSettingsData() {
         loadEmailConfigIntoUI();
         const res = await apiPost("getSettingsData", {});
         if (res.status === "success") {
-            const data = res.data; globalStaffList = data.staff || []; globalFacilityList = data.facilities || [];
+            const data = res.data; globalStaffList = data.staff || [];
+            
+            globalFacilityList = (data.facilities || []).filter(f => {
+                if (f.name === '_SYSTEM_MAINTENANCE_') {
+                    const toggle = document.getElementById('toggle-maintenance-btn');
+                    if (toggle) toggle.checked = (f.address === 'ON');
+                    return false;
+                }
+                return true;
+            });
+
             renderFacilityList(); renderStaffList(); renderSettings(data.users);
             const dropdowns = [document.getElementById('u_facility'), document.getElementById('edit_u_fac')];
             dropdowns.forEach(drop => { if (drop) { drop.innerHTML = '<option value="ALL">ALL / MAIN</option>'; globalFacilityList.forEach(f => { drop.innerHTML += `<option value="${f.name}">${f.name}</option>`; }); } });
