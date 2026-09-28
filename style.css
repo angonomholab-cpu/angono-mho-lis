@@ -2622,20 +2622,25 @@ body.dark-mode .workspace-header {
 }
 
 .search-item {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border-color);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     color: var(--text-main);
-    transition: all 0.15s ease;
+    background: var(--bg-surface);
+    transition: all 0.2s ease;
     font-size: 0.8rem;
+    box-shadow: var(--btn-convex);
+    border: none;
 }
 
 .search-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .search-item:hover {
-    background: var(--bg-subtle);
+    transform: scale(0.98);
+    box-shadow: var(--btn-pressed);
     color: var(--pri);
 }
 
