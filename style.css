@@ -2619,6 +2619,7 @@ body.dark-mode .workspace-header {
     max-height: 350px;
     overflow-y: auto;
     margin-top: 4px;
+    padding: 12px;
 }
 
 .search-item {
@@ -2627,7 +2628,7 @@ body.dark-mode .workspace-header {
     border-radius: var(--radius-md);
     cursor: pointer;
     color: var(--text-main);
-    background: var(--bg-surface);
+    background: var(--bg-body);
     transition: all 0.2s ease;
     font-size: 0.8rem;
     box-shadow: var(--btn-convex);
