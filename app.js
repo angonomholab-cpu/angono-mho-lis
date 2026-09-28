@@ -958,7 +958,8 @@ async function apiPost(action, payload) {
             case "toggleMaintenance": {
                 if (payload.adminRole !== 'ADMIN') throw new Error("Unauthorized");
                 const state = payload.state ? 'ON' : 'OFF';
-                await sb.from('facilities').upsert({ name: '_SYSTEM_MAINTENANCE_', address: state });
+                const { error } = await sb.from('facilities').update({ address: state }).eq('name', '_SYSTEM_MAINTENANCE_');
+                if (error) throw error;
                 return { status: "success" };
             }
             case "saveNewUser": {
