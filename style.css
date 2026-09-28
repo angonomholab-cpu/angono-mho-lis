@@ -2639,10 +2639,16 @@ body.dark-mode .workspace-header {
     margin-bottom: 0;
 }
 
-.search-item:hover {
+.search-item:hover,
+.search-item:active {
+    background: var(--pri) !important;
+    color: white !important;
     transform: scale(0.98);
-    box-shadow: var(--btn-pressed);
-    color: var(--pri);
+    box-shadow: var(--shadow-in-colored) !important;
+}
+
+.search-item:hover * {
+    color: white !important;
 }
 
 .btn,
