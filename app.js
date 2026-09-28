@@ -371,7 +371,7 @@ async function apiGet(action, params = {}) {
     try {
         switch (action) {
             case "loginUser": {
-                const safeEmail = `${params.username.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
+                const safeEmail = `${params.username.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}@angono-mho-lis.local`;
                 const safePass = params.password.length < 6 ? params.password.padEnd(6, '_') : params.password;
                 const { data: authData, error: authError } = await sb.auth.signInWithPassword({
                     email: safeEmail,
@@ -1195,7 +1195,7 @@ async function attemptLogin() {
             await apiPost("logAudit", { username: currentUser.username, action: "LOGIN", details: "Staff member logged in successfully" });
             window.location.reload();
         }
-        else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = "Invalid credentials"; }
+        else if (res.status === "PENDING") { err.style.display = 'block'; err.innerHTML = "Account Pending Approval."; } else { err.style.display = 'block'; err.innerHTML = res.error || "Invalid credentials"; }
     } catch (e) { showAppAlert("Error", "Server Error.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
@@ -3432,7 +3432,7 @@ async function submitStaffRegister() {
     if (pass1 !== pass2) { document.getElementById('reg_pass2').value = ''; return showAppAlert("Mismatch", "Passwords do not match! Please try again.", "error"); }
     const btn = document.querySelector('#staff-register-card .btn-primary'); const oldText = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Submitting...'; btn.disabled = true;
     try {
-        const safeEmail = `${user.replace(/[^a-zA-Z0-9]/g, '')}@angono-mho-lis.local`;
+        const safeEmail = `${user.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}@angono-mho-lis.local`;
         const safePass = pass1.length < 6 ? pass1.padEnd(6, '_') : pass1;
         const { data: authData, error: authErr } = await window.sbAuth.auth.signUp({
             email: safeEmail,
