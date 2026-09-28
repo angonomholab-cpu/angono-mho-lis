@@ -1483,7 +1483,7 @@ function setSex(val) {
     if (activeBtn) activeBtn.classList.add('active');
 }
 function setToggleValue(btn, inputId, val) {
-    const input = btn.closest('.form-grid') ? btn.closest('.form-grid').querySelector(`[data-key="${inputId}"]`) : document.getElementById(inputId);
+    const input = document.getElementById(inputId);
     if (input) input.value = val;
     const container = btn.closest('.compact-toggle');
     if (container) {
