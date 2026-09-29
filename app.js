@@ -71,11 +71,14 @@ function savePatientEmailConfig() {
 function loadSmsConfigIntoUI() {
     const isEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
     const sched = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
+    const token = localStorage.getItem('cfg_sms_token') || '';
     const enableEl = document.getElementById('cfg_sms_enable');
     const schedEl = document.getElementById('cfg_sms_schedule');
+    const tokenEl = document.getElementById('cfg_sms_token');
     const statusEl = document.getElementById('sms-cfg-status');
     if (enableEl) enableEl.checked = isEnabled;
     if (schedEl) schedEl.value = sched;
+    if (tokenEl) tokenEl.value = token;
     if (statusEl) {
         statusEl.innerText = isEnabled ? `✓ SMS Alerts Active (${sched === 'realtime' ? 'Real-time' : 'Next Day'})` : "";
     }
@@ -84,8 +87,10 @@ function loadSmsConfigIntoUI() {
 function saveSmsConfig() {
     const enableEl = document.getElementById('cfg_sms_enable');
     const schedEl = document.getElementById('cfg_sms_schedule');
+    const tokenEl = document.getElementById('cfg_sms_token');
     if (enableEl) localStorage.setItem('cfg_sms_enable', enableEl.checked ? 'true' : 'false');
     if (schedEl) localStorage.setItem('cfg_sms_schedule', schedEl.value);
+    if (tokenEl) localStorage.setItem('cfg_sms_token', tokenEl.value);
     loadSmsConfigIntoUI();
 }
 
@@ -95,7 +100,9 @@ async function testSendSms() {
     const phone = phoneInput.value.replace(/[^0-9]/g, '');
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
     
-    const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
+    const philsmsToken = localStorage.getItem('cfg_sms_token');
+    if (!philsmsToken) return showAppAlert("Error", "Please enter your PhilSMS API Token first.", "error");
+    
     const senderId = "PhilSMS"; 
     const smsMessage = "ALERT: Ito ay TEST message mula sa Angono MHO LIS. Ang PhilSMS integration ay gumagana nang maayos.";
     
@@ -2457,7 +2464,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
-                    const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
+                    const philsmsToken = localStorage.getItem('cfg_sms_token');
                     const senderId = "PhilSMS"; 
                     fetch("https://app.philsms.com/api/v3/sms/send", {
                         method: "POST",
@@ -2497,7 +2504,7 @@ async function checkAndSendPendingSMS() {
             
         if (!pendingMsgs || pendingMsgs.length === 0) return;
         
-        const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
+        const philsmsToken = localStorage.getItem('cfg_sms_token');
         const senderId = "PhilSMS"; 
         
         for (let msg of pendingMsgs) {
