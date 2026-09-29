@@ -235,21 +235,39 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
     } else if (type === "result_ready") {
         subject = `Angono MHO Laboratory - Result Ready for ${testName} (${testCode || 'Record'})`;
         noticeType = "Laboratory Test Result Ready";
-        contentHtml = `
-            <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
-            <p>This is to formally notify you that the result for your laboratory test (<strong>${testName}</strong>) is now ready.</p>
-            
-            <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin: 25px 0;">
-                <p style="margin: 0 0 10px 0; font-size: 13px; color: #b45309;"><strong>IMPORTANT NOTICE</strong></p>
-                <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>SOFT COPY:</strong> An initial digital soft copy is available online. You can view or download it immediately by signing into the Patient Portal.</p>
-                <p style="margin: 0; font-size: 14px;"><strong>HARD COPY:</strong> Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono MHO.</p>
-            </div>
+        
+        const isTB = testCode === 'GXP' || testCode === 'DSSM';
+        
+        if (isTB) {
+            contentHtml = `
+                <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
+                <p>This is to formally notify you that the result for your laboratory test (<strong>${testName}</strong>) is now ready.</p>
+                
+                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin: 25px 0;">
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #b45309;"><strong>IMPORTANT NOTICE</strong></p>
+                    <p style="margin: 0 0 10px 0; font-size: 14px;">Please proceed to your respective <strong>Barangay Health Center</strong> to claim your result and for further assessment or counseling.</p>
+                    <p style="margin: 0; font-size: 14px;"><strong>Your Patient ID: <span style="font-size: 18px; color: #111;">${patientId}</span></strong></p>
+                </div>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${portalUrl}" style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Click Here to Access Patient Portal</a>
-            </div>
-            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">For any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.</p>
-        `;
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">Please present your Patient ID to the health center staff.</p>
+            `;
+        } else {
+            contentHtml = `
+                <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
+                <p>This is to formally notify you that the result for your laboratory test (<strong>${testName}</strong>) is now ready.</p>
+                
+                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin: 25px 0;">
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #b45309;"><strong>IMPORTANT NOTICE</strong></p>
+                    <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>SOFT COPY:</strong> An initial digital soft copy is available online. You can view or download it immediately by signing into the Patient Portal.</p>
+                    <p style="margin: 0; font-size: 14px;"><strong>HARD COPY:</strong> Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono MHO.</p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${portalUrl}" style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Click Here to Access Patient Portal</a>
+                </div>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">For any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.</p>
+            `;
+        }
     }
 
     messageBody = `
@@ -2479,7 +2497,17 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                         method: "POST",
                         headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
                         body: JSON.stringify({ recipient: phone, sender_id: senderId, type: "plain", message: smsMessage })
-                    }).then(r => r.json()).then(res => console.log("PhilSMS Real-time Sent:", res)).catch(e => console.error("PhilSMS Error:", e));
+                    }).then(r => r.json()).then(res => {
+                        console.log("PhilSMS Real-time Sent:", res);
+                        if (res.status === 'error' || res.message === 'Unauthenticated.') {
+                            showAppAlert("SMS Failed", res.message || "Failed to authenticate with PhilSMS.", "error");
+                        } else {
+                            showAppAlert("SMS Sent", "Notification sent via PhilSMS.", "success");
+                        }
+                    }).catch(e => {
+                        console.error("PhilSMS Error:", e);
+                        showAppAlert("SMS Error", "Failed to connect to PhilSMS.", "error");
+                    });
                 } else {
                     // Set to Tomorrow 8:00 AM
                     let tomorrow = new Date();
