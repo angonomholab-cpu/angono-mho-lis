@@ -2486,7 +2486,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     
                     let smsMessage = "";
                     if (isRepeat) {
-                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText}.`;
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen sa Angono MHO Lab.`;
                     } else {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
                     }
