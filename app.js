@@ -105,7 +105,7 @@ async function testSendSms() {
     if (!philsmsToken) return showAppAlert("Error", "Please enter your PhilSMS API Token first.", "error");
     
     const senderId = "PhilSMS"; 
-    const smsMessage = "[Angono MHO Lab Notice] Ito ay TEST message mula sa LIS. Ang PhilSMS integration ay gumagana nang maayos.";
+    const smsMessage = "Angono MHO Lab Notice: Ito ay TEST message mula sa LIS. Ang PhilSMS integration ay gumagana nang maayos.";
     
     showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
     try {
@@ -2388,8 +2388,10 @@ async function saveResult(id, safeId, btn) {
         if (res.status === "success") {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
+            let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || newResults["Repeat"] || newResults["Test Type"] || "").toUpperCase();
+            let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat);
 
             await loadPendingData();
         }
@@ -2412,8 +2414,10 @@ async function saveAndPrintResult(id, safeId, btn) {
         if (res.status === "success") {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
+            let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || newResults["Repeat"] || newResults["Test Type"] || "").toUpperCase();
+            let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat);
 
             await loadPendingData();
             printDirect(null, id, tCodePrint);
@@ -2422,7 +2426,7 @@ async function saveAndPrintResult(id, safeId, btn) {
     } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); }
 }
 
-async function notifyPatientResultReady(patientId, patientName, testName, testCode) {
+async function notifyPatientResultReady(patientId, patientName, testName, testCode, isRepeat = false) {
     try {
         if (!patientId) return;
         
@@ -2480,7 +2484,12 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     if (testCode === 'GXVL') displayTest = "Viral Load";
                     if (testCode === 'GRAM') displayTest = "Gram Stain";
                     
-                    const smsMessage = `[Angono MHO Lab Notice] Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
+                    let smsMessage = "";
+                    if (isRepeat) {
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Pumunta muli ${locationText}.`;
+                    } else {
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
+                    }
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
@@ -3697,7 +3706,8 @@ async function batchSaveResults(isPrint) {
                 successCount++;
                 if (isPrint) printRequests.push({ testCode: id, testName: tCodePrint });
                 // Send automated Result Ready notification
-                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint);
+                let isBatchRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
+                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isBatchRepeat);
             }
         } catch (e) { }
     }
