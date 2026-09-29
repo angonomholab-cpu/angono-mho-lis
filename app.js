@@ -237,8 +237,13 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
         noticeType = "Laboratory Test Result Ready";
         
         const isTB = testCode === 'GXP' || testCode === 'DSSM';
+        
+        let hardCopyText = isTB
+            ? "Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at your respective Barangay Health Center."
+            : "Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono MHO.";
+            
         let footerNote = isTB 
-            ? "For any questions, please proceed to your respective Barangay Health Center and present your valid ID."
+            ? "For any questions, please proceed to your respective Barangay Health Center."
             : "For any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.";
         
         contentHtml = `
@@ -248,7 +253,7 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
             <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 16px; margin: 25px 0;">
                 <p style="margin: 0 0 10px 0; font-size: 13px; color: #b45309;"><strong>IMPORTANT NOTICE</strong></p>
                 <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>SOFT COPY:</strong> An initial digital soft copy is available online. You can view or download it immediately by signing into the Patient Portal.</p>
-                <p style="margin: 0; font-size: 14px;"><strong>HARD COPY:</strong> Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono MHO.</p>
+                <p style="margin: 0; font-size: 14px;"><strong>HARD COPY:</strong> ${hardCopyText}</p>
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
@@ -2497,10 +2502,10 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                         showAppAlert("SMS Error", "Failed to connect to PhilSMS.", "error");
                     });
                 } else {
-                    // Set to Tomorrow 8:00 AM
+                    // Set to Tomorrow 9:00 AM
                     let tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(8, 0, 0, 0);
+                    tomorrow.setHours(9, 0, 0, 0);
                     
                     // Save to our pending_sms table in Supabase
                     await sb.from('pending_sms').insert([{
