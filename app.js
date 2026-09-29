@@ -96,7 +96,7 @@ async function testSendSms() {
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
     
     const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
-    const senderId = "AMHO Lab"; 
+    const senderId = "PhilSMS"; 
     const smsMessage = "ALERT: Ito ay TEST message mula sa Angono MHO LIS. Ang PhilSMS integration ay gumagana nang maayos.";
     
     showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
@@ -2453,12 +2453,12 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     if (testCode === 'GXVL') displayTest = "Viral Load";
                     if (testCode === 'GRAM') displayTest = "Gram Stain";
                     
-                    const smsMessage = `ALERT: Hi ${firstName}, ang laboratory result niyo para sa ${displayTest} ay handa na. Maaari itong makuha ${locationText}.`;
+                    const smsMessage = `ALERT: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}. -Angono MHO Lab`;
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
                     const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
-                    const senderId = "AMHO Lab"; 
+                    const senderId = "PhilSMS"; 
                     fetch("https://app.philsms.com/api/v3/sms/send", {
                         method: "POST",
                         headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
@@ -2498,7 +2498,7 @@ async function checkAndSendPendingSMS() {
         if (!pendingMsgs || pendingMsgs.length === 0) return;
         
         const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
-        const senderId = "AMHO Lab"; 
+        const senderId = "PhilSMS"; 
         
         for (let msg of pendingMsgs) {
             try {
