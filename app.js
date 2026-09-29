@@ -2378,7 +2378,7 @@ async function saveResult(id, safeId, btn) {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, item.testCode || id);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint);
 
             await loadPendingData();
         }
@@ -2402,7 +2402,7 @@ async function saveAndPrintResult(id, safeId, btn) {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, item.testCode || id);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint);
 
             await loadPendingData();
             printDirect(null, id, tCodePrint);
@@ -3676,7 +3676,7 @@ async function batchSaveResults(isPrint) {
                 successCount++;
                 if (isPrint) printRequests.push({ testCode: id, testName: tCodePrint });
                 // Send automated Result Ready notification
-                notifyPatientResultReady(item.patientId, item.name, item.test, item.testCode || id);
+                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint);
             }
         } catch (e) { }
     }
