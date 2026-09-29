@@ -2444,7 +2444,12 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                         firstName = rawName.trim().split(' ')[0];
                     }
                     
-                    const smsMessage = `ALERT: Hi ${firstName}, ready na ang result para sa ${testCode}. Kunin ito ${locationText}.`;
+                    let displayTest = testCode;
+                    if (testCode === 'GXP') displayTest = "GeneXpert";
+                    if (testCode === 'GXVL') displayTest = "Viral Load";
+                    if (testCode === 'GRAM') displayTest = "Gram Stain";
+                    
+                    const smsMessage = `ALERT: Hi ${firstName}, ang laboratory result niyo para sa ${displayTest} ay handa na. Maaari itong makuha ${locationText}.`;
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
