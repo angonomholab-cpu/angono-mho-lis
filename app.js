@@ -100,7 +100,7 @@ async function testSendSms() {
     const phone = phoneInput.value.replace(/[^0-9]/g, '');
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
     
-    const philsmsToken = localStorage.getItem('cfg_sms_token');
+    const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
     if (!philsmsToken) return showAppAlert("Error", "Please enter your PhilSMS API Token first.", "error");
     
     const senderId = "PhilSMS"; 
@@ -2464,7 +2464,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
-                    const philsmsToken = localStorage.getItem('cfg_sms_token');
+                    const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
                     const senderId = "PhilSMS"; 
                     fetch("https://app.philsms.com/api/v3/sms/send", {
                         method: "POST",
@@ -2504,7 +2504,7 @@ async function checkAndSendPendingSMS() {
             
         if (!pendingMsgs || pendingMsgs.length === 0) return;
         
-        const philsmsToken = localStorage.getItem('cfg_sms_token');
+        const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
         const senderId = "PhilSMS"; 
         
         for (let msg of pendingMsgs) {
