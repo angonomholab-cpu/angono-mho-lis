@@ -2488,7 +2488,11 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     if (isRepeat) {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen sa Angono MHO Lab.`;
                     } else {
-                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
+                        if (testCode === 'GXP' || testCode === 'DSSM') {
+                            smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
+                        } else {
+                            smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
+                        }
                     }
                 
                 if (smsSchedule === 'realtime') {
