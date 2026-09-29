@@ -117,7 +117,11 @@ async function testSendSms() {
         });
         const result = await res.json();
         console.log("PhilSMS Test Response:", result);
-        showAppAlert("Success", "Test SMS sent! Check your phone.", "success");
+        if (result.status === 'error' || result.message === 'Unauthenticated.') {
+            showAppAlert("PhilSMS Error", result.message || "Failed to authenticate with PhilSMS.", "error");
+        } else {
+            showAppAlert("Success", "Test SMS sent! Check your phone.", "success");
+        }
     } catch (err) {
         console.error("PhilSMS Test Error:", err);
         showAppAlert("Error", "Failed to send Test SMS", "error");
