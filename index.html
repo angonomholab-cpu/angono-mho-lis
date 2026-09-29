@@ -1901,6 +1901,38 @@
                                 </p>
                             </div>
                         </div>
+
+                        <!-- SMS Settings -->
+                        <div class="workspace-col" style="padding:0;">
+                            <div class="workspace-header" style="padding: 16px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border-color); margin:0;">
+                                <h3 class="text-sm font-bold" style="margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-chat-text" style="color:var(--pri);"></i> PhilSMS Notifications</h3>
+                            </div>
+                            <div style="padding: 16px; display:flex; flex-direction:column; gap:12px; font-size:0.8rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <label><strong>Enable SMS Alerts</strong></label>
+                                    <label class="switch">
+                                      <input type="checkbox" id="cfg_sms_enable" onchange="saveSmsConfig()">
+                                      <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">Delivery Schedule</label>
+                                    <select id="cfg_sms_schedule" class="form-input" onchange="saveSmsConfig()">
+                                        <option value="realtime">Send Real-time (Immediately)</option>
+                                        <option value="tomorrow">Schedule for Tomorrow 8:00 AM</option>
+                                    </select>
+                                </div>
+                                <div class="field-group" style="margin-top:8px;">
+                                    <label class="field-label">Test Send (Enter Phone Number)</label>
+                                    <div style="display:flex; gap:8px;">
+                                        <input type="text" id="cfg_sms_test_phone" class="form-input" placeholder="09123456789">
+                                        <button class="btn btn-secondary" onclick="testSendSms()"><i class="ph ph-paper-plane-tilt"></i> Test</button>
+                                    </div>
+                                </div>
+                                <p id="sms-cfg-status" style="font-size:0.75rem; color:var(--success); margin:0; text-align:center;"></p>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </main>

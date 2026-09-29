@@ -68,6 +68,62 @@ function savePatientEmailConfig() {
     showAppAlert("Settings Saved", "Email notification settings saved successfully.", "success");
 }
 
+function loadSmsConfigIntoUI() {
+    const isEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
+    const sched = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
+    const enableEl = document.getElementById('cfg_sms_enable');
+    const schedEl = document.getElementById('cfg_sms_schedule');
+    const statusEl = document.getElementById('sms-cfg-status');
+    if (enableEl) enableEl.checked = isEnabled;
+    if (schedEl) schedEl.value = sched;
+    if (statusEl) {
+        statusEl.innerText = isEnabled ? `✓ SMS Alerts Active (${sched === 'realtime' ? 'Real-time' : 'Next Day'})` : "";
+    }
+}
+
+function saveSmsConfig() {
+    const enableEl = document.getElementById('cfg_sms_enable');
+    const schedEl = document.getElementById('cfg_sms_schedule');
+    if (enableEl) localStorage.setItem('cfg_sms_enable', enableEl.checked ? 'true' : 'false');
+    if (schedEl) localStorage.setItem('cfg_sms_schedule', schedEl.value);
+    loadSmsConfigIntoUI();
+}
+
+async function testSendSms() {
+    const phoneInput = document.getElementById('cfg_sms_test_phone');
+    if (!phoneInput || !phoneInput.value) return showAppAlert("Error", "Enter a phone number to test", "error");
+    const phone = phoneInput.value.replace(/[^0-9]/g, '');
+    if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
+    
+    const philsmsToken = "4752|ZFJtbo1FHFDdrGsnmvYBOmNjfumcfC0AvavNbE1q4daf5298"; 
+    const senderId = "PhilSMS"; 
+    const smsMessage = "ALERT: Ito ay TEST message mula sa Angono MHO LIS. Ang PhilSMS integration ay gumagana nang maayos.";
+    
+    showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
+    try {
+        const res = await fetch("https://app.philsms.com/api/v3/sms/send", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${philsmsToken}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                recipient: phone,
+                sender_id: senderId,
+                type: "plain",
+                message: smsMessage
+            })
+        });
+        const result = await res.json();
+        console.log("PhilSMS Test Response:", result);
+        showAppAlert("Success", "Test SMS sent! Check your phone.", "success");
+    } catch (err) {
+        console.error("PhilSMS Test Error:", err);
+        showAppAlert("Error", "Failed to send Test SMS", "error");
+    }
+}
+
 function loadEmailConfigIntoUI() {
     const cfg = getPatientEmailConfig();
     const sEl = document.getElementById('cfg_email_service');
@@ -2346,7 +2402,9 @@ async function saveAndPrintResult(id, safeId, btn) {
 async function notifyPatientResultReady(patientId, patientName, testName, testCode) {
     try {
         if (!patientId) return;
-        const { data } = await sb.from('patients').select('email, full_name').eq('id', patientId).maybeSingle();
+        const { data } = await sb.from('patients').select('email, full_name, contact, facility').eq('id', patientId).maybeSingle();
+        
+        // --- EMAIL NOTIFICATION ---
         if (data && data.email && data.email.includes('@')) {
             sendPatientEmail({
                 toEmail: data.email,
@@ -2357,10 +2415,109 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 type: "result_ready"
             });
         }
+        
+        // --- SMS NOTIFICATION (PhilSMS) ---
+        const allowedTestsForSms = ['GXP', 'DSSM', 'GXVL', 'GRAM'];
+        const smsEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
+        const smsSchedule = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
+        
+        if (smsEnabled && data && data.contact && allowedTestsForSms.includes(testCode)) { 
+            const facilityName = data.facility || "";
+            const facilityLow = facilityName.toLowerCase();
+            const isExcluded = facilityLow.includes("angono medics") || facilityLow.includes("san isidro hospital");
+            
+            if (!isExcluded) {
+                let phone = data.contact.replace(/[^0-9]/g, '');
+                if (phone.length >= 10) { 
+                    let locationText = "";
+                    if (testCode === 'GXP' || testCode === 'DSSM') {
+                        locationText = facilityName ? `sa ${facilityName}` : "sa health center ng inyong barangay";
+                    } else if (testCode === 'GXVL' || testCode === 'GRAM') {
+                        locationText = "sa Angono May Puso Social Hygiene Clinic";
+                    }
+                    
+                    const smsMessage = `ALERT: Hi ${data.full_name || patientName}, ang inyong laboratory result para sa ${testName} ay handa na. Maaari ninyong makuha ang resulta ${locationText}.`;
+                
+                if (smsSchedule === 'realtime') {
+                    // Send immediately
+                    const philsmsToken = "4752|ZFJtbo1FHFDdrGsnmvYBOmNjfumcfC0AvavNbE1q4daf5298"; 
+                    const senderId = "PhilSMS"; 
+                    fetch("https://app.philsms.com/api/v3/sms/send", {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
+                        body: JSON.stringify({ recipient: phone, sender_id: senderId, type: "plain", message: smsMessage })
+                    }).then(r => r.json()).then(res => console.log("PhilSMS Real-time Sent:", res)).catch(e => console.error("PhilSMS Error:", e));
+                } else {
+                    // Set to Tomorrow 8:00 AM
+                    let tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(8, 0, 0, 0);
+                    
+                    // Save to our pending_sms table in Supabase
+                    await sb.from('pending_sms').insert([{
+                        phone: phone,
+                        message: smsMessage,
+                        send_at: tomorrow.toISOString(),
+                        status: 'pending'
+                    }]);
+                    console.log("SMS Scheduled for:", tomorrow.toISOString());
+                }
+                } // closes if (phone.length >= 10)
+            } // closes if (!isExcluded)
+        } // closes if (false && data...)
+        
     } catch (e) {
         console.warn("Could not send patient result notification:", e);
     }
 }
+
+async function checkAndSendPendingSMS() {
+    try {
+        const { data: pendingMsgs } = await sb.from('pending_sms')
+            .select('*')
+            .eq('status', 'pending')
+            .lte('send_at', new Date().toISOString());
+            
+        if (!pendingMsgs || pendingMsgs.length === 0) return;
+        
+        const philsmsToken = "4752|ZFJtbo1FHFDdrGsnmvYBOmNjfumcfC0AvavNbE1q4daf5298"; 
+        const senderId = "PhilSMS"; 
+        
+        for (let msg of pendingMsgs) {
+            try {
+                const res = await fetch("https://app.philsms.com/api/v3/sms/send", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${philsmsToken}`,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        recipient: msg.phone,
+                        sender_id: senderId,
+                        type: "plain",
+                        message: msg.message
+                    })
+                });
+                
+                const result = await res.json();
+                console.log("PhilSMS Sent:", result);
+                
+                // Mark as sent
+                await sb.from('pending_sms').update({ status: 'sent' }).eq('id', msg.id);
+            } catch (err) {
+                console.error("Failed to send scheduled SMS:", err);
+            }
+        }
+    } catch (e) {
+        console.error("Error checking pending SMS:", e);
+    }
+}
+
+// Check every 10 minutes (600000 ms) while the app is open
+setInterval(checkAndSendPendingSMS, 600000);
+// Also check 5 seconds after the app is first opened
+setTimeout(checkAndSendPendingSMS, 5000);
 
 async function moveToPendingRepeat(idStr) {
     const item = window.completedData.find(i => String(i.id) === String(idStr)); if (!item) return;
@@ -3057,6 +3214,7 @@ async function loadSettingsData() {
 
     try {
         loadEmailConfigIntoUI();
+        loadSmsConfigIntoUI();
         const res = await apiPost("getSettingsData", {});
         if (res.status === "success") {
             const data = res.data; globalStaffList = data.staff || [];
@@ -3920,13 +4078,19 @@ function localGenerateA5Html(patientsArray) {
         }
         else if (isSero) {
             let hivRes = p.results.find(r => r.param.toUpperCase().includes("HIV"))?.res; let syphRes = p.results.find(r => r.param.toUpperCase().includes("SYPHILIS"))?.res; let hbsagRes = p.results.find(r => r.param.toUpperCase().includes("HBSAG"))?.res; let rowsHtml = "";
-            if (hivRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HIV 1/2 SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hivRes}</td></tr>`;
+            if (hivRes !== undefined) {
+                let hivDisplay = hivRes;
+                if (String(hivDisplay).toUpperCase().includes("REACTIVE") && !String(hivDisplay).toUpperCase().includes("NON")) {
+                    hivDisplay = "";
+                }
+                rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HIV 1/2 SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hivDisplay}</td></tr>`;
+            }
             if (syphRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">SYPHILIS SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${syphRes}</td></tr>`;
             if (hbsagRes !== undefined) rowsHtml += `<tr><td style="padding:10px; font-weight:bold; font-size:12px;">HBsAg SCREENING</td><td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${hbsagRes}</td></tr>`;
             mainContent = `<div style="flex-grow:1; display:flex; align-items:center; justify-content:center; width:100%;"><table class="res-table" style="width: 85%; margin-top: 10px;"><thead><tr><th width="50%" style="padding:10px; font-size:11px;">TEST</th><th width="50%" style="padding:10px; font-size:11px;">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
         }
         else if (isHema || isChem || isUrine) { const mid = Math.ceil(p.results.length / 2); const left = p.results.slice(0, mid); const right = p.results.slice(mid); let rowsHtml = ""; const hasUnits = isHema || isChem; for (let i = 0; i < mid; i++) { const l = left[i]; const r = right[i]; let leftHtml = ""; if (l) { if (hasUnits) { leftHtml = `<td style="font-weight:bold; padding-left:5px;">${l.param}</td><td style="text-align:center; font-weight:bold;">${l.res || ""}</td><td style="text-align:center; font-size:8px;">${getUnit(l.param)}</td><td style="text-align:center; font-size:8px;">${getNormal(l.param)}</td>`; } else { leftHtml = `<td style="font-weight:bold; padding-left:5px;">${l.param}</td><td style="text-align:center; font-weight:bold;">${l.res || ""}</td>`; } } else { leftHtml = hasUnits ? `<td colspan="4"></td>` : `<td colspan="2"></td>`; } let rightHtml = ""; if (r) { if (hasUnits) { rightHtml = `<td style="font-weight:bold; padding-left:5px;">${r.param}</td><td style="text-align:center; font-weight:bold;">${r.res || ""}</td><td style="text-align:center; font-size:8px;">${getUnit(r.param)}</td><td style="text-align:center; font-size:8px;">${getNormal(r.param)}</td>`; } else { rightHtml = `<td style="font-weight:bold; padding-left:5px;">${r.param}</td><td style="text-align:center; font-weight:bold;">${r.res || ""}</td>`; } } else { rightHtml = hasUnits ? `<td colspan="4"></td>` : `<td colspan="2"></td>`; } rowsHtml += `<tr>${leftHtml}${rightHtml}</tr>`; } let headerHtml = hasUnits ? `<tr><th width="20%">TEST</th><th width="10%">RESULT</th><th width="10%">UNIT</th><th width="10%">NORMAL</th><th width="20%">TEST</th><th width="10%">RESULT</th><th width="10%">UNIT</th><th width="10%">NORMAL</th></tr>` : `<tr><th width="30%">TEST</th><th width="20%">RESULT</th><th width="30%">TEST</th><th width="20%">RESULT</th></tr>`; mainContent = `<table class="res-table" style="width: 100%; margin-top: 5px; font-size: 9px;"><thead>${headerHtml}</thead><tbody>${rowsHtml}</tbody></table>`; }
-        else { let rowsHtml = ""; const tableStyle = isFecal ? "width: 75%; margin: 10px auto;" : "width: 100%; margin-top: 10px;"; const padStyle = "padding:4px;"; p.results.forEach(r => { const val = (r.res === "" || r.res === undefined || r.res === null) ? "&nbsp;" : r.res; rowsHtml += `<tr><td style="text-align:left; padding-left:10px; font-weight:bold; ${padStyle} width:40%;">${r.param}</td><td style="font-weight:bold; text-align:center; ${padStyle} width:60%;">${val}</td></tr>`; }); mainContent = `<div style="flex-grow:1; display:flex; justify-content:center; width:100%;"><table class="res-table" style="${tableStyle}"><thead><tr><th width="40%">TEST / PARAMETER</th><th width="60%">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`; }
+        else { let rowsHtml = ""; const tableStyle = isFecal ? "width: 75%; margin: 10px auto;" : "width: 100%; margin-top: 10px;"; const padStyle = "padding:4px;"; p.results.forEach(r => { let val = (r.res === "" || r.res === undefined || r.res === null) ? "&nbsp;" : r.res; if (String(r.param).toUpperCase().includes("HIV") && String(val).toUpperCase().includes("REACTIVE") && !String(val).toUpperCase().includes("NON")) { val = ""; } rowsHtml += `<tr><td style="text-align:left; padding-left:10px; font-weight:bold; ${padStyle} width:40%;">${r.param}</td><td style="font-weight:bold; text-align:center; ${padStyle} width:60%;">${val}</td></tr>`; }); mainContent = `<div style="flex-grow:1; display:flex; justify-content:center; width:100%;"><table class="res-table" style="${tableStyle}"><thead><tr><th width="40%">TEST / PARAMETER</th><th width="60%">RESULT</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`; }
 
         const pageHtml = `
         <div class="page-container">
