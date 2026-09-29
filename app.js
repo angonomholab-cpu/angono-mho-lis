@@ -96,7 +96,7 @@ async function testSendSms() {
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
     
     const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
-    const senderId = "PhilSMS"; 
+    const senderId = "AMHO Lab"; 
     const smsMessage = "ALERT: Ito ay TEST message mula sa Angono MHO LIS. Ang PhilSMS integration ay gumagana nang maayos.";
     
     showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
@@ -2458,7 +2458,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 if (smsSchedule === 'realtime') {
                     // Send immediately
                     const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
-                    const senderId = "PhilSMS"; 
+                    const senderId = "AMHO Lab"; 
                     fetch("https://app.philsms.com/api/v3/sms/send", {
                         method: "POST",
                         headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
@@ -2498,7 +2498,7 @@ async function checkAndSendPendingSMS() {
         if (!pendingMsgs || pendingMsgs.length === 0) return;
         
         const philsmsToken = "4793|VXPVRLLgqxflz7OG49GdBswktz52MlFU2ykuWa495397d45c"; 
-        const senderId = "PhilSMS"; 
+        const senderId = "AMHO Lab"; 
         
         for (let msg of pendingMsgs) {
             try {
