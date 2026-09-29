@@ -2414,6 +2414,13 @@ async function saveAndPrintResult(id, safeId, btn) {
 async function notifyPatientResultReady(patientId, patientName, testName, testCode) {
     try {
         if (!patientId) return;
+        
+        // Map internal test IDs to formal test codes
+        if (testCode === 'mtb') testCode = 'GXP';
+        if (testCode === 'dssm') testCode = 'DSSM';
+        if (testCode === 'viral') testCode = 'GXVL';
+        if (testCode === 'gram') testCode = 'GRAM';
+
         const { data } = await sb.from('patients').select('email, full_name, contact, facility').eq('id', patientId).maybeSingle();
         
         // --- EMAIL NOTIFICATION ---
