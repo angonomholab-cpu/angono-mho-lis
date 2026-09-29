@@ -105,7 +105,7 @@ async function testSendSms() {
     if (!philsmsToken) return showAppAlert("Error", "Please enter your PhilSMS API Token first.", "error");
     
     const senderId = "PhilSMS"; 
-    const smsMessage = "ALERT: Ito ay TEST message mula sa Angono MHO LIS. Ang PhilSMS integration ay gumagana nang maayos.";
+    const smsMessage = "[Angono MHO Lab Notice] Ito ay TEST message mula sa LIS. Ang PhilSMS integration ay gumagana nang maayos.";
     
     showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
     try {
@@ -2480,7 +2480,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     if (testCode === 'GXVL') displayTest = "Viral Load";
                     if (testCode === 'GRAM') displayTest = "Gram Stain";
                     
-                    const smsMessage = `ALERT: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}. -Angono MHO Lab`;
+                    const smsMessage = `[Angono MHO Lab Notice] Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
