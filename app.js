@@ -108,7 +108,7 @@ async function testSendSms() {
     
     showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
     try {
-        const res = await fetch("https://app.philsms.com/api/v3/sms/send", {
+        const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${philsmsToken}`,
@@ -2466,7 +2466,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     // Send immediately
                     const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
                     const senderId = "PhilSMS"; 
-                    fetch("https://app.philsms.com/api/v3/sms/send", {
+                    fetch("https://dashboard.philsms.com/api/v3/sms/send", {
                         method: "POST",
                         headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
                         body: JSON.stringify({ recipient: phone, sender_id: senderId, type: "plain", message: smsMessage })
@@ -2509,7 +2509,7 @@ async function checkAndSendPendingSMS() {
         
         for (let msg of pendingMsgs) {
             try {
-                const res = await fetch("https://app.philsms.com/api/v3/sms/send", {
+                const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${philsmsToken}`,
