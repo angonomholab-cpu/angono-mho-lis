@@ -97,7 +97,8 @@ function saveSmsConfig() {
 async function testSendSms() {
     const phoneInput = document.getElementById('cfg_sms_test_phone');
     if (!phoneInput || !phoneInput.value) return showAppAlert("Error", "Enter a phone number to test", "error");
-    const phone = phoneInput.value.replace(/[^0-9]/g, '');
+    let phone = phoneInput.value.replace(/[^0-9]/g, '');
+    if (phone.startsWith('09')) phone = '63' + phone.substring(1);
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
     
     const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
@@ -2439,6 +2440,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
             
             if (!isExcluded) {
                 let phone = data.contact.replace(/[^0-9]/g, '');
+                if (phone.startsWith('09')) phone = '63' + phone.substring(1);
                 if (phone.length >= 10) { 
                     let locationText = "";
                     if (testCode === 'GXP' || testCode === 'DSSM') {
