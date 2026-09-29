@@ -2436,7 +2436,15 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                         locationText = "sa Angono May Puso Social Hygiene Clinic";
                     }
                     
-                    const smsMessage = `ALERT: Hi ${data.full_name || patientName}, ang inyong laboratory result para sa ${testName} ay handa na. Maaari ninyong makuha ang resulta ${locationText}.`;
+                    let rawName = data.full_name || patientName || "";
+                    let firstName = rawName;
+                    if (rawName.includes(',')) {
+                        firstName = rawName.split(',')[1].trim().split(' ')[0];
+                    } else {
+                        firstName = rawName.trim().split(' ')[0];
+                    }
+                    
+                    const smsMessage = `ALERT: Hi ${firstName}, ready na ang result para sa ${testCode}. Kunin ito ${locationText}.`;
                 
                 if (smsSchedule === 'realtime') {
                     // Send immediately
