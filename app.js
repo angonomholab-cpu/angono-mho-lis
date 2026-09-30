@@ -1317,7 +1317,6 @@ async function requestPatientOTP() {
             
             if (emailRes && emailRes.success) {
                 // Show OTP input
-                document.getElementById('pat_user').disabled = true; // Lock email input
                 document.getElementById('pat_pass_group').style.display = 'block';
                 document.getElementById('btn-pat-login').style.display = 'block';
                 document.getElementById('pat_pass').focus();
