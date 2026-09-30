@@ -39,10 +39,16 @@ function computeAgeAtDate(bdayInput, refDateInput) {
 // ========================================================
 function getPatientEmailConfig() {
     try {
-        return JSON.parse(localStorage.getItem('mho-email-config') || "{}");
-    } catch (e) {
-        return {};
-    }
+        const local = JSON.parse(localStorage.getItem('mho-email-config') || "{}");
+        if (local.serviceId && local.templateId && local.publicKey) return local;
+    } catch (e) {}
+    
+    // Fallback to hardcoded keys so patient portal works across all devices
+    return {
+        serviceId: 'service_u9e4p46',
+        templateId: 'template_lgigk8j',
+        publicKey: 'bIe0YA1JsPCAc0Z2J'
+    };
 }
 
 function savePatientEmailConfig() {
