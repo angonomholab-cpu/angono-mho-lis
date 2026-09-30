@@ -78,13 +78,16 @@ function loadSmsConfigIntoUI() {
     const isEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
     const sched = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
     const token = localStorage.getItem('cfg_sms_token') || '';
+    const hol = localStorage.getItem('cfg_sms_holiday') || '';
     const enableEl = document.getElementById('cfg_sms_enable');
     const schedEl = document.getElementById('cfg_sms_schedule');
     const tokenEl = document.getElementById('cfg_sms_token');
+    const holEl = document.getElementById('cfg_sms_holiday');
     const statusEl = document.getElementById('sms-cfg-status');
     if (enableEl) enableEl.checked = isEnabled;
     if (schedEl) schedEl.value = sched;
     if (tokenEl) tokenEl.value = token;
+    if (holEl) holEl.value = hol;
     if (statusEl) {
         statusEl.innerText = isEnabled ? `✓ SMS Alerts Active (${sched === 'realtime' ? 'Real-time' : 'Next Day'})` : "";
     }
@@ -94,9 +97,11 @@ function saveSmsConfig() {
     const enableEl = document.getElementById('cfg_sms_enable');
     const schedEl = document.getElementById('cfg_sms_schedule');
     const tokenEl = document.getElementById('cfg_sms_token');
+    const holEl = document.getElementById('cfg_sms_holiday');
     if (enableEl) localStorage.setItem('cfg_sms_enable', enableEl.checked ? 'true' : 'false');
     if (schedEl) localStorage.setItem('cfg_sms_schedule', schedEl.value);
     if (tokenEl) localStorage.setItem('cfg_sms_token', tokenEl.value);
+    if (holEl) localStorage.setItem('cfg_sms_holiday', holEl.value);
     loadSmsConfigIntoUI();
 }
 
@@ -2604,19 +2609,35 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                             showAppAlert("SMS Error", "Failed to connect to PhilSMS.", "error");
                         });
                     } else {
-                        // Set to Tomorrow 9:00 AM
-                        let tomorrow = new Date();
-                        tomorrow.setDate(tomorrow.getDate() + 1);
-                        tomorrow.setHours(9, 0, 0, 0);
+                        // Set to Next Day 9:00 AM initially
+                        let targetDate = new Date();
+                        targetDate.setDate(targetDate.getDate() + 1);
+                        targetDate.setHours(9, 0, 0, 0);
+
+                        // Check if there is a Holiday Pause / Resume Date
+                        const holidayPause = localStorage.getItem('cfg_sms_holiday');
+                        if (holidayPause) {
+                            let pauseDate = new Date(holidayPause);
+                            pauseDate.setHours(9, 0, 0, 0);
+                            // If our target is before the resume date, move it up to the resume date
+                            if (targetDate < pauseDate) {
+                                targetDate = new Date(pauseDate);
+                            }
+                        }
+
+                        // Skip weekends automatically (if target falls on Sat/Sun, move to Monday)
+                        while (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
+                            targetDate.setDate(targetDate.getDate() + 1);
+                        }
 
                         // Save to our pending_sms table in Supabase
                         await sb.from('pending_sms').insert([{
                             phone: phone,
                             message: smsMessage,
-                            send_at: tomorrow.toISOString(),
+                            send_at: targetDate.toISOString(),
                             status: 'pending'
                         }]);
-                        console.log("SMS Scheduled for:", tomorrow.toISOString());
+                        console.log("SMS Scheduled for:", targetDate.toISOString());
                     }
                 } // closes if (phone.length >= 10)
             } // closes if (!isExcluded)

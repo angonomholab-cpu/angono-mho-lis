@@ -1928,8 +1928,13 @@
                                     <label class="field-label">Delivery Schedule</label>
                                     <select id="cfg_sms_schedule" class="form-input" onchange="saveSmsConfig()">
                                         <option value="realtime">Send Real-time (Immediately)</option>
-                                        <option value="tomorrow">Schedule for Tomorrow 9:00 AM</option>
+                                        <option value="tomorrow">Next Working Day 9:00 AM (Skips Weekends)</option>
                                     </select>
+                                </div>
+                                <div class="field-group" style="margin-top:8px;">
+                                    <label class="field-label">Holiday Mode (Delay Sending Until)</label>
+                                    <input type="date" id="cfg_sms_holiday" class="form-input" onchange="saveSmsConfig()" title="If set, any scheduled SMS will be moved to this date (or the next working day after it).">
+                                    <div class="text-xs text-muted" style="margin-top:4px;">Set this before a holiday so all results encoded will wait until you resume work. Clear it when back.</div>
                                 </div>
                                 <div class="field-group" style="margin-top:8px;">
                                     <label class="field-label">Test Send (Enter Phone Number)</label>
