@@ -474,12 +474,6 @@ async function apiGet(action, params = {}) {
                 return { status: "SUCCESS", username: data.username, facility: effectiveFacility, role: data.role, fullName: data.full_name || data.username, avatar: data.avatar_url, theme: data.color_theme };
             }
             case "patientLogin": {
-                const { data: authData, error: authError } = await sb.auth.signInWithPassword({
-                    email: params.email,
-                    password: params.password
-                });
-                if (authError) return { status: "FAIL", error: authError.message };
-
                 const { data: maintData } = await sb.from('facilities').select('*').eq('name', '_SYSTEM_MAINTENANCE_').maybeSingle();
                 if (maintData && maintData.address === 'ON') {
                     return { status: "FAIL", error: "System is offline for maintenance." };
@@ -487,7 +481,13 @@ async function apiGet(action, params = {}) {
 
                 const { data, error } = await sb.from('patients').select('*').ilike('email', params.email).maybeSingle();
                 if (error) throw error;
-                if (!data) return { status: "FAIL" };
+                if (!data) return { status: "FAIL", error: "Invalid credentials." };
+
+                const savedPass = data.password_hash || data.password;
+                if (savedPass !== params.password) {
+                    return { status: "FAIL", error: "Invalid credentials." };
+                }
+
                 return { status: "SUCCESS", patientId: data.id, name: data.full_name };
             }
             case "getAllPatientsLight": {
