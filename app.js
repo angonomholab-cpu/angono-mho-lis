@@ -3562,19 +3562,19 @@ function buildReportData(data, type, val, year, targetFacility) {
             let rpt = String(details.Repeat || details["Test Type"] || "").toUpperCase().trim();
             let full = (res + " " + rem + " " + rpt).trim();
 
-            if (res === "I" || full.includes("INVALID") || full.includes("ERROR") || full.includes("NO RESULT")) {
+            if (res === "I" || res.includes("INVALID") || res.includes("ERROR") || res.includes("NO RESULT")) {
                 report.tb.invalid[ptType]++;
             } else if (rpt.includes("INITIAL")) {
                 report.tb.initial[ptType]++;
-            } else if (res === "RR" || full.includes("RR") || full.includes("RIF RESISTANT") || (full.includes("RESISTANT") && !full.includes("NOT"))) {
+            } else if (res === "RR" || res.includes("RIF RESISTANT") || (res.includes("RESISTANT") && !res.includes("NOT"))) {
                 report.tb.rr[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "TT" || full.includes("TRACE")) {
+            } else if (res === "TT" || res.includes("TRACE")) {
                 report.tb.tt[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "TI" || full.includes("INDETERMINATE")) {
+            } else if (res === "TI" || res.includes("INDETERMINATE")) {
                 report.tb.ti[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "T" || full.includes("SENSITIVE") || (full.includes("DETECTED") && !full.includes("NOT DETECTED"))) {
+            } else if (res === "T" || res.includes("SENSITIVE") || (res.includes("DETECTED") && !res.includes("NOT"))) {
                 report.tb.t[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "N" || full.includes("NOT DETECTED") || full.includes("NEGATIVE")) {
+            } else if (res === "N" || res.includes("NOT DETECTED") || res.includes("NEGATIVE")) {
                 report.tb.n[ptType]++; report.tb.exam[ptType]++;
             } else {
                 report.tb.exam[ptType]++;
