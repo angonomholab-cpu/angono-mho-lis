@@ -1450,6 +1450,9 @@ function applyPermissions() {
             mwnEntry.style.display = 'none';
         } else {
             mwnEntry.style.display = 'inline-flex';
+        }
+    }
+
     if (role === 'PATIENT') { 
         const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; 
         
