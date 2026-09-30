@@ -3581,7 +3581,7 @@ function buildReportData(data, type, val, year, targetFacility) {
             }
         }
 
-        if (tName.includes('DSSM') || tName.includes('AFB')) {
+        if (tName.includes('DSSM') || tName.includes('AFB') || tName.includes('SMEAR')) {
             report.tb.dssm++;
             
             let tbCase = String(details["TB Case Number"] || details.tb_case_number || "").toUpperCase().trim();
