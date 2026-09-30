@@ -1450,12 +1450,20 @@ function applyPermissions() {
             mwnEntry.style.display = 'none';
         } else {
             mwnEntry.style.display = 'inline-flex';
-        }
-    }
-
     if (role === 'PATIENT') { 
         const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; 
-        const topSearch = document.querySelector('.top-search'); if (topSearch) topSearch.style.display = 'none';
+        
+        // Remove all staff navigation for a clean patient view
+        const topNavBar = document.querySelector('.top-nav-bar'); if (topNavBar) topNavBar.style.display = 'none';
+        const mobileAppHeader = document.getElementById('mobile-app-header'); if (mobileAppHeader) mobileAppHeader.style.display = 'none';
+        const sidebar = document.querySelector('.sidebar'); if (sidebar) sidebar.style.display = 'none';
+        
+        // Expand the patient view to full screen
+        const mainArea = document.querySelector('.main-area');
+        if (mainArea) {
+            mainArea.style.marginLeft = '0';
+            mainArea.style.paddingTop = '0';
+        }
     }
     else if (role === 'ADMIN') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
