@@ -172,7 +172,7 @@ async function testPatientEmailConfig() {
         password: "DEMO-" + Math.floor(1000 + Math.random() * 9000),
         testName: "GeneXpert MTB / CBC",
         testCode: "TEST-2026-001",
-        type: "welcome"
+        type: "otp"
     });
 
     if (res && res.success) {
