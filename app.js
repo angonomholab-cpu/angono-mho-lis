@@ -3529,7 +3529,7 @@ async function generateReport() {
 
 function buildReportData(data, type, val, year, targetFacility) {
     let report = {
-        tb: { exam: { new: 0, ret: 0 }, pos: { new: 0, ret: 0 }, rr: { new: 0, ret: 0 }, t: { new: 0, ret: 0 }, ti: { new: 0, ret: 0 }, n: { new: 0, ret: 0 }, tt: { new: 0, ret: 0 }, invalid: { new: 0, ret: 0 }, initial: { new: 0, ret: 0 }, cartridges: 0, dssm: 0 },
+        tb: { exam: { new: 0, ret: 0 }, pos: { new: 0, ret: 0 }, rr: { new: 0, ret: 0 }, t: { new: 0, ret: 0 }, ti: { new: 0, ret: 0 }, n: { new: 0, ret: 0 }, tt: { new: 0, ret: 0 }, invalid: { new: 0, ret: 0 }, initial: { new: 0, ret: 0 }, cartridges: 0, dssm: 0, dssm_diag: 0, dssm_fup: 0 },
         hiv: { tested: createHivGrid(), reactive: createHivGrid() },
         sti: { hiv: { m: 0, f: 0, mat: 0, m_r: 0, f_r: 0, mat_r: 0, total: 0, react: 0 }, syph: { m: 0, f: 0, mat: 0, m_r: 0, f_r: 0, mat_r: 0, total: 0, react: 0 }, hbsag: { m: 0, f: 0, mat: 0, m_r: 0, f_r: 0, mat_r: 0, total: 0, react: 0 } },
         dengue: { pos: 0, neg: 0, total: 0 },
@@ -3564,7 +3564,7 @@ function buildReportData(data, type, val, year, targetFacility) {
 
             if (res === "I" || full.includes("INVALID") || full.includes("ERROR") || full.includes("NO RESULT")) {
                 report.tb.invalid[ptType]++;
-            } else if (full.includes("INITIAL")) {
+            } else if (rpt.includes("INITIAL")) {
                 report.tb.initial[ptType]++;
             } else if (res === "RR" || full.includes("RR") || full.includes("RIF RESISTANT") || (full.includes("RESISTANT") && !full.includes("NOT"))) {
                 report.tb.rr[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
@@ -3583,6 +3583,25 @@ function buildReportData(data, type, val, year, targetFacility) {
 
         if (tName.includes('DSSM') || tName.includes('AFB')) {
             report.tb.dssm++;
+            
+            let tbCase = String(details["TB Case Number"] || details.tb_case_number || "").toUpperCase().trim();
+            let reason = String(details["Reason for Testing"] || details["Reason"] || details.reason_for_testing || "").toUpperCase().trim();
+            let smear1 = String(details["Reading 1"] || details.reading_1 || details["Visual Appearance 1"] || details["Result 1"] || details.smear_1 || "").trim();
+            let smear2 = String(details["Reading 2"] || details.reading_2 || details["Visual Appearance 2"] || details["Result 2"] || details.smear_2 || "").trim();
+            
+            let isDiagnosis = tbCase.includes("NEW") || reason.includes("NEW") || reason.includes("DIAGNOSIS");
+            
+            if (isDiagnosis) {
+                // Diagnosis needs BOTH Smear 1 and Smear 2 to be counted
+                if (smear1 !== "" && smear2 !== "") {
+                    report.tb.dssm_diag++;
+                }
+            } else {
+                // Follow up only needs Smear 1
+                if (smear1 !== "") {
+                    report.tb.dssm_fup++;
+                }
+            }
         }
 
         if (tName.includes('DENGUE')) {
@@ -3710,7 +3729,7 @@ function isDateInPeriod(dStr, type, val, year) {
 }
 
 function renderFHSIS(data) { if (!data) return; const facMap = { "SAN ISIDRO": "SI", "SAN VICENTE": "SV", "KALAYAAN": "KA", "STO. NIÑO": "SN", "SAN ROQUE": "SR", "MAHABANG PARANG": "MP", "POB. ITAAS": "PI", "POB. IBABA": "PB", "BAGUMBAYAN": "BA", "SAN PEDRO": "SP", "ANGONO RHU I": "R1" }; const keys = ["syp_s_t", "syp_s_10", "syp_s_15", "syp_s_20", "syp_p_t", "syp_p_10", "syp_p_15", "syp_p_20", "hiv_s_t", "hiv_s_10", "hiv_s_15", "hiv_s_20", "hiv_r_t", "hiv_r_10", "hiv_r_15", "hiv_r_20", "hbs_s_t", "hbs_s_10", "hbs_s_15", "hbs_s_20", "hbs_r_t", "hbs_r_10", "hbs_r_15", "hbs_r_20"]; keys.forEach(key => { let rowTotal = 0; Object.keys(facMap).forEach(facName => { let val = (data[facName] && data[facName][key]) ? data[facName][key] : 0; let cellId = key + "_" + facMap[facName]; let cell = document.getElementById(cellId); if (cell) { cell.innerText = val; rowTotal += val; } }); let totalCell = document.getElementById(key + "_TOT"); if (totalCell) totalCell.innerText = rowTotal; }); }
-function renderTB(tb) { const row = (lbl, n, r) => `<tr><td style="font-weight:600; text-align:left;">${lbl}</td><td class="text-center">${n || 0}</td><td class="text-center">${r || 0}</td></tr>`; document.getElementById('tb-exam-body').innerHTML = row("EXAMINED", tb.exam.new, tb.exam.ret) + row("INVALID / ERROR", tb.invalid.new, tb.invalid.ret) + row("INITIAL RESULT", tb.initial.new, tb.initial.ret); document.getElementById('tb-res-body').innerHTML = row("MTB DETECTED", tb.pos.new, tb.pos.ret) + row(" > RIF RESISTANT", tb.rr.new, tb.rr.ret) + row(" > TRACE DETECTED", tb.tt.new, tb.tt.ret) + row(" > INDETERMINATE", tb.ti.new, tb.ti.ret) + row(" > SENSITIVE", tb.t.new, tb.t.ret) + row("MTB NOT DETECTED", tb.n.new, tb.n.ret); document.getElementById('tb-cart').innerText = tb.cartridges || 0; const dssmEl = document.getElementById('tb-dssm'); if (dssmEl) dssmEl.innerText = tb.dssm || 0; }
+function renderTB(tb) { const row = (lbl, n, r) => `<tr><td style="font-weight:600; text-align:left;">${lbl}</td><td class="text-center">${n || 0}</td><td class="text-center">${r || 0}</td></tr>`; document.getElementById('tb-exam-body').innerHTML = row("EXAMINED", tb.exam.new, tb.exam.ret) + row("INVALID / ERROR", tb.invalid.new, tb.invalid.ret) + row("INITIAL RESULT", tb.initial.new, tb.initial.ret); document.getElementById('tb-res-body').innerHTML = row("MTB DETECTED", tb.pos.new, tb.pos.ret) + row(" > RIF RESISTANT", tb.rr.new, tb.rr.ret) + row(" > TRACE DETECTED", tb.tt.new, tb.tt.ret) + row(" > INDETERMINATE", tb.ti.new, tb.ti.ret) + row(" > SENSITIVE", tb.t.new, tb.t.ret) + row("MTB NOT DETECTED", tb.n.new, tb.n.ret); document.getElementById('tb-cart').innerText = tb.cartridges || 0; const dDiag = document.getElementById('tb-dssm-diag'); if (dDiag) dDiag.innerText = tb.dssm_diag || 0; const dFup = document.getElementById('tb-dssm-fup'); if (dFup) dFup.innerText = tb.dssm_fup || 0; }
 function renderHIV(h) { const buildRow = (grid) => `<tr><td style="font-weight:600; text-align:left;">ANGONO</td><td class="text-center">${grid.m.c15}</td><td class="text-center">${grid.m.c1524}</td><td class="text-center">${grid.m.c2534}</td><td class="text-center">${grid.m.c3549}</td><td class="text-center">${grid.m.c50}</td><td class="text-center">${grid.f.c15}</td><td class="text-center">${grid.f.c1524}</td><td class="text-center">${grid.f.c2534}</td><td class="text-center">${grid.f.c3549}</td><td class="text-center">${grid.f.c50}</td><td class="text-center" style="color:var(--danger); font-weight:700;">${grid.f.mat}</td><td class="text-center">${grid.kap.msm}</td><td class="text-center">${grid.kap.tgw}</td><td class="text-center">${grid.kap.msw}</td><td class="text-center">${grid.kap.fsw}</td><td class="text-center">${grid.kap.pwid}</td><td class="text-center" style="font-weight:700; color:var(--text-main); background:var(--warning-bg);">${grid.kap.tb}</td><td class="text-center font-bold" style="background:var(--bg-subtle);">${grid.total}</td></tr>`; document.getElementById('hiv-test-body').innerHTML = buildRow(h.tested); document.getElementById('hiv-react-body').innerHTML = buildRow(h.reactive); }
 function renderSTI(s) { const buildSTI = (name, d) => `<tr><td rowspan="3" style="font-weight:700; vertical-align:middle;">${name}</td><td>NON-REACTIVE</td><td class="text-center">${d.m - d.m_r}</td><td class="text-center">${d.f - d.f_r}</td><td class="text-center">${d.mat - d.mat_r}</td><td class="text-center">${d.total - d.react}</td></tr><tr style="color:var(--danger); font-weight:600;"><td>REACTIVE</td><td class="text-center">${d.m_r}</td><td class="text-center">${d.f_r}</td><td class="text-center">${d.mat_r}</td><td class="text-center">${d.react}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.m}</td><td class="text-center">${d.f}</td><td class="text-center">${d.mat}</td><td class="text-center">${d.total}</td></tr>`; document.getElementById('sti-body').innerHTML = buildSTI("HIV", s.hiv) + buildSTI("SYPHILIS", s.syph) + buildSTI("HBsAg", s.hbsag); }
 function renderDengue(d) { document.getElementById('dengue-body').innerHTML = `<tr><td>POSITIVE</td><td class="text-center" style="color:var(--danger); font-weight:700;">${d.pos}</td></tr><tr><td>NEGATIVE</td><td class="text-center">${d.neg}</td></tr><tr style="background:var(--bg-subtle); font-weight:700;"><td>TOTAL</td><td class="text-center">${d.total}</td></tr>`; }
