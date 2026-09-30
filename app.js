@@ -3562,19 +3562,19 @@ function buildReportData(data, type, val, year, targetFacility) {
             let rpt = String(details.Repeat || details["Test Type"] || "").toUpperCase().trim();
             let full = (res + " " + rem + " " + rpt).trim();
 
-            if (res === "I" || res.includes("INVALID") || res.includes("ERROR") || res.includes("NO RESULT")) {
+            if (res === "I") {
                 report.tb.invalid[ptType]++;
             } else if (rpt.includes("INITIAL")) {
                 report.tb.initial[ptType]++;
-            } else if (res === "RR" || res.includes("RIF RESISTANT") || (res.includes("RESISTANT") && !res.includes("NOT"))) {
+            } else if (res === "RR") {
                 report.tb.rr[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "TT" || res.includes("TRACE")) {
+            } else if (res === "TT") {
                 report.tb.tt[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "TI" || res.includes("INDETERMINATE")) {
+            } else if (res === "TI") {
                 report.tb.ti[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "T" || res.includes("SENSITIVE") || (res.includes("DETECTED") && !res.includes("NOT"))) {
+            } else if (res === "T") {
                 report.tb.t[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
-            } else if (res === "N" || res.includes("NOT DETECTED") || res.includes("NEGATIVE")) {
+            } else if (res === "N") {
                 report.tb.n[ptType]++; report.tb.exam[ptType]++;
             } else {
                 report.tb.exam[ptType]++;
