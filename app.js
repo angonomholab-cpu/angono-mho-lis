@@ -3559,7 +3559,8 @@ function buildReportData(data, type, val, year, targetFacility) {
             let ptType = (hist.includes("RETREAT") || hist.includes("RELAPSE") || hist.includes("PREVIOUS")) ? "ret" : "new";
             let res = String(details.ResultCode || details.result_code || details.Result || details.result || "").toUpperCase().trim();
             let rem = String(details.Remarks || details.remarks || "").toUpperCase().trim();
-            let full = (res + " " + rem).trim();
+            let rpt = String(details.Repeat || details["Test Type"] || "").toUpperCase().trim();
+            let full = (res + " " + rem + " " + rpt).trim();
 
             if (res === "I" || full.includes("INVALID") || full.includes("ERROR") || full.includes("NO RESULT")) {
                 report.tb.invalid[ptType]++;
