@@ -1317,24 +1317,26 @@ async function requestPatientOTP() {
             
             if (emailRes && emailRes.success) {
                 // Show OTP input
+                document.getElementById('pat_user').disabled = true; // Lock email input
                 document.getElementById('pat_pass_group').style.display = 'block';
                 document.getElementById('btn-pat-login').style.display = 'block';
-                btn.style.display = 'none';
                 document.getElementById('pat_pass').focus();
                 
-                // Start timer
-                document.getElementById('otp-timer-container').style.display = 'block';
+                // Start timer directly on the Get OTP button
                 let timeLeft = 60;
-                document.getElementById('otp-timer').innerText = timeLeft;
+                btn.disabled = true;
+                btn.style.display = 'block';
+                btn.classList.replace('btn-primary', 'btn-secondary');
+                btn.innerHTML = `<i class="ph ph-clock"></i> Resend OTP in ${timeLeft}s`;
+                
                 if(otpInterval) clearInterval(otpInterval);
                 otpInterval = setInterval(() => {
                     timeLeft--;
-                    document.getElementById('otp-timer').innerText = timeLeft;
+                    btn.innerHTML = `<i class="ph ph-clock"></i> Resend OTP in ${timeLeft}s`;
                     if(timeLeft <= 0) {
                         clearInterval(otpInterval);
-                        document.getElementById('otp-timer-container').style.display = 'none';
-                        btn.style.display = 'block';
-                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Request New OTP';
+                        btn.classList.replace('btn-secondary', 'btn-primary');
+                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Resend OTP';
                         btn.disabled = false;
                     }
                 }, 1000);
@@ -1347,7 +1349,7 @@ async function requestPatientOTP() {
             btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Get OTP via Email'; btn.disabled = false;
         }
     } catch (e) {
-        err.style.display = 'block'; err.innerText = "Connection error.";
+        err.style.display = 'block'; err.innerText = "Connection error: " + String(e.message || e);
         btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Get OTP via Email'; btn.disabled = false;
     }
 }
