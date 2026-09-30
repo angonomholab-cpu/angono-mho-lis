@@ -1341,7 +1341,7 @@ async function requestPatientOTP() {
                     }
                 }, 1000);
             } else {
-                err.style.display = 'block'; err.innerText = "Failed to send OTP email. Contact laboratory.";
+                err.style.display = 'block'; err.innerText = "Failed: " + String(emailRes.error || emailRes.reason || "Unknown error sending email.");
                 btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Get OTP via Email'; btn.disabled = false;
             }
         } else {
