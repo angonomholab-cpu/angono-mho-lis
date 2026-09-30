@@ -1040,16 +1040,25 @@ body.dark-mode .auth-form-panel {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: var(--bg-subtle);
+    box-shadow: var(--btn-convex);
+    border: none;
+    color: var(--text-color);
+}
+
+.auth-form-panel .btn-primary {
+    background: var(--pri);
+    color: white !important;
 }
 
 .auth-form-panel .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 8px -2px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-hover, 0 8px 15px rgba(0,0,0,0.1));
 }
 
 .auth-form-panel .btn:active {
     transform: translateY(0);
+    box-shadow: var(--btn-pressed);
 }
 
 .auth-card-footer-link {
@@ -4599,14 +4608,16 @@ body.dark-mode .theme-bg-shapes::after {
     text-align: center;
     font-size: 24px;
     font-weight: 700;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 0;
-    border: 2px solid var(--border-color);
+    border: none;
+    background: var(--bg-subtle);
+    box-shadow: var(--input-shadow);
+    color: var(--text-color);
     transition: all 0.2s;
 }
 .otp-box:focus {
-    border-color: var(--pri);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--pri) 18%, transparent);
+    box-shadow: var(--shadow-in-colored);
     outline: none;
 }
 
