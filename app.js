@@ -3585,9 +3585,9 @@ function buildReportData(data, type, val, year, targetFacility) {
             report.tb.dssm++;
 
             let tbCase = String(details["TB Case Number"] || details.tb_case_number || "").toUpperCase().trim();
-            let reason = String(details["Reason for Testing"] || details["Reason"] || details.reason_for_testing || "").toUpperCase().trim();
-            let smear1 = String(details["Reading 1"] || details.reading_1 || details["Visual Appearance 1"] || details["Result 1"] || details.smear_1 || "").trim();
-            let smear2 = String(details["Reading 2"] || details.reading_2 || details["Visual Appearance 2"] || details["Result 2"] || details.smear_2 || "").trim();
+            let reason = String(details["Category"] || details["Reason for Testing"] || details["Reason"] || details.reason_for_testing || "").toUpperCase().trim();
+            let smear1 = String(details.Smear1 || details.smear1 || details["Reading 1"] || details.reading_1 || details["Visual Appearance 1"] || details["Result 1"] || details.smear_1 || "").trim();
+            let smear2 = String(details.Smear2 || details.smear2 || details["Reading 2"] || details.reading_2 || details["Visual Appearance 2"] || details["Result 2"] || details.smear_2 || "").trim();
 
             let isDiagnosis = tbCase.includes("NEW") || reason.includes("NEW") || reason.includes("DIAGNOSIS");
 
