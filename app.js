@@ -740,10 +740,10 @@ async function apiGet(action, params = {}) {
                             "Reason for Examination": reason,
                             "History of Treatment": history,
                             "Month of Treatment": d["Month of Treatment"] || d.monthTreat || "",
-                            "Smear 1": d.Smear1 || "",
-                            "Smear 1 Count": d.Smear1_Count || d.smear1_count || "",
-                            "Smear 2": d.Smear2 || "",
-                            "Smear 2 Count": d.Smear2_Count || d.smear2_count || "",
+                            "Smear 1": d.Smear1 || d["Smear 1"] || "",
+                            "Smear 1 Count": d.Smear1_Count || d.smear1_count || d["Smear 1 Count"] || "",
+                            "Smear 2": d.Smear2 || d["Smear 2"] || "",
+                            "Smear 2 Count": d.Smear2_Count || d.smear2_count || d["Smear 2 Count"] || "",
                             "Diagnosis": d.Diagnosis || d.diagnosis || "",
                             "Appearance": d.Appearance || d.appearance || "",
                             "Remarks": d.Remarks || d.remarks || "",
@@ -3586,8 +3586,8 @@ function buildReportData(data, type, val, year, targetFacility) {
 
             let tbCase = String(details["TB Case Number"] || details.tb_case_number || "").toUpperCase().trim();
             let reason = String(details["Category"] || details["Reason for Testing"] || details["Reason"] || details.reason_for_testing || "").toUpperCase().trim();
-            let smear1 = String(details.Smear1 || details.smear1 || details["Reading 1"] || details.reading_1 || details["Visual Appearance 1"] || details["Result 1"] || details.smear_1 || "").trim();
-            let smear2 = String(details.Smear2 || details.smear2 || details["Reading 2"] || details.reading_2 || details["Visual Appearance 2"] || details["Result 2"] || details.smear_2 || "").trim();
+            let smear1 = String(details.Smear1 || details["Smear 1"] || details.smear1 || details["Reading 1"] || details.reading_1 || details["Visual Appearance 1"] || details["Result 1"] || details.smear_1 || "").trim();
+            let smear2 = String(details.Smear2 || details["Smear 2"] || details.smear2 || details["Reading 2"] || details.reading_2 || details["Visual Appearance 2"] || details["Result 2"] || details.smear_2 || "").trim();
 
             let isDiagnosis = tbCase.includes("NEW") || reason.includes("NEW") || reason.includes("DIAGNOSIS");
 
