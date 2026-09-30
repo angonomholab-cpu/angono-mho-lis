@@ -2291,11 +2291,15 @@
                                 placeholder="e.g. juan.delacruz@email.com"
                                 onblur="this.value = this.value.toLowerCase()" onkeyup="if(event.key==='Enter') requestPatientOTP()">
                         </div>
-                        <div class="form-group" id="pat_pass_group" style="margin-bottom:16px; text-align:left; display:none;">
-                            <label class="auth-label">6-Digit OTP Code</label>
-                            <div class="pass-wrapper">
-                                <input type="password" id="pat_pass" class="form-input" placeholder="••••••" onkeyup="if(event.key==='Enter') attemptPatientLogin()" style="letter-spacing: 2px; text-align: center; font-size: 18px;">
-                                <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
+                        <div class="form-group" id="pat_pass_group" style="margin-bottom:24px; text-align:left; display:none;">
+                            <label class="auth-label" style="display:block; margin-bottom:8px;">6-Digit OTP Code</label>
+                            <div class="otp-input-group" style="display:flex; gap:8px; justify-content:space-between;">
+                                <input type="text" inputmode="numeric" maxlength="1" class="form-input otp-box" onkeyup="handleOtpInput(event, 1)">
+                                <input type="text" inputmode="numeric" maxlength="1" class="form-input otp-box" onkeyup="handleOtpInput(event, 2)">
+                                <input type="text" inputmode="numeric" maxlength="1" class="form-input otp-box" onkeyup="handleOtpInput(event, 3)">
+                                <input type="text" inputmode="numeric" maxlength="1" class="form-input otp-box" onkeyup="handleOtpInput(event, 4)">
+                                <input type="text" inputmode="numeric" maxlength="1" class="form-input otp-box" onkeyup="handleOtpInput(event, 5)">
+                                <input type="text" inputmode="numeric" maxlength="1" class="form-input otp-box" onkeyup="handleOtpInput(event, 6)">
                             </div>
                         </div>
                         

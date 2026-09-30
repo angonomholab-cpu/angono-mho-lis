@@ -1030,27 +1030,26 @@ body.dark-mode .auth-form-panel {
     outline: none;
 }
 
-.auth-form-panel .btn-primary {
-    padding: 14px 20px;
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: #ffffff !important;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.auth-form-panel .btn {
+    padding: 16px 20px;
+    font-size: 1.1rem;
+    font-weight: 700;
     border-radius: 12px;
-    background: linear-gradient(135deg, var(--pri) 0%, var(--pri-hover) 100%);
-    box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.15), -6px -6px 12px rgba(255, 255, 255, 0.8), inset 2px 2px 4px rgba(255, 255, 255, 0.3);
-    transition: all 0.25s ease;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    border: none;
+    gap: 10px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.auth-form-panel .btn-primary:hover {
+.auth-form-panel .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.2), -8px -8px 16px rgba(255, 255, 255, 0.9), inset 2px 2px 4px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 6px 8px -2px rgba(0, 0, 0, 0.15);
+}
+
+.auth-form-panel .btn:active {
+    transform: translateY(0);
 }
 
 .auth-card-footer-link {
@@ -4593,3 +4592,21 @@ body.dark-mode .theme-bg-shapes::after {
     transform: translateY(2.5em);
     opacity: 1;
 }
+
+.otp-box {
+    width: 48px;
+    height: 55px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0;
+    border: 2px solid var(--border-color);
+    transition: all 0.2s;
+}
+.otp-box:focus {
+    border-color: var(--pri);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--pri) 18%, transparent);
+    outline: none;
+}
+

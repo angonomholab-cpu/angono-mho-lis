@@ -1275,10 +1275,38 @@ async function attemptLogin() {
     } catch (e) { showAppAlert("Error", "Server Error.", "error"); } finally { btn.innerHTML = 'Log In'; btn.disabled = false; }
 }
 
+function handleOtpInput(e, currentPos) {
+    const inputs = document.querySelectorAll('.otp-box');
+    
+    // Prevent non-numeric input early
+    if (e.key && e.key.length === 1 && !/^[0-9]$/.test(e.key)) {
+        inputs[currentPos - 1].value = '';
+        return;
+    }
+
+    if (e.key === 'Backspace') {
+        if (currentPos > 1) {
+            inputs[currentPos - 2].focus();
+            inputs[currentPos - 2].value = '';
+        }
+    } else if (e.key === 'Enter') {
+        const fullOtp = Array.from(inputs).map(i => i.value).join('');
+        if (fullOtp.length === 6) attemptPatientLogin();
+    } else {
+        const val = inputs[currentPos - 1].value;
+        if (val && currentPos < 6) {
+            inputs[currentPos].focus();
+        }
+    }
+}
+
 async function attemptPatientLogin() {
-    const e = document.getElementById('pat_user').value.trim().toLowerCase(); const p = document.getElementById('pat_pass').value.trim();
+    const e = document.getElementById('pat_user').value.trim().toLowerCase(); 
+    const inputs = document.querySelectorAll('.otp-box');
+    const p = Array.from(inputs).map(i => i.value).join('').trim();
+    
     const btn = document.getElementById('btn-pat-login'); const err = document.getElementById('login-error');
-    if (!e || !p) { err.style.display = 'block'; err.innerText = "Enter email and password."; return; }
+    if (!e || p.length < 6) { err.style.display = 'block'; err.innerText = "Enter email and the full 6-digit OTP."; return; }
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
 
     try {
@@ -1325,24 +1353,35 @@ async function requestPatientOTP() {
                 // Show OTP input
                 document.getElementById('pat_pass_group').style.display = 'block';
                 document.getElementById('btn-pat-login').style.display = 'block';
-                document.getElementById('pat_pass').focus();
+                
+                // Clear existing OTP boxes and focus first
+                const otpBoxes = document.querySelectorAll('.otp-box');
+                otpBoxes.forEach(box => box.value = '');
+                if(otpBoxes.length > 0) otpBoxes[0].focus();
                 
                 // Start timer directly on the Get OTP button
-                let timeLeft = 60;
+                let timeLeft = 180; // 3 minutes
                 btn.disabled = true;
                 btn.style.display = 'block';
                 btn.classList.replace('btn-primary', 'btn-secondary');
-                btn.innerHTML = `<i class="ph ph-clock"></i> Resend OTP in ${timeLeft}s`;
+                
+                const formatTime = (secs) => `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`;
+                btn.innerHTML = `<i class="ph ph-clock"></i> Resend in ${formatTime(timeLeft)}`;
                 
                 if(otpInterval) clearInterval(otpInterval);
                 otpInterval = setInterval(() => {
                     timeLeft--;
-                    btn.innerHTML = `<i class="ph ph-clock"></i> Resend OTP in ${timeLeft}s`;
+                    btn.innerHTML = `<i class="ph ph-clock"></i> Resend in ${formatTime(timeLeft)}`;
                     if(timeLeft <= 0) {
                         clearInterval(otpInterval);
                         btn.classList.replace('btn-secondary', 'btn-primary');
-                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Resend OTP';
+                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Request New OTP';
                         btn.disabled = false;
+                        
+                        // Auto-delete OTP for security
+                        if(data && data.id) {
+                            sb.from('patients').update({ password_hash: null }).eq('id', data.id);
+                        }
                     }
                 }, 1000);
             } else {
