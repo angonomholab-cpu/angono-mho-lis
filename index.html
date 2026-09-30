@@ -2289,24 +2289,30 @@
                             <label class="auth-label">Registered Email Address</label>
                             <input type="email" id="pat_user" class="form-input"
                                 placeholder="e.g. juan.delacruz@email.com"
-                                onblur="this.value = this.value.toLowerCase()" onkeyup="if(event.key==='Enter') attemptPatientLogin()">
+                                onblur="this.value = this.value.toLowerCase()" onkeyup="if(event.key==='Enter') requestPatientOTP()">
                         </div>
-                        <div class="form-group" style="margin-bottom:16px; text-align:left;">
-                            <label class="auth-label">Password</label>
+                        <div class="form-group" id="pat_pass_group" style="margin-bottom:16px; text-align:left; display:none;">
+                            <label class="auth-label">6-Digit OTP Code</label>
                             <div class="pass-wrapper">
-                                <input type="password" id="pat_pass" class="form-input" placeholder="••••••••" onkeyup="if(event.key==='Enter') attemptPatientLogin()">
+                                <input type="password" id="pat_pass" class="form-input" placeholder="••••••" onkeyup="if(event.key==='Enter') attemptPatientLogin()" style="letter-spacing: 2px; text-align: center; font-size: 18px;">
                                 <i class="ph ph-eye" onclick="togglePass('pat_pass', this)"></i>
                             </div>
                         </div>
-                        <button id="btn-pat-login" class="btn btn-primary full-width" onclick="attemptPatientLogin()">
-                            <i class="ph ph-file-text"></i> View My Results
+                        
+                        <button id="btn-pat-otp" class="btn btn-primary full-width" onclick="requestPatientOTP()">
+                            <i class="ph ph-paper-plane-tilt"></i> Get OTP via Email
+                        </button>
+                        
+                        <button id="btn-pat-login" class="btn btn-success full-width" style="display:none;" onclick="attemptPatientLogin()">
+                            <i class="ph ph-file-text"></i> Verify & View Results
                         </button>
 
-                        <div class="patient-card-links">
-                            <span class="link-pri" onclick="showPatientResend()"><i class="ph ph-envelope-simple"></i>
-                                Resend Password</span>
-                            <span class="link-muted" onclick="showPatientInfo()"><i class="ph ph-info"></i> New
-                                Patient?</span>
+                        <div id="otp-timer-container" style="display:none; text-align:center; font-size:13px; color:var(--text-muted); margin-top:12px;">
+                            You can request another code in <span id="otp-timer" style="font-weight:bold; color:var(--pri);">60</span>s
+                        </div>
+
+                        <div class="patient-card-links" style="margin-top:15px; justify-content:center;">
+                            <span class="link-muted" onclick="showPatientInfo()"><i class="ph ph-info"></i> How to access records?</span>
                         </div>
                     </div>
 

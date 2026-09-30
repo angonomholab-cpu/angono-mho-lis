@@ -198,39 +198,18 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
     const primaryColor = "#0d9488"; // MHO Teal
 
     let contentHtml = "";
-    if (type === "welcome") {
-        subject = "Angono MHO Laboratory - Patient Portal Access & Account Details";
-        noticeType = "Patient Portal Account Created / Updated";
+    if (type === "otp") {
+        subject = "Angono MHO Laboratory - Your Login OTP";
+        noticeType = "Patient Portal Login";
         contentHtml = `
             <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
-            <p>Your patient account has been successfully created and registered with the Angono Municipal Health Office Laboratory.</p>
-            <p>You can now access your official digital laboratory records directly through our secure Patient Portal.</p>
+            <p>You requested a One-Time Password (OTP) to access your Patient Portal.</p>
             
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="${portalUrl}" style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Click Here to Access Patient Portal</a>
+            <div style="background-color: #f8fafc; border-left: 4px solid ${primaryColor}; border-radius: 4px; padding: 16px; margin: 25px 0; text-align: center;">
+                <p style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b;"><strong>Your OTP Code</strong></p>
+                <span style="background: #e2e8f0; color: #0f172a; padding: 10px 20px; border-radius: 6px; font-family: monospace; font-size: 28px; font-weight:bold; display: inline-block; border: 1px dashed #94a3b8; letter-spacing: 4px;">${password}</span>
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 10px; margin-bottom: 0;">This code will expire shortly. Do not share this with anyone.</p>
             </div>
-            
-            <div style="background-color: #f8fafc; border-left: 4px solid ${primaryColor}; border-radius: 4px; padding: 16px; margin: 25px 0;">
-                <p style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b;"><strong>Your Login Credentials</strong></p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                    <tr>
-                        <td style="padding: 6px 0; width: 100px; color: #64748b;">Email:</td>
-                        <td style="font-weight: 500; color: #111;">${toEmail}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px 0; color: #64748b;">Patient ID:</td>
-                        <td style="font-weight: 500; color: #111;">${patientId}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0 6px 0; color: #64748b;">Password:</td>
-                        <td style="padding-top: 6px;">
-                            <span style="background: #e2e8f0; color: #0f172a; padding: 6px 12px; border-radius: 4px; font-family: monospace; font-size: 16px; font-weight:bold; display: inline-block; border: 1px dashed #94a3b8; user-select: all;">${password}</span>
-                            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">(Double-click password to copy)</div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">Please keep your credentials confidential. You will receive another automated notification once your test results are processed.</p>
         `;
     } else if (type === "result_ready") {
         subject = `Angono MHO Laboratory - Result Ready for ${testName} (${testCode || 'Record'})`;
@@ -259,6 +238,17 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${portalUrl}" style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Click Here to Access Patient Portal</a>
             </div>
+            
+            <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; border-radius: 4px; padding: 16px; margin: 25px 0;">
+                <p style="margin: 0 0 10px 0; font-size: 13px; color: #1d4ed8;"><strong>HOW TO ACCESS YOUR RESULT:</strong></p>
+                <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #334155; line-height: 1.5;">
+                    <li>Click the Access Patient Portal button above.</li>
+                    <li>Enter your registered email address: <strong>${toEmail}</strong></li>
+                    <li>Click "Get OTP" to receive a 6-digit secure code via email.</li>
+                    <li>Enter the code to securely view and download your soft copy.</li>
+                </ol>
+            </div>
+            
             <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">${footerNote}</p>
         `;
     }
@@ -1297,39 +1287,69 @@ async function attemptPatientLogin() {
     } catch (err) { err.style.display = 'block'; err.innerHTML = "Server Error."; } finally { btn.innerHTML = 'View My Results'; btn.disabled = false; }
 }
 
-function showPatientResend() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-resend-card').style.display = 'block'; }
 function showPatientInfo() { document.getElementById('login-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'block'; }
-function backToLoginFromPatient() { document.getElementById('patient-resend-card').style.display = 'none'; document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
+function backToLoginFromPatient() { document.getElementById('patient-info-card').style.display = 'none'; document.getElementById('login-card').style.display = 'block'; }
 
-async function resendPatientPassword() {
-    const email = document.getElementById('resend_pat_email').value.trim().toLowerCase();
-    if (!email) return showAppAlert("Required", "Please enter your email.", "error");
-    const btn = document.querySelector('#patient-resend-card .btn-primary');
-    const oldText = btn.innerHTML; btn.innerHTML = "Sending..."; btn.disabled = true;
+let otpInterval = null;
+async function requestPatientOTP() {
+    const email = document.getElementById('pat_user').value.trim().toLowerCase();
+    const err = document.getElementById('login-error');
+    if (!email) { err.style.display = 'block'; err.innerText = "Please enter your email first."; return; }
+    
+    const btn = document.getElementById('btn-pat-otp'); 
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Sending...'; btn.disabled = true; err.style.display = 'none';
 
     try {
-        const { data, error } = await sb.from('patients').select('*').ilike('email', email).maybeSingle();
+        const { data, error } = await sb.from('patients').select('id, full_name').ilike('email', email).maybeSingle();
         if (data) {
-            let pass = data.password_hash || data.password;
-            if (!pass) { pass = Math.random().toString(36).slice(-8).toUpperCase(); await sb.from('patients').update({ password_hash: pass }).eq('id', data.id); }
-
-            // Dispatch live automated email
+            // Generate 6 digit OTP
+            let otp = Math.floor(100000 + Math.random() * 900000).toString();
+            await sb.from('patients').update({ password_hash: otp }).eq('id', data.id);
+            
+            // Send OTP email
             const emailRes = await sendPatientEmail({
                 toEmail: email,
                 patientName: data.full_name || "Patient",
                 patientId: data.id,
-                password: pass,
-                type: "welcome"
+                password: otp,
+                type: "otp"
             });
-
+            
             if (emailRes && emailRes.success) {
-                showAppAlert("Success", `Your login password has been sent to your email:\n${email}\n\nPlease check your inbox and spam folder.`, "success");
+                // Show OTP input
+                document.getElementById('pat_pass_group').style.display = 'block';
+                document.getElementById('btn-pat-login').style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('pat_pass').focus();
+                
+                // Start timer
+                document.getElementById('otp-timer-container').style.display = 'block';
+                let timeLeft = 60;
+                document.getElementById('otp-timer').innerText = timeLeft;
+                if(otpInterval) clearInterval(otpInterval);
+                otpInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('otp-timer').innerText = timeLeft;
+                    if(timeLeft <= 0) {
+                        clearInterval(otpInterval);
+                        document.getElementById('otp-timer-container').style.display = 'none';
+                        btn.style.display = 'block';
+                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Request New OTP';
+                        btn.disabled = false;
+                    }
+                }, 1000);
             } else {
-                showAppAlert("Account Verified", `Email verified! Please save your login credentials:\n\nEmail: ${email}\nPassword: ${pass}\n\n(Configure EmailJS in Settings for direct inbox delivery).`, "success");
+                err.style.display = 'block'; err.innerText = "Failed to send OTP email. Contact laboratory.";
+                btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Get OTP via Email'; btn.disabled = false;
             }
-            backToLoginFromPatient();
-        } else { showAppAlert("Notice", "Email is not recorded. Please contact Angono MHO Laboratory on Facebook Messenger to request access.", "error"); }
-    } catch (e) { showAppAlert("Error", "Unable to connect to the server.", "error"); } finally { btn.innerHTML = oldText; btn.disabled = false; }
+        } else {
+            err.style.display = 'block'; err.innerText = "Email not found. If you are a new patient, coordinate with Angono MHO Lab.";
+            btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Get OTP via Email'; btn.disabled = false;
+        }
+    } catch (e) {
+        err.style.display = 'block'; err.innerText = "Connection error.";
+        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Get OTP via Email'; btn.disabled = false;
+    }
 }
 
 function logoutUser() { const modal = document.getElementById('logout-modal'); if (modal) modal.style.display = 'flex'; const menu = document.getElementById('fab-menu'); if (menu && menu.classList.contains('show')) toggleFab(); }
@@ -1711,7 +1731,8 @@ async function savePatientDemographicsQS() {
         document.getElementById('qs-name').innerText = newName;
         document.getElementById('qs-meta').innerHTML = `<span><i class="ph ph-fingerprint"></i> ${currentQuickPatient.id}</span> <span><i class="ph ph-gender-intersex"></i> ${currentQuickPatient.sex || ''}</span> <span><i class="ph ph-buildings"></i> ${newFac || 'N/A'}</span>`;
 
-        // Trigger automated email if email provided/changed
+        // Trigger automated email if email provided/changed (Disabled for OTP workflow)
+        /*
         if (newEmail && newEmail !== oldEmail) {
             sendPatientEmail({
                 toEmail: newEmail,
@@ -1723,6 +1744,7 @@ async function savePatientDemographicsQS() {
                 type: "welcome"
             });
         }
+        */
 
         document.getElementById('qs-edit-form').style.display = 'none';
         showAppAlert("Success", `Demographics updated successfully!${newEmail && newEmail !== oldEmail ? `\n\nLogin notification sent to ${newEmail}` : ''}`, "success");
@@ -2123,6 +2145,7 @@ async function finalSubmit() {
             const savedPass = res.data?.generatedPassword || generatedPassword;
 
             let emailStatusNote = "";
+            /* Welcome email disabled for OTP workflow
             if (pEmail) {
                 const emailRes = await sendPatientEmail({
                     toEmail: pEmail,
@@ -2139,6 +2162,7 @@ async function finalSubmit() {
                     emailStatusNote = `\n\nPatient Password: ${savedPass}\n(Email sending pending/inactive. Provide directly to patient).`;
                 }
             }
+            */
 
             showAppAlert("Record Saved", `Successfully saved to Supabase!${emailStatusNote}`, "success");
             setTimeout(() => { btn.disabled = false; btn.innerHTML = originalText; btn.style.background = ""; }, 4000);
@@ -2233,7 +2257,8 @@ async function submitPendingUpdate() {
 
         const res = await apiPost("updatePatientAndTestDetails", { testId: editingPendingId, patientId: item.patientId, newName: pNameEl ? pNameEl.value : item.name, newTestType: item.test, newJsonDetails: finalJsonStr });
 
-        // Trigger automated email if email provided/updated
+        // Trigger automated email if email provided/updated (Disabled for OTP workflow)
+        /*
         if (pEmail && pEmail !== oldEmail) {
             sendPatientEmail({
                 toEmail: pEmail,
@@ -2245,6 +2270,7 @@ async function submitPendingUpdate() {
                 type: "welcome"
             });
         }
+        */
 
         cancelEditPending(); if (typeof loadPendingData === 'function') await loadPendingData();
         showAppAlert("Success", `Record updated successfully!${pEmail && pEmail !== oldEmail ? `\n\nAutomated notification dispatched to ${pEmail}` : ''}`, "success");
