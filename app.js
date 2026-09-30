@@ -1123,16 +1123,16 @@ setTimeout(function () {
 }, 5000);
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Auto-Logout after 15 minutes of inactivity
+    // Auto-Logout after 5 minutes of inactivity
     window.inactivityTimer = null;
-    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
+    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes
 
     window.resetInactivityTimer = function () {
         clearTimeout(window.inactivityTimer);
         if (currentUser && document.getElementById('login-portal').style.display === 'none') {
             window.inactivityTimer = setTimeout(() => {
-                alert("You have been automatically logged out due to 15 minutes of inactivity.");
-                handleLogout();
+                alert("You have been automatically logged out due to 5 minutes of inactivity.");
+                confirmLogout();
             }, INACTIVITY_LIMIT);
         }
     };
@@ -1142,9 +1142,12 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     try {
 
-
-        if (localStorage.getItem('mho-theme') === 'dark') {
+        const savedTheme = localStorage.getItem('mho-theme');
+        if (savedTheme === 'light') {
+            document.body.classList.remove('dark-mode');
+        } else {
             document.body.classList.add('dark-mode');
+            localStorage.setItem('mho-theme', 'dark');
         }
         const isLimited = localStorage.getItem('mho-limited-mode') === 'true';
         const toggleLimit = document.getElementById('toggle-limited-mode');
@@ -1450,7 +1453,10 @@ function applyPermissions() {
         }
     }
 
-    if (role === 'PATIENT') { const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; }
+    if (role === 'PATIENT') { 
+        const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; 
+        const topSearch = document.querySelector('.top-search'); if (topSearch) topSearch.style.display = 'none';
+    }
     else if (role === 'ADMIN') {
         if (navWork) navWork.style.display = 'flex'; if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
         if (sideWork) sideWork.style.display = 'flex'; if (sideReg) sideReg.style.display = 'flex'; if (sideRep) sideRep.style.display = 'flex';
