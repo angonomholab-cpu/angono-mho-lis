@@ -1457,9 +1457,9 @@ function applyPermissions() {
         const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; 
         
         // Remove all staff navigation for a clean patient view
-        const topNavBar = document.querySelector('.top-nav-bar'); if (topNavBar) topNavBar.style.display = 'none';
-        const mobileAppHeader = document.getElementById('mobile-app-header'); if (mobileAppHeader) mobileAppHeader.style.display = 'none';
-        const sidebar = document.querySelector('.sidebar'); if (sidebar) sidebar.style.display = 'none';
+        const topNavBar = document.querySelector('.top-nav-bar'); if (topNavBar) topNavBar.style.setProperty('display', 'none', 'important');
+        const mobileAppHeader = document.getElementById('mobile-app-header'); if (mobileAppHeader) mobileAppHeader.style.setProperty('display', 'none', 'important');
+        const sidebar = document.querySelector('.sidebar'); if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
         
         // Expand the patient view to full screen
         const mainArea = document.querySelector('.main-area');
