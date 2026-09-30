@@ -87,9 +87,13 @@ function loadSmsConfigIntoUI() {
     if (enableEl) enableEl.checked = isEnabled;
     if (schedEl) schedEl.value = sched;
     if (tokenEl) tokenEl.value = token;
-    if (holEl) holEl.value = hol;
+    if (holEl) {
+        holEl.value = hol;
+        holEl.disabled = (sched !== 'holiday');
+    }
     if (statusEl) {
-        statusEl.innerText = isEnabled ? `✓ SMS Alerts Active (${sched === 'realtime' ? 'Real-time' : 'Next Day'})` : "";
+        let schedText = sched === 'realtime' ? 'Real-time' : (sched === 'holiday' ? 'Holiday Mode' : 'Next Working Day');
+        statusEl.innerText = isEnabled ? `✓ SMS Alerts Active (${schedText})` : "";
     }
 }
 
@@ -98,6 +102,11 @@ function saveSmsConfig() {
     const schedEl = document.getElementById('cfg_sms_schedule');
     const tokenEl = document.getElementById('cfg_sms_token');
     const holEl = document.getElementById('cfg_sms_holiday');
+    if (schedEl && holEl) {
+        if (schedEl.value !== 'holiday') {
+            holEl.value = '';
+        }
+    }
     if (enableEl) localStorage.setItem('cfg_sms_enable', enableEl.checked ? 'true' : 'false');
     if (schedEl) localStorage.setItem('cfg_sms_schedule', schedEl.value);
     if (tokenEl) localStorage.setItem('cfg_sms_token', tokenEl.value);
