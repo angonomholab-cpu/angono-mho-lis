@@ -41,8 +41,8 @@ function getPatientEmailConfig() {
     try {
         const local = JSON.parse(localStorage.getItem('mho-email-config') || "{}");
         if (local.serviceId && local.templateId && local.publicKey) return local;
-    } catch (e) {}
-    
+    } catch (e) { }
+
     // Fallback to hardcoded keys so patient portal works across all devices
     return {
         serviceId: 'service_u9e4p46',
@@ -106,13 +106,13 @@ async function testSendSms() {
     let phone = phoneInput.value.replace(/[^0-9]/g, '');
     if (phone.startsWith('09')) phone = '63' + phone.substring(1);
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
-    
+
     const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
     if (!philsmsToken) return showAppAlert("Error", "Please enter your PhilSMS API Token first.", "error");
-    
-    const senderId = "PhilSMS"; 
+
+    const senderId = "PhilSMS";
     const smsMessage = "Angono MHO Lab Notice: Ito ay TEST message mula sa LIS. Ang PhilSMS integration ay gumagana nang maayos.";
-    
+
     showAppAlert("Sending...", "Sending test SMS via PhilSMS...", "info");
     try {
         const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
@@ -220,17 +220,17 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
     } else if (type === "result_ready") {
         subject = `Angono MHO Laboratory - Result Ready for ${testName} (${testCode || 'Record'})`;
         noticeType = "Laboratory Test Result Ready";
-        
+
         const isTB = testCode === 'GXP' || testCode === 'DSSM';
-        
+
         let hardCopyText = isTB
             ? "Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at your respective Barangay Health Center."
             : "Official printed hard copies still strictly adhere to the standard laboratory release timeline and verification procedures at the Angono MHO.";
-            
-        let footerNote = isTB 
+
+        let footerNote = isTB
             ? "For any questions, please proceed to your respective Barangay Health Center."
             : "For any questions or physical hard copy claiming, please present your valid ID and Lab Reference Code at the Angono MHO.";
-        
+
         contentHtml = `
             <p style="margin-top:0;">Dear <strong style="color: #111;">${patientName}</strong>,</p>
             <p>This is to formally notify you that the result for your laboratory test (<strong>${testName}</strong>) is now ready.</p>
@@ -1280,7 +1280,7 @@ async function attemptLogin() {
 
 function handleOtpInput(e, currentPos) {
     const inputs = document.querySelectorAll('.otp-box');
-    
+
     // Prevent non-numeric input early
     if (e.key && e.key.length === 1 && !/^[0-9]$/.test(e.key)) {
         inputs[currentPos - 1].value = '';
@@ -1304,10 +1304,10 @@ function handleOtpInput(e, currentPos) {
 }
 
 async function attemptPatientLogin() {
-    const e = document.getElementById('pat_user').value.trim().toLowerCase(); 
+    const e = document.getElementById('pat_user').value.trim().toLowerCase();
     const inputs = document.querySelectorAll('.otp-box');
     const p = Array.from(inputs).map(i => i.value).join('').trim();
-    
+
     const btn = document.getElementById('btn-pat-login'); const err = document.getElementById('login-error');
     if (!e || p.length < 6) { err.style.display = 'block'; err.innerText = "Enter email and the full 6-digit OTP."; return; }
     btn.innerHTML = 'Verifying...'; btn.disabled = true; err.style.display = 'none';
@@ -1332,8 +1332,8 @@ async function requestPatientOTP() {
     const email = document.getElementById('pat_user').value.trim().toLowerCase();
     const err = document.getElementById('login-error');
     if (!email) { err.style.display = 'block'; err.innerText = "Please enter your email first."; return; }
-    
-    const btn = document.getElementById('btn-pat-otp'); 
+
+    const btn = document.getElementById('btn-pat-otp');
     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Sending...'; btn.disabled = true; err.style.display = 'none';
 
     try {
@@ -1342,7 +1342,7 @@ async function requestPatientOTP() {
             // Generate 6 digit OTP
             let otp = Math.floor(100000 + Math.random() * 900000).toString();
             await sb.from('patients').update({ password_hash: otp }).eq('id', data.id);
-            
+
             // Send OTP email
             const emailRes = await sendPatientEmail({
                 toEmail: email,
@@ -1351,38 +1351,38 @@ async function requestPatientOTP() {
                 password: otp,
                 type: "otp"
             });
-            
+
             if (emailRes && emailRes.success) {
                 // Show OTP input
                 document.getElementById('pat_pass_group').style.display = 'block';
                 document.getElementById('btn-pat-login').style.display = 'block';
-                
+
                 // Clear existing OTP boxes and focus first
                 const otpBoxes = document.querySelectorAll('.otp-box');
                 otpBoxes.forEach(box => box.value = '');
-                if(otpBoxes.length > 0) otpBoxes[0].focus();
-                
+                if (otpBoxes.length > 0) otpBoxes[0].focus();
+
                 // Start timer directly on the Get OTP button
                 let timeLeft = 180; // 3 minutes
                 btn.disabled = true;
                 btn.style.display = 'block';
                 btn.classList.replace('btn-primary', 'btn-secondary');
-                
+
                 const formatTime = (secs) => `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`;
                 btn.innerHTML = `<i class="ph ph-clock"></i> Resend in ${formatTime(timeLeft)}`;
-                
-                if(otpInterval) clearInterval(otpInterval);
+
+                if (otpInterval) clearInterval(otpInterval);
                 otpInterval = setInterval(() => {
                     timeLeft--;
                     btn.innerHTML = `<i class="ph ph-clock"></i> Resend in ${formatTime(timeLeft)}`;
-                    if(timeLeft <= 0) {
+                    if (timeLeft <= 0) {
                         clearInterval(otpInterval);
                         btn.classList.replace('btn-secondary', 'btn-primary');
                         btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Request New OTP';
                         btn.disabled = false;
-                        
+
                         // Auto-delete OTP for security
-                        if(data && data.id) {
+                        if (data && data.id) {
                             sb.from('patients').update({ password_hash: null }).eq('id', data.id);
                         }
                     }
@@ -1453,14 +1453,14 @@ function applyPermissions() {
         }
     }
 
-    if (role === 'PATIENT') { 
-        const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none'; 
-        
+    if (role === 'PATIENT') {
+        const fabMain = document.getElementById('fab-main-btn'); if (fabMain) fabMain.style.display = 'none';
+
         // Remove all staff navigation for a clean patient view
         const topNavBar = document.querySelector('.top-nav-bar'); if (topNavBar) topNavBar.style.setProperty('display', 'none', 'important');
         const mobileAppHeader = document.getElementById('mobile-app-header'); if (mobileAppHeader) mobileAppHeader.style.setProperty('display', 'none', 'important');
         const sidebar = document.querySelector('.sidebar'); if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
-        
+
         // Expand the patient view to full screen
         const mainArea = document.querySelector('.main-area');
         if (mainArea) {
@@ -2518,7 +2518,7 @@ async function saveAndPrintResult(id, safeId, btn) {
 async function notifyPatientResultReady(patientId, patientName, testName, testCode, isRepeat = false) {
     try {
         if (!patientId) return;
-        
+
         // Map internal test IDs to formal test codes
         if (testCode === 'mtb') testCode = 'GXP';
         if (testCode === 'dssm') testCode = 'DSSM';
@@ -2526,7 +2526,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
         if (testCode === 'gram') testCode = 'GRAM';
 
         const { data } = await sb.from('patients').select('email, full_name, contact, facility').eq('id', patientId).maybeSingle();
-        
+
         // --- EMAIL NOTIFICATION ---
         if (data && data.email && data.email.includes('@')) {
             sendPatientEmail({
@@ -2538,28 +2538,28 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 type: "result_ready"
             });
         }
-        
+
         // --- SMS NOTIFICATION (PhilSMS) ---
         const allowedTestsForSms = ['GXP', 'DSSM', 'GXVL', 'GRAM'];
         const smsEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
         const smsSchedule = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
-        
-        if (smsEnabled && data && data.contact && allowedTestsForSms.includes(testCode)) { 
+
+        if (smsEnabled && data && data.contact && allowedTestsForSms.includes(testCode)) {
             const facilityName = data.facility || "";
             const facilityLow = facilityName.toLowerCase();
             const isExcluded = facilityLow.includes("angono medics") || facilityLow.includes("san isidro hospital");
-            
+
             if (!isExcluded) {
                 let phone = data.contact.replace(/[^0-9]/g, '');
                 if (phone.startsWith('09')) phone = '63' + phone.substring(1);
-                if (phone.length >= 10) { 
+                if (phone.length >= 10) {
                     let locationText = "";
                     if (testCode === 'GXP' || testCode === 'DSSM') {
                         locationText = facilityName ? `sa ${facilityName}` : "sa health center ng inyong barangay";
                     } else if (testCode === 'GXVL' || testCode === 'GRAM') {
                         locationText = "sa Angono May Puso Social Hygiene Clinic";
                     }
-                    
+
                     let rawName = data.full_name || patientName || "";
                     let firstName = rawName;
                     if (rawName.includes(',')) {
@@ -2567,12 +2567,12 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     } else {
                         firstName = rawName.trim().split(' ')[0];
                     }
-                    
+
                     let displayTest = testCode;
                     if (testCode === 'GXP') displayTest = "GeneXpert";
                     if (testCode === 'GXVL') displayTest = "Viral Load";
                     if (testCode === 'GRAM') displayTest = "Gram Stain";
-                    
+
                     let smsMessage = "";
                     if (isRepeat) {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen sa Angono MHO Lab.`;
@@ -2583,45 +2583,45 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                             smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
                         }
                     }
-                
-                if (smsSchedule === 'realtime') {
-                    // Send immediately
-                    const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
-                    const senderId = "PhilSMS"; 
-                    fetch("https://dashboard.philsms.com/api/v3/sms/send", {
-                        method: "POST",
-                        headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
-                        body: JSON.stringify({ recipient: phone, sender_id: senderId, type: "plain", message: smsMessage })
-                    }).then(r => r.json()).then(res => {
-                        console.log("PhilSMS Real-time Sent:", res);
-                        if (res.status === 'error' || res.message === 'Unauthenticated.') {
-                            showAppAlert("SMS Failed", res.message || "Failed to authenticate with PhilSMS.", "error");
-                        } else {
-                            showAppAlert("SMS Sent", "Notification sent via PhilSMS.", "success");
-                        }
-                    }).catch(e => {
-                        console.error("PhilSMS Error:", e);
-                        showAppAlert("SMS Error", "Failed to connect to PhilSMS.", "error");
-                    });
-                } else {
-                    // Set to Tomorrow 9:00 AM
-                    let tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(9, 0, 0, 0);
-                    
-                    // Save to our pending_sms table in Supabase
-                    await sb.from('pending_sms').insert([{
-                        phone: phone,
-                        message: smsMessage,
-                        send_at: tomorrow.toISOString(),
-                        status: 'pending'
-                    }]);
-                    console.log("SMS Scheduled for:", tomorrow.toISOString());
-                }
+
+                    if (smsSchedule === 'realtime') {
+                        // Send immediately
+                        const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
+                        const senderId = "PhilSMS";
+                        fetch("https://dashboard.philsms.com/api/v3/sms/send", {
+                            method: "POST",
+                            headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
+                            body: JSON.stringify({ recipient: phone, sender_id: senderId, type: "plain", message: smsMessage })
+                        }).then(r => r.json()).then(res => {
+                            console.log("PhilSMS Real-time Sent:", res);
+                            if (res.status === 'error' || res.message === 'Unauthenticated.') {
+                                showAppAlert("SMS Failed", res.message || "Failed to authenticate with PhilSMS.", "error");
+                            } else {
+                                showAppAlert("SMS Sent", "Notification sent via PhilSMS.", "success");
+                            }
+                        }).catch(e => {
+                            console.error("PhilSMS Error:", e);
+                            showAppAlert("SMS Error", "Failed to connect to PhilSMS.", "error");
+                        });
+                    } else {
+                        // Set to Tomorrow 9:00 AM
+                        let tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        tomorrow.setHours(9, 0, 0, 0);
+
+                        // Save to our pending_sms table in Supabase
+                        await sb.from('pending_sms').insert([{
+                            phone: phone,
+                            message: smsMessage,
+                            send_at: tomorrow.toISOString(),
+                            status: 'pending'
+                        }]);
+                        console.log("SMS Scheduled for:", tomorrow.toISOString());
+                    }
                 } // closes if (phone.length >= 10)
             } // closes if (!isExcluded)
         } // closes if (false && data...)
-        
+
     } catch (e) {
         console.warn("Could not send patient result notification:", e);
     }
@@ -2633,12 +2633,12 @@ async function checkAndSendPendingSMS() {
             .select('*')
             .eq('status', 'pending')
             .lte('send_at', new Date().toISOString());
-            
+
         if (!pendingMsgs || pendingMsgs.length === 0) return;
-        
+
         const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
-        const senderId = "PhilSMS"; 
-        
+        const senderId = "PhilSMS";
+
         for (let msg of pendingMsgs) {
             try {
                 const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
@@ -2655,10 +2655,10 @@ async function checkAndSendPendingSMS() {
                         message: msg.message
                     })
                 });
-                
+
                 const result = await res.json();
                 console.log("PhilSMS Sent:", result);
-                
+
                 // Mark as sent
                 await sb.from('pending_sms').update({ status: 'sent' }).eq('id', msg.id);
             } catch (err) {
@@ -3374,7 +3374,7 @@ async function loadSettingsData() {
         const res = await apiPost("getSettingsData", {});
         if (res.status === "success") {
             const data = res.data; globalStaffList = data.staff || [];
-            
+
             globalFacilityList = (data.facilities || []).filter(f => {
                 if (f.name === '_SYSTEM_MAINTENANCE_') {
                     const toggle = document.getElementById('toggle-maintenance-btn');
@@ -3559,12 +3559,12 @@ function buildReportData(data, type, val, year, targetFacility) {
             let ptType = (hist.includes("RETREAT") || hist.includes("RELAPSE") || hist.includes("PREVIOUS")) ? "ret" : "new";
             let res = String(details.ResultCode || details.result_code || details.Result || details.result || "").toUpperCase().trim();
             let rem = String(details.Remarks || details.remarks || "").toUpperCase().trim();
-            let rpt = String(details.Repeat || details["Test Type"] || "").toUpperCase().trim();
+            let rpt = String(details.Repeat || "").toUpperCase().trim();
             let full = (res + " " + rem + " " + rpt).trim();
 
             if (res === "I") {
                 report.tb.invalid[ptType]++;
-            } else if (rpt.includes("INITIAL")) {
+            } else if (rpt === "INITIAL") {
                 report.tb.initial[ptType]++;
             } else if (res === "RR") {
                 report.tb.rr[ptType]++; report.tb.pos[ptType]++; report.tb.exam[ptType]++;
@@ -3583,14 +3583,14 @@ function buildReportData(data, type, val, year, targetFacility) {
 
         if (tName.includes('DSSM') || tName.includes('AFB') || tName.includes('SMEAR')) {
             report.tb.dssm++;
-            
+
             let tbCase = String(details["TB Case Number"] || details.tb_case_number || "").toUpperCase().trim();
             let reason = String(details["Reason for Testing"] || details["Reason"] || details.reason_for_testing || "").toUpperCase().trim();
             let smear1 = String(details["Reading 1"] || details.reading_1 || details["Visual Appearance 1"] || details["Result 1"] || details.smear_1 || "").trim();
             let smear2 = String(details["Reading 2"] || details.reading_2 || details["Visual Appearance 2"] || details["Result 2"] || details.smear_2 || "").trim();
-            
+
             let isDiagnosis = tbCase.includes("NEW") || reason.includes("NEW") || reason.includes("DIAGNOSIS");
-            
+
             if (isDiagnosis) {
                 // Diagnosis needs BOTH Smear 1 and Smear 2 to be counted
                 if (smear1 !== "" && smear2 !== "") {
