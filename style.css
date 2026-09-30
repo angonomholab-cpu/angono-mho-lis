@@ -1046,9 +1046,17 @@ body.dark-mode .auth-form-panel {
     color: var(--text-color);
 }
 
+.auth-form-panel .btn:focus,
+.auth-form-panel .btn:active {
+    outline: none;
+}
+
 .auth-form-panel .btn-primary {
-    background: var(--pri);
-    color: white !important;
+    color: var(--pri) !important;
+}
+
+.auth-form-panel .btn-success {
+    color: var(--success) !important;
 }
 
 .auth-form-panel .btn:hover {
