@@ -571,14 +571,14 @@ async function apiGet(action, params = {}) {
 
                 let pendingQ = sb.from('lab_tests').select('*').in('status', ['PENDING', 'FOR REPEAT']);
                 if (!canSeeAllFacilities && params.facility && params.facility !== 'ALL') {
-                    pendingQ = pendingQ.eq('facility', params.facility);
+                    pendingQ = pendingQ.ilike('facility', params.facility);
                 }
                 const { data: pending, error: pErr } = await pendingQ.order('date', { ascending: false }).limit(1000);
                 if (pErr) console.error("Pending Workload Error:", pErr);
 
                 let compQ = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED']);
                 if (!canSeeAllFacilities && params.facility && params.facility !== 'ALL') {
-                    compQ = compQ.eq('facility', params.facility);
+                    compQ = compQ.ilike('facility', params.facility);
                 }
                 const { data: completed, error: cErr } = await compQ.order('date_examined', { ascending: false }).limit(300);
                 if (cErr) console.error("Completed Workload Error:", cErr);
@@ -651,7 +651,7 @@ async function apiGet(action, params = {}) {
                         q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']);
                     }
                     if (params.facility && params.facility !== 'ALL') {
-                        q = q.eq('facility', params.facility);
+                        q = q.ilike('facility', params.facility);
                     }
                     return q.order(dateColOrder, { ascending: isAsc });
                 }
@@ -2751,9 +2751,9 @@ async function openRegistryEditModal(testCode) {
         'Color': ['Brown', 'Yellow', 'Green', 'Black', 'Red'],
         'Protein': gradings,
         'Glucose': gradings,
-        'HIV': ['NONREACTIVE', 'REACTIVE'],
-        'HBSAG': ['NONREACTIVE', 'REACTIVE'],
-        'SYPHILIS': ['NONREACTIVE', 'REACTIVE'],
+        'HIV': ['', 'NONREACTIVE', 'REACTIVE'],
+        'HBSAG': ['', 'NONREACTIVE', 'REACTIVE'],
+        'SYPHILIS': ['', 'NONREACTIVE', 'REACTIVE'],
         'Dengue NS1': ['', 'Negative', 'Positive'],
         'Dengue IgG': ['', 'Negative', 'Positive'],
         'Dengue IgM': ['', 'Negative', 'Positive'],
@@ -3531,19 +3531,19 @@ function clearStaffForm() { document.getElementById('staffName').value = ""; doc
 function toggleForm(id) { const el = document.getElementById(id); if (el) el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
 
 function switchTab(id) { document.querySelectorAll('.tab-view').forEach(el => el.style.display = 'none'); document.querySelectorAll('.chip').forEach(el => el.classList.remove('active')); document.getElementById('tab-' + id).style.display = 'block'; const btn = document.getElementById('tab-btn-' + id); if (btn) btn.classList.add('active'); }
-function togglePeriod() { const type = document.querySelector('input[name="rep_type"]:checked').value; document.getElementById('rep_month').style.display = (type === 'monthly') ? 'inline-block' : 'none'; document.getElementById('rep_quarter').style.display = (type === 'quarterly') ? 'inline-block' : 'none'; }
+function togglePeriod() { const type = document.querySelector('input[name="rep_type"]:checked').value; document.getElementById('rep_month').style.display = (type === 'monthly' || type === 'custom') ? 'inline-block' : 'none'; document.getElementById('rep_custom_to').style.display = (type === 'custom') ? 'inline-flex' : 'none'; document.getElementById('rep_quarter').style.display = (type === 'quarterly') ? 'inline-block' : 'none'; }
 
 async function generateReport() {
     const type = document.querySelector('input[name="rep_type"]:checked').value; const year = document.getElementById('rep_year').value; let targetFacility = "ALL"; let userRole = "VIEWER";
     try { if (typeof currentUser !== 'undefined') { userRole = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_'); if (userRole === 'VIEWER' || userRole === 'ENCODER') { targetFacility = currentUser.facility || "ALL"; } } } catch (e) { }
-    let val = 0; let text = ""; if (type === 'monthly') { const sel = document.getElementById('rep_month'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else if (type === 'quarterly') { const sel = document.getElementById('rep_quarter'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else { val = 0; text = "ANNUAL REPORT " + year; } let facLabel = (targetFacility === "ALL") ? "(CONSOLIDATED)" : `(${targetFacility})`; document.querySelectorAll('.rep-period').forEach(el => el.innerText = `- ${text} ${facLabel}`);
+    let val = 0; let text = ""; if (type === 'monthly') { const sel = document.getElementById('rep_month'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else if (type === 'quarterly') { const sel = document.getElementById('rep_quarter'); val = sel.value; text = sel.options[sel.selectedIndex].text.toUpperCase() + " " + year; } else if (type === 'custom') { const selFrom = document.getElementById('rep_month'); const selTo = document.getElementById('rep_month_to'); val = selFrom.value + "-" + selTo.value; text = selFrom.options[selFrom.selectedIndex].text.toUpperCase() + " TO " + selTo.options[selTo.selectedIndex].text.toUpperCase() + " " + year; } else { val = 0; text = "ANNUAL REPORT " + year; } let facLabel = (targetFacility === "ALL") ? "(CONSOLIDATED)" : `(${targetFacility})`; document.querySelectorAll('.rep-period').forEach(el => el.innerText = `- ${text} ${facLabel}`);
     const btn = document.getElementById('btn-generate-rep'); const oldHtml = btn.innerHTML; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> PROCESSING...'; btn.disabled = true;
 
     try {
         let data = [];
         for (let from = 0; ; from += 1000) {
             let q = sb.from('lab_tests').select('*').in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
-            if (targetFacility !== "ALL") q = q.eq('facility', targetFacility);
+            if (targetFacility !== "ALL") q = q.ilike('facility', targetFacility);
             const { data: chunk, error } = await q.range(from, from + 999);
             if (error) { console.error("Report fetch error:", error); break; }
             data = data.concat(chunk || []);
@@ -3749,6 +3749,14 @@ function isDateInPeriod(dStr, type, val, year) {
         return false;
     }
 
+    if (type === 'custom') {
+        let parts = valStr.split('-');
+        let fromM = parseInt(parts[0]);
+        let toM = parseInt(parts[1]);
+        if (fromM > toM) { let temp = fromM; fromM = toM; toM = temp; }
+        return (monthNum >= fromM && monthNum <= toM);
+    }
+
     if (type === 'quarterly') {
         if (val == 1) return (monthNum >= 1 && monthNum <= 3);
         if (val == 2) return (monthNum >= 4 && monthNum <= 6);
@@ -3787,7 +3795,7 @@ function startAutoSync() {
         if (pendingSection && pendingSection.style.display !== 'none' && !isEditing) {
             try {
                 let q = sb.from('lab_tests').select('*').in('status', ['PENDING', 'ENCODED', 'COMPLETED', 'FOR REPEAT']).order('date', { ascending: false }).limit(1000);
-                if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.eq('facility', currentUser.facility);
+                if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.ilike('facility', currentUser.facility);
                 const { data } = await q;
                 if (data) {
                     window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({ id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date }));
