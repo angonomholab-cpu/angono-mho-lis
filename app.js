@@ -95,7 +95,25 @@ function loadSmsConfigIntoUI() {
         let schedText = sched === 'realtime' ? 'Real-time' : (sched === 'holiday' ? 'Holiday Mode' : 'Next Working Day');
         statusEl.innerText = isEnabled ? `✓ SMS Alerts Active (${schedText})` : "";
     }
+    if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
 }
+
+window.checkSmsQueueStatus = async function() {
+    const queueEl = document.getElementById('sms-queue-count');
+    if (!queueEl) return;
+    try {
+        queueEl.innerText = "Checking...";
+        const { count, error } = await sb.from('pending_sms').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        if (error) {
+            console.warn("pending_sms table check error:", error);
+            queueEl.innerHTML = `<span style="color:var(--danger); cursor:pointer;" title="${error.message}">⚠️ Table Missing in Supabase</span>`;
+        } else {
+            queueEl.innerHTML = `<span style="color:${count > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--success)'};">${count || 0} messages pending</span>`;
+        }
+    } catch (err) {
+        queueEl.innerHTML = `<span style="color:var(--danger);">Error checking</span>`;
+    }
+};
 
 function saveSmsConfig() {
     const enableEl = document.getElementById('cfg_sms_enable');
@@ -331,6 +349,7 @@ async function sendPatientEmail({ toEmail, patientName, patientId, password = ""
 
 const availableTests = {
     'mtb': { testName: 'GeneXpert MTB/Rif Ultra', testCode: 'GXP', title: 'GeneXpert MTB/RIF', html: '<div class="field-group"><label class="field-label">History of Treatment</label><input type="hidden" data-key="History of Treatment" id="mtb_history" value="New"><div class="compact-toggle"><button type="button" class="toggle-btn active" onclick="setToggleValue(this, \'mtb_history\', \'New\')">New</button><button type="button" class="toggle-btn" onclick="setToggleValue(this, \'mtb_history\', \'Retreatment\')">Retreatment</button></div></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' },
+    'naat': { testName: 'NPOC-NAAT', testCode: 'NAAT', title: 'NPOC-NAAT', html: '<div class="field-group"><label class="field-label">History of Treatment</label><input type="hidden" data-key="History of Treatment" id="naat_history" value="New"><div class="compact-toggle"><button type="button" class="toggle-btn active" onclick="setToggleValue(this, \'naat_history\', \'New\')">New</button><button type="button" class="toggle-btn" onclick="setToggleValue(this, \'naat_history\', \'Retreatment\')">Retreatment</button></div></div><div class="field-group"><label class="field-label">Source of Request</label><input type="text" data-key="Source of Request" class="form-input"></div><div class="field-group full-width"><label class="field-label">X-Ray Result</label><input type="text" data-key="X-Ray Result" class="form-input"></div>' },
     'viral': { testName: 'Viral Load', testCode: 'GXVL', title: 'HIV-1 Viral Load', html: '<div class="field-group full-width" style="color:var(--text-muted); font-size:0.8rem;">Proceed to confirmation to add this test.</div>' },
     'dssm': {
         testName: 'DSSM',
@@ -347,7 +366,11 @@ const availableTests = {
             </div>
             <div class="field-group" id="dssm-history-group" style="display:none;">
                 <label class="field-label">History of Treatment</label>
-                <input type="text" data-key="History of Treatment" class="form-input" value="New" readonly style="background:var(--bg-subtle);">
+                <input type="hidden" data-key="History of Treatment" id="dssm_history" value="">
+                <div class="compact-toggle">
+                    <button type="button" class="toggle-btn" onclick="setToggleValue(this, 'dssm_history', 'New')">New</button>
+                    <button type="button" class="toggle-btn" onclick="setToggleValue(this, 'dssm_history', 'Retreatment')">Retreatment</button>
+                </div>
             </div>
             <div class="field-group full-width" id="dssm-xray-group" style="display:none;">
                 <label class="field-label">X-Ray Result (Remarks)</label>
@@ -647,7 +670,7 @@ async function apiGet(action, params = {}) {
                 function buildQuery() {
                     let q = sb.from(tName).select('*');
                     if (tName === 'lab_tests') {
-                        const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
+                        const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'NAAT': 'NPOC-NAAT', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
                         q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']);
                     }
                     if (params.facility && params.facility !== 'ALL') {
@@ -700,8 +723,8 @@ async function apiGet(action, params = {}) {
                     return existingAge || "";
                 };
 
-                // 🟢 Map GXP directly from lab_tests details para buo ang lahat ng columns hanggang dulo
-                if (params.type === 'GXP' && tName === 'lab_tests') {
+                // 🟢 Map GXP & NAAT directly from lab_tests details para buo ang lahat ng columns hanggang dulo
+                if ((params.type === 'GXP' || params.type === 'NAAT') && tName === 'lab_tests') {
                     data = data.map(r => {
                         const d = typeof r.details === 'string' ? JSON.parse(r.details || '{}') : (r.details || {});
                         return {
@@ -1990,7 +2013,7 @@ async function loadPatientResults() {
 
 function getTestCodeFromName(name) {
     const t = String(name).toUpperCase();
-    if (t.includes("VIRAL") || t.includes("VL")) return "GXVL"; if (t.includes("GXP") || t.includes("MTB") || t.includes("GENEXPERT")) return "GXP"; if (t.includes("DSSM") || t.includes("AFB")) return "DSSM"; if (t.includes("UA") || t.includes("URINALYSIS")) return "UA"; if (t.includes("FA") || t.includes("FECALYSIS")) return "FA"; if (t.includes("HEMA") || t.includes("CBC")) return "HEMA"; if (t.includes("CHEM") || t.includes("BLOOD CHEM")) return "CHEM"; if (t.includes("GRAM")) return "GRAM"; if (t.includes("DENGUE") || t.includes("NS1")) return "DENGUE"; if (t.includes("SERO") || t.includes("HIV") || t.includes("SYPHILIS") || t.includes("HBSAG")) return "SERO"; return t;
+    if (t.includes("VIRAL") || t.includes("VL")) return "GXVL"; if (t.includes("NAAT") || t.includes("NPOC")) return "NAAT"; if (t.includes("GXP") || t.includes("MTB") || t.includes("GENEXPERT")) return "GXP"; if (t.includes("DSSM") || t.includes("AFB")) return "DSSM"; if (t.includes("UA") || t.includes("URINALYSIS")) return "UA"; if (t.includes("FA") || t.includes("FECALYSIS")) return "FA"; if (t.includes("HEMA") || t.includes("CBC")) return "HEMA"; if (t.includes("CHEM") || t.includes("BLOOD CHEM")) return "CHEM"; if (t.includes("GRAM")) return "GRAM"; if (t.includes("DENGUE") || t.includes("NS1")) return "DENGUE"; if (t.includes("SERO") || t.includes("HIV") || t.includes("SYPHILIS") || t.includes("HBSAG")) return "SERO"; return t;
 }
 
 function togglePortalDetails(id) {
@@ -2036,7 +2059,7 @@ async function fetchHistory(id, sectionId, listId, isQuickSearch = false, isPati
                     // Elevated Patient Portal Card
                     const tUpper = String(h.test || "").toUpperCase();
                     let testIcon = "ph-activity";
-                    if (tUpper.includes("GXP") || tUpper.includes("MTB") || tUpper.includes("GENEXPERT")) testIcon = "ph-dna";
+                    if (tUpper.includes("GXP") || tUpper.includes("MTB") || tUpper.includes("GENEXPERT") || tUpper.includes("NAAT") || tUpper.includes("NPOC")) testIcon = "ph-dna";
                     else if (tUpper.includes("DSSM") || tUpper.includes("AFB")) testIcon = "ph-microscope";
                     else if (tUpper.includes("CBC") || tUpper.includes("HEMA")) testIcon = "ph-drop";
                     else if (tUpper.includes("CHEM")) testIcon = "ph-test-tube";
@@ -2394,7 +2417,7 @@ window.undoResult = function (id) {
 function renderLists() {
     const pList = document.getElementById('list-pending'); const cList = document.getElementById('list-completed'); const rList = document.getElementById('list-repeat'); const filterSelect = document.getElementById('test-filter');
     if (!pList || !cList) return; window.pendingData = window.pendingData || []; window.completedData = window.completedData || [];
-    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_'); const isViewer = (role === 'VIEWER'); const isEncoder = (role === 'ENCODER'); const isLimited = localStorage.getItem('mho-limited-mode') === 'true'; const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO'];
+    const role = String(currentUser.role || "VIEWER").toUpperCase().replace(/\s+/g, '_'); const isViewer = (role === 'VIEWER'); const isEncoder = (role === 'ENCODER'); const isLimited = localStorage.getItem('mho-limited-mode') === 'true'; const allowedTests = ['GXP', 'DSSM', 'GRAM', 'DENGUE', 'SERO', 'NAAT'];
 
     const uniqueTests = [...new Set(window.pendingData.map(item => String(item.test || "").toUpperCase()))];
     const currentVal = filterSelect ? filterSelect.value : 'ALL'; let dropHtml = '<option value="ALL">All Sections</option>';
@@ -2535,6 +2558,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
         // Map internal test IDs to formal test codes
         if (testCode === 'mtb') testCode = 'GXP';
+        if (testCode === 'naat' || testCode === 'npoc') testCode = 'NAAT';
         if (testCode === 'dssm') testCode = 'DSSM';
         if (testCode === 'viral') testCode = 'GXVL';
         if (testCode === 'gram') testCode = 'GRAM';
@@ -2554,7 +2578,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
         }
 
         // --- SMS NOTIFICATION (PhilSMS) ---
-        const allowedTestsForSms = ['GXP', 'DSSM', 'GXVL', 'GRAM'];
+        const allowedTestsForSms = ['GXP', 'DSSM', 'GXVL', 'GRAM', 'NAAT'];
         const smsEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
         const smsSchedule = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
 
@@ -2568,7 +2592,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 if (phone.startsWith('09')) phone = '63' + phone.substring(1);
                 if (phone.length >= 10) {
                     let locationText = "";
-                    if (testCode === 'GXP' || testCode === 'DSSM') {
+                    if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
                         locationText = facilityName ? `sa ${facilityName}` : "sa health center ng inyong barangay";
                     } else if (testCode === 'GXVL' || testCode === 'GRAM') {
                         locationText = "sa Angono May Puso Social Hygiene Clinic";
@@ -2584,6 +2608,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
                     let displayTest = testCode;
                     if (testCode === 'GXP') displayTest = "GeneXpert";
+                    if (testCode === 'NAAT') displayTest = "NPOC-NAAT";
                     if (testCode === 'GXVL') displayTest = "Viral Load";
                     if (testCode === 'GRAM') displayTest = "Gram Stain";
 
@@ -2591,7 +2616,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     if (isRepeat) {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen sa Angono MHO Lab.`;
                     } else {
-                        if (testCode === 'GXP' || testCode === 'DSSM') {
+                        if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
                             smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
                         } else {
                             smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
@@ -2640,13 +2665,19 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                         }
 
                         // Save to our pending_sms table in Supabase
-                        await sb.from('pending_sms').insert([{
+                        const { error: insErr } = await sb.from('pending_sms').insert([{
                             phone: phone,
                             message: smsMessage,
                             send_at: targetDate.toISOString(),
                             status: 'pending'
                         }]);
-                        console.log("SMS Scheduled for:", targetDate.toISOString());
+                        if (insErr) {
+                            console.error("Failed to insert into pending_sms:", insErr);
+                            showAppAlert("SMS Queue Notice", "Hindi na-save ang scheduled SMS sa database. Pakisiguradong nagawa na ang 'pending_sms' table sa Supabase SQL Editor.", "warning");
+                        } else {
+                            console.log("SMS Scheduled for:", targetDate.toISOString());
+                            if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
+                        }
                     }
                 } // closes if (phone.length >= 10)
             } // closes if (!isExcluded)
@@ -2657,17 +2688,32 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
     }
 }
 
-async function checkAndSendPendingSMS() {
+async function checkAndSendPendingSMS(manual = false) {
     try {
-        const { data: pendingMsgs } = await sb.from('pending_sms')
+        const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
+        if (!philsmsToken) {
+            if (manual) showAppAlert("PhilSMS Token Missing", "Pakilagay muna ang inyong PhilSMS API Token sa Settings.", "error");
+            return;
+        }
+
+        const { data: pendingMsgs, error: fetchErr } = await sb.from('pending_sms')
             .select('*')
             .eq('status', 'pending')
             .lte('send_at', new Date().toISOString());
 
-        if (!pendingMsgs || pendingMsgs.length === 0) return;
+        if (fetchErr) {
+            console.error("Error checking pending SMS:", fetchErr);
+            if (manual) showAppAlert("Supabase Notice", "Error sa pending_sms: " + fetchErr.message + ". Siguraduhing na-run ang pending_sms schema sa Supabase SQL Editor.", "error");
+            return;
+        }
 
-        const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
+        if (!pendingMsgs || pendingMsgs.length === 0) {
+            if (manual) showAppAlert("Queue Empty", "Walang pending SMS na nakatakdang ipadala sa oras na ito.", "info");
+            return;
+        }
+
         const senderId = "PhilSMS";
+        let sentCount = 0;
 
         for (let msg of pendingMsgs) {
             try {
@@ -2691,12 +2737,19 @@ async function checkAndSendPendingSMS() {
 
                 // Mark as sent
                 await sb.from('pending_sms').update({ status: 'sent' }).eq('id', msg.id);
+                sentCount++;
             } catch (err) {
                 console.error("Failed to send scheduled SMS:", err);
             }
         }
+
+        if (manual && sentCount > 0) {
+            showAppAlert("SMS Processed", `Matagumpay na naipadala ang ${sentCount} scheduled SMS.`, "success");
+        }
+        if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
     } catch (e) {
         console.error("Error checking pending SMS:", e);
+        if (manual) showAppAlert("Error", String(e), "error");
     }
 }
 
@@ -2915,6 +2968,8 @@ function getResultTemplate(code, safeId, item) {
     let formHtml = "";
     switch (code) {
         case 'GXP': formHtml = `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`; break;
+        case 'NAAT':
+        case 'NPOC': formHtml = `<div class="form-grid grid-2">${select('ResultCode', 'NPOC-NAAT Result', ['N', 'T', 'I'])} ${select('Appearance', 'Appearance', apps)}</div>${rem}`; break;
         case 'GXVL': formHtml = `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`; break;
         case 'DSSM': {
             let dssmSmears = (itemDetails["Category"] === "Follow-up") ? [1] : [1, 2];
@@ -3583,7 +3638,7 @@ function buildReportData(data, type, val, year, targetFacility) {
         let tName = String(row.test_name || row.test_type || "").toUpperCase();
         report.workload[tName] = (report.workload[tName] || 0) + 1;
 
-        if (tName.includes('GENEXPERT') || tName.includes('GXP')) {
+        if (tName.includes('GENEXPERT') || tName.includes('GXP') || tName.includes('NAAT') || tName.includes('NPOC')) {
             report.tb.cartridges++;
             let hist = String(details["History of Treatment"] || details.history_of_treatment || details["Registration Group"] || "").toUpperCase();
             let ptType = (hist.includes("RETREAT") || hist.includes("RELAPSE") || hist.includes("PREVIOUS")) ? "ret" : "new";
@@ -3868,7 +3923,7 @@ async function batchSaveResults(isPrint) {
         showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
         try {
             await ensureStaffList();
-            const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM";
+            const isNTP = printRequests[0].testName === "GXP" || printRequests[0].testName === "DSSM" || printRequests[0].testName === "NAAT";
             let printContent = [];
             for (let r of printRequests) {
                 // 🔴 FIX: Inayos ang paghahanap kapag batch print gamit either test_code or id
@@ -3885,7 +3940,7 @@ async function batchSaveResults(isPrint) {
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
     p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
-    const tName = (p.testName || "").toUpperCase(); p.isDSSM = tName.includes("DSSM") || tName.includes("AFB"); p.isGXP = tName.includes("GXP") || tName.includes("GEN");
+    const tName = (p.testName || "").toUpperCase(); p.isDSSM = tName.includes("DSSM") || tName.includes("AFB"); p.isGXP = tName.includes("GXP") || tName.includes("GEN"); p.isNAAT = tName.includes("NAAT") || tName.includes("NPOC");
     const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)"; const findRes = (key) => p.results?.find(r => r.param && r.param.toUpperCase() === key.toUpperCase())?.res || "";
     const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
     // 🔴 FIX: Idinagdag ang TB Case No para lumabas sa mismong form
@@ -3912,8 +3967,21 @@ function processNtpResultsClient(p) {
         p.results.forEach(r => {
             const k = String(r.param).trim(); const v = String(r.res || "").trim(); const vUpper = v.toUpperCase();
             if (k === "ResultCode") {
-                let gradeRaw = findRes("Grade"); let repeatTag = findRes("Repeat"); let grades = { 'VL': 'Very Low', 'L': 'Low', 'M': 'Medium', 'H': 'High' }; let fullGrade = grades[gradeRaw.toUpperCase()] || gradeRaw; let isInitial = repeatTag.toUpperCase().includes("INITIAL") || vUpper.includes("INITIAL");
-                if (vUpper === "N") { p.gxpText = "MTB NOT DETECTED."; p.gxpClass = "res-n"; } else if (vUpper === "T") { p.gxpText = `MTB DETECTED ${fullGrade}; Rifampicin resistance NOT detected.`; p.gxpClass = "res-t"; } else if (vUpper.startsWith("TT")) { p.gxpText = `MTB TRACE DETECTED; Rifampicin resistance INDETERMINATE.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-tt"; } else if (vUpper.startsWith("TI")) { p.gxpText = `MTB DETECTED; Rifampicin resistance INDETERMINATE.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-ti"; } else if (vUpper.startsWith("RR")) { p.gxpText = `MTB DETECTED ${fullGrade}; Rifampicin resistance DETECTED.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-rr"; } else if (vUpper === "I" || vUpper.includes("ERR") || vUpper.includes("INV")) { p.gxpText = `INVALID / ERROR.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-i"; }
+                if (p.isNAAT) {
+                    if (vUpper === "N") {
+                        p.gxpText = "MTB NOT DETECTED.";
+                        p.gxpClass = "res-n";
+                    } else if (vUpper === "T") {
+                        p.gxpText = "MTB DETECTED.";
+                        p.gxpClass = "res-t";
+                    } else if (vUpper === "I" || vUpper.includes("ERR") || vUpper.includes("INV")) {
+                        p.gxpText = "INVALID / ERROR.";
+                        p.gxpClass = "res-i";
+                    }
+                } else {
+                    let gradeRaw = findRes("Grade"); let repeatTag = findRes("Repeat"); let grades = { 'VL': 'Very Low', 'L': 'Low', 'M': 'Medium', 'H': 'High' }; let fullGrade = grades[gradeRaw.toUpperCase()] || gradeRaw; let isInitial = repeatTag.toUpperCase().includes("INITIAL") || vUpper.includes("INITIAL");
+                    if (vUpper === "N") { p.gxpText = "MTB NOT DETECTED."; p.gxpClass = "res-n"; } else if (vUpper === "T") { p.gxpText = `MTB DETECTED ${fullGrade}; Rifampicin resistance NOT detected.`; p.gxpClass = "res-t"; } else if (vUpper.startsWith("TT")) { p.gxpText = `MTB TRACE DETECTED; Rifampicin resistance INDETERMINATE.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-tt"; } else if (vUpper.startsWith("TI")) { p.gxpText = `MTB DETECTED; Rifampicin resistance INDETERMINATE.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-ti"; } else if (vUpper.startsWith("RR")) { p.gxpText = `MTB DETECTED ${fullGrade}; Rifampicin resistance DETECTED.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-rr"; } else if (vUpper === "I" || vUpper.includes("ERR") || vUpper.includes("INV")) { p.gxpText = `INVALID / ERROR.${isInitial ? initialWarning : ""}`; p.gxpClass = "res-i"; }
+                }
             }
             if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; } if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; } if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
         });
@@ -4127,7 +4195,7 @@ async function printDirect(e, id, testName) {
             await ensureStaffList();
             let pObj = mapSupabaseToPrintObject(item);
 
-            const isNTP = correctCode === "GXP" || correctCode === "DSSM" || testName === "GXP" || testName === "DSSM" || String(item.test || "").toUpperCase().includes("GENEXPERT") || String(item.test || "").toUpperCase().includes("DSSM") || String(item.test || "").toUpperCase().includes("GXP");
+            const isNTP = correctCode === "GXP" || correctCode === "DSSM" || correctCode === "NAAT" || testName === "GXP" || testName === "DSSM" || testName === "NAAT" || String(item.test || "").toUpperCase().includes("GENEXPERT") || String(item.test || "").toUpperCase().includes("DSSM") || String(item.test || "").toUpperCase().includes("GXP") || String(item.test || "").toUpperCase().includes("NAAT") || String(item.test || "").toUpperCase().includes("NPOC");
             let finalHtml = "";
             try {
                 finalHtml = isNTP ? localGenerateNTPHtml([pObj]) : localGenerateA5Html([pObj]);
@@ -4170,7 +4238,7 @@ async function batchPrint() {
     showPrintModal('<h2 style="font-family:\'Poppins\', sans-serif; text-align:center; margin-top:50px; color: #64748b;"><i class="ph ph-spinner ph-spin"></i> Generating Batch Print...</h2>');
     try {
         await ensureStaffList();
-        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM";
+        const isNTP = window.CURRENT_TEST_TYPE === "GXP" || window.CURRENT_TEST_TYPE === "DSSM" || window.CURRENT_TEST_TYPE === "NAAT";
         let printContent = [];
         for (let r of requests) {
             let { data } = await sb.from('lab_tests').select('*').eq('test_code', r.testCode).maybeSingle();
@@ -4206,7 +4274,7 @@ function localGenerateNTPHtml(patientsArray) {
         processNtpResultsClient(p); const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || ""); let phys = p.physician || ""; p.physician = (phys === "undefined") ? "" : phys;
         let performer = getStaff(p.performedBy || p.encoder);
         let preparedByName = resolveFullName(p.preparedBy || p.encoder);
-        const pageHtml = `<div class="page-container"><div class="header"><img src="${logos.left}" class="logo-side" onerror="this.style.display='none'"><div class="header-center"><img src="${logos.lab}" class="logo-lab" onerror="this.style.display='none'"><h3 style="font-size:8px; margin:0;">REPUBLIC OF THE PHILIPPINES</h3><h3 style="font-size:8px; margin:0;">PROVINCE OF RIZAL</h3><h2 style="font-size:10px; margin:1px 0;">Municipality of ANGONO</h2><h1 style="font-size:14px; margin:1px 0;">Municipal Health Office</h1><p style="font-size:8px; margin:0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></div><img src="${logos.right}" class="logo-side" onerror="this.style.display='none'"></div><div class="form-title">FORM 2A. LABORATORY REQUEST AND RESULT FORM</div><div class="content-spacer"></div><div class="section-bar">To be filled out by the requesting facility health care worker</div><table class="main-table"><tr><td width="60%">Name of Requesting Facility/Unit: <span class="line" style="width:200px;">${p.facility}</span></td><td width="40%">Date of Request: <span class="line" style="width:140px;">${p.dateRequest}</span></td></tr><tr><td>Facility Contact Information: <span class="line" style="width:220px;">&nbsp;</span></td><td>Requesting Physician: <span class="line" style="width:150px;">${p.physician}</span></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Patient's Full Name: <span class="line" style="width:300px; text-transform:uppercase;">${p.name}</span></span><span>Age: <span class="line" style="width:30px; text-align:center;">${p.age}</span></span><span>Sex: <span class="line" style="width:50px; text-align:center;">${p.sex}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Address: <span class="line" style="width:420px; font-size:9px;">${p.address}</span></span><span>Patient's Contact No.: <span class="line" style="width:120px;">${p.contact}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Reason for Examination:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(p.reason == 'Diagnosis' || (p.isDSSM && (p.smear1 || p.smear2) && p.reason !== 'Follow-up' && p.reason !== 'Baseline')) ? 'checked' : ''}> Diagnosis</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Baseline') ? 'checked' : ''}> Baseline</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Follow-up' || (p.isDSSM && !p.smear1 && !p.smear2 && p.reason !== 'Diagnosis' && p.reason !== 'Baseline')) ? 'checked' : ''}> Follow-up</span></div><span style="margin-left:auto;">TB Case No.: <span class="line" style="width:70px;">${p.tbCase || ''}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; align-items:center;"><strong style="width:130px;">History of Treatment:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(p.reason !== 'Follow-up' && (String(p.history).toUpperCase() == 'NEW' || (p.isDSSM && (p.smear1 || p.smear2) && String(p.history).toUpperCase() !== 'RETREATMENT' && String(p.history).toUpperCase() !== 'RETREAT'))) ? 'checked' : ''}> New</span><span class="chk-item"><input type="checkbox" ${(p.reason !== 'Follow-up' && (String(p.history).toUpperCase() == 'RETREATMENT' || String(p.history).toUpperCase() == 'RETREAT')) ? 'checked' : ''}> Retreatment</span></div><span style="margin-left:auto;">Month of Treatment: <span class="line" style="width:70px;">${p.monthTreat || ''}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Test Requested:</strong><table style="width:100%; border:none; margin:0;"><tr><td style="border:none; padding:0; vertical-align:top; width:50%;"><div class="chk-item"><input type="checkbox" ${(p.isGXP && !p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/RIF Ultra</div><br><div class="chk-item"><input type="checkbox" ${(p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/XDR</div><br><div class="chk-item"><input type="checkbox"> Line Probe Assay</div></td><td style="border:none; padding:0; vertical-align:top; width:50%;"><div style="display: flex; justify-content: space-between;"><div><div class="chk-item"><input type="checkbox"> TB LAMP</div><br><div class="chk-item"><input type="checkbox"> Truenat MTB-RIF</div><br><div class="chk-item"><input type="checkbox" ${(p.isDSSM) ? 'checked' : ''}> Smear Microscopy</div></div><div><div class="chk-item"><input type="checkbox"> TB Culture</div><br><div class="chk-item"><input type="checkbox"> Phenotypic DST</div></div></div></td></tr></table></div></td></tr><tr><td colspan="2" class="pad-top-lg">Type of Specimen: <span class="line" style="width:200px; text-align:center;">Sputum</span></td></tr></table><table class="res-table-inner" style="margin-bottom:5px;"><tr style="background:#ccc;"><th width="20%">Specimen</th><th width="40%">Date Collected</th><th width="40%">Date Dispatched to Laboratory</th></tr><tr><td>1</td><td>${p.dateCollected}</td><td>${p.dateCollected}</td></tr><tr><td style="${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'text-decoration:line-through; color:#999;' : ''}">2</td><td>${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'N/A' : ''}</td><td>${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'N/A' : ''}</td></tr></table><div style="margin-bottom:15px;"><strong>Remarks:</strong><div style="border-bottom:1px solid #000; width:100%; height:18px; line-height:18px; font-weight:bold; font-size:9px; text-align:center;">${p.remarks}</div><div style="text-align:center; font-size:8px; font-style:italic;">(i.e. precollection details, existing medical conditions, medications...)</div></div><div style="border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px;"><div style="display:flex; justify-content:space-between; align-items:flex-end;"><div style="width: 50%;"><strong>Prepared By:</strong><span class="line" style="width:200px; text-align:center; text-transform:uppercase;">${preparedByName}</span></div><div style="width: 50%;"><strong>Designation:</strong><span class="line" style="width:200px;">&nbsp;</span></div></div><div style="font-size:8px; margin-left:100px;">Signature over Printed Name</div></div><div class="section-bar">To be filled out by the receiving Medical Technologist/Microscopist/Xpert Technician</div><table class="main-table"><tr><td width="60%" style="padding: 8px;">Name of Laboratory: <strong>ANGONO RTDL</strong></td><td width="40%" style="padding: 8px;"><div style="display:flex; justify-content:space-between;"><span>Date Specimen Received:</span><strong>${p.dateCollected}</strong></div></td></tr><tr><td colspan="2"><div style="display:flex; gap:10px; align-items: center; padding: 5px 0;"><span>Specimen Volume and Quality: <span class="line" style="width:150px;">${p.appearance || ''}</span></span><span class="chk-item"><input type="checkbox" checked> Accepted</span><span class="chk-item"><input type="checkbox"> Rejected, reason: <span class="line" style="width:100px;"></span></span></div></td></tr><tr><td colspan="2" style="padding-top:10px; padding-bottom:5px;"><div style="display:flex; justify-content:space-between;"><div>Laboratory Serial Number: <span class="line" style="width:180px; font-weight:bold;">${p.labSerialNumber}</span></div><div>Date Specimen Examined: <strong>${p.dateResult || p.dateExaminedStr || ''}</strong></div></div></td></tr></table><table class="res-table-inner"><tr style="background:#d9d9d9;"><th width="40%">DIAGNOSTIC TESTS</th><th width="60%">RESULTS</th></tr><tr><td style="text-align:left; padding-left:20px; height:50px; vertical-align:middle; width:40%;">Xpert MTB/RIF Ultra</td><td class="${p.gxpClass}" style="font-weight:bold; font-size:9.5pt; vertical-align:middle; text-align:center; padding: 8px; line-height: 1.3;">${p.gxpText}</td></tr><tr><td style="padding:0; vertical-align:middle;"><div style="padding:10px;">Smear Microscopy</div></td><td style="padding:0;"><table style="width:100%; border:none; margin:0;" cellspacing="0"><tr><td rowspan="2" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:25%; vertical-align:middle;">Reading</td><td style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:37.5%;">1</td><td style="border:none; border-bottom:1px solid #000; width:37.5%; ${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'text-decoration:line-through; color:#999;' : ''}">2</td></tr><tr><td class="smear-reading-box" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000;">${p.smear1}</td><td class="smear-reading-box" style="border:none; border-bottom:1px solid #000; ${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'background:#f0f0f0;' : ''}">${(p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '')) ? 'N/A' : p.smear2}</td></tr><tr><td style="border:none; border-right:1px solid #000; font-size:8.5pt; vertical-align:middle;">Laboratory Diagnosis</td><td class="${p.dssmClass} diagnosis-text-large" colspan="2" style="border:none;">${p.dssmText}</td></tr></table></td></tr></table><div class="content-spacer"></div><div class="footer-section"><div class="sig-container"><div class="sig-block" style="text-align:left;"><div class="sig-label">Performed By:</div><div class="sig-visual-area" style="justify-content: flex-start;">${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}<div class="sig-name" style="text-align:left;">${performer.name || preparedByName}</div></div><div class="sig-info" style="text-align:left;">${performer.role}<br>Lic No. ${performer.license || "__________"}</div></div><div class="sig-block" style="text-align:right;"><div class="sig-label" style="text-align:right;">Noted By:</div><div class="sig-visual-area" style="justify-content: flex-end;"><div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div></div><div class="sig-info" style="font-weight:bold; text-transform:uppercase; text-align:right;">Municipal Health Officer</div></div></div><div style="margin-top:8px; font-size:8px;">Date and Time Released: <span class="line" style="width:200px;">${new Date().toLocaleString()}</span></div><div style="padding-top:2px; border-top:1px solid #ddd; text-align:center; margin-top:5px;"><div style="font-size:4px; color:#555; font-style:italic;">This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.<br>Any alteration to this document renders it invalid.</div></div><div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div></div></div>`;
+        const pageHtml = `<div class="page-container"><div class="header"><img src="${logos.left}" class="logo-side" onerror="this.style.display='none'"><div class="header-center"><img src="${logos.lab}" class="logo-lab" onerror="this.style.display='none'"> <h3 style="font-size:8px; margin:0;">REPUBLIC OF THE PHILIPPINES</h3><h3 style="font-size:8px; margin:0;">PROVINCE OF RIZAL</h3><h2 style="font-size:10px; margin:1px 0;">Municipality of ANGONO</h2><h1 style="font-size:14px; margin:1px 0;">Municipal Health Office</h1><p style="font-size:8px; margin:0;">P. Tolentino St. Brgy. San Isidro, Angono, Rizal</p></div><img src="${logos.right}" class="logo-side" onerror="this.style.display='none'"></div><div class="form-title">FORM 2A. LABORATORY REQUEST AND RESULT FORM</div><div class="content-spacer"></div><div class="section-bar">To be filled out by the requesting facility health care worker</div><table class="main-table"><tr><td width="60%">Name of Requesting Facility/Unit: <span class="line" style="width:200px;">${p.facility}</span></td><td width="40%">Date of Request: <span class="line" style="width:140px;">${p.dateRequest}</span></td></tr><tr><td>Facility Contact Information: <span class="line" style="width:220px;">&nbsp;</span></td><td>Requesting Physician: <span class="line" style="width:150px;">${p.physician}</span></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Patient's Full Name: <span class="line" style="width:300px; text-transform:uppercase;">${p.name}</span></span><span>Age: <span class="line" style="width:30px; text-align:center;">${p.age}</span></span><span>Sex: <span class="line" style="width:50px; text-align:center;">${p.sex}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; justify-content:space-between;"><span>Address: <span class="line" style="width:420px; font-size:9px;">${p.address}</span></span><span>Patient's Contact No.: <span class="line" style="width:120px;">${p.contact}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Reason for Examination:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(p.reason == 'Diagnosis' || (p.isDSSM && (p.smear1 || p.smear2) && p.reason !== 'Follow-up' && p.reason !== 'Baseline')) ? 'checked' : ''}> Diagnosis</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Baseline') ? 'checked' : ''}> Baseline</span><span class="chk-item"><input type="checkbox" ${(p.reason == 'Follow-up' || (p.isDSSM && !p.smear1 && !p.smear2 && p.reason !== 'Diagnosis' && p.reason !== 'Baseline')) ? 'checked' : ''}> Follow-up</span></div><span style="margin-left:auto;">TB Case No.: <span class="line" style="width:70px;">${p.tbCase || ''}</span></span></div></td></tr><tr><td colspan="2"><div style="display:flex; align-items:center;"><strong style="width:130px;">History of Treatment:</strong><div style="display:flex; gap:15px;"><span class="chk-item"><input type="checkbox" ${(p.reason !== 'Follow-up' && String(p.history).toUpperCase() == 'NEW') ? 'checked' : ''}> New</span><span class="chk-item"><input type="checkbox" ${(p.reason !== 'Follow-up' && (String(p.history).toUpperCase() == 'RETREATMENT' || String(p.history).toUpperCase() == 'RETREAT')) ? 'checked' : ''}> Retreatment</span></div><span style="margin-left:auto;">Month of Treatment: <span class="line" style="width:70px;">${p.monthTreat || ''}</span></span></div></td></tr><tr><td colspan="2" style="padding-top: 8px;"><div style="display:flex; align-items:flex-start;"><strong style="width:130px;">Test Requested:</strong><table style="width:100%; border:none; margin:0;"><tr><td style="border:none; padding:0; vertical-align:top; width:50%;"><div class="chk-item"><input type="checkbox" ${(p.isNAAT || (p.isGXP && !p.testName.includes("XDR"))) ? 'checked' : ''}> ${p.isNAAT ? 'NPOC-NAAT' : 'Xpert MTB/RIF Ultra'}</div><br><div class="chk-item"><input type="checkbox" ${(p.testName.includes("XDR")) ? 'checked' : ''}> Xpert MTB/XDR</div><br><div class="chk-item"><input type="checkbox"> Line Probe Assay</div></td><td style="border:none; padding:0; vertical-align:top; width:50%;"><div style="display: flex; justify-content: space-between;"><div><div class="chk-item"><input type="checkbox"> TB LAMP</div><br><div class="chk-item"><input type="checkbox"> Truenat MTB-RIF</div><br><div class="chk-item"><input type="checkbox" ${(p.isDSSM) ? 'checked' : ''}> Smear Microscopy</div></div><div><div class="chk-item"><input type="checkbox"> TB Culture</div><br><div class="chk-item"><input type="checkbox"> Phenotypic DST</div></div></div></td></tr></table></div></td></tr><tr><td colspan="2" class="pad-top-lg">Type of Specimen: <span class="line" style="width:200px; text-align:center;">Sputum</span></td></tr></table><table class="res-table-inner" style="margin-bottom:5px;"><tr style="background:#ccc;"><th width="20%">Specimen</th><th width="40%">Date Collected</th><th width="40%">Date Dispatched to Laboratory</th></tr><tr><td>1</td><td>${p.dateCollected}</td><td>${p.dateCollected}</td></tr><tr><td style="${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'text-decoration:line-through; color:#999;' : ''}">2</td><td>${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'N/A' : ''}</td><td>${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'N/A' : ''}</td></tr></table><div style="margin-bottom:15px;"><strong>Remarks:</strong><div style="border-bottom:1px solid #000; width:100%; height:18px; line-height:18px; font-weight:bold; font-size:9px; text-align:center;">${p.remarks}</div><div style="text-align:center; font-size:8px; font-style:italic;">(i.e. precollection details, existing medical conditions, medications...)</div></div><div style="border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 5px;"><div style="display:flex; justify-content:space-between; align-items:flex-end;"><div style="width: 50%;"><strong>Prepared By:</strong><span class="line" style="width:200px; text-align:center; text-transform:uppercase;">${preparedByName}</span></div><div style="width: 50%;"><strong>Designation:</strong><span class="line" style="width:200px;">&nbsp;</span></div></div><div style="font-size:8px; margin-left:100px;">Signature over Printed Name</div></div><div class="section-bar">To be filled out by the receiving Medical Technologist/Microscopist/Xpert Technician</div><table class="main-table"><tr><td width="60%" style="padding: 8px;">Name of Laboratory: <strong>ANGONO RTDL</strong></td><td width="40%" style="padding: 8px;"><div style="display:flex; justify-content:space-between;"><span>Date Specimen Received:</span><strong>${p.dateCollected}</strong></div></td></tr><tr><td colspan="2"><div style="display:flex; gap:10px; align-items: center; padding: 5px 0;"><span>Specimen Volume and Quality: <span class="line" style="width:150px;">${p.appearance || ''}</span></span><span class="chk-item"><input type="checkbox" checked> Accepted</span><span class="chk-item"><input type="checkbox"> Rejected, reason: <span class="line" style="width:100px;"></span></span></div></td></tr><tr><td colspan="2" style="padding-top:10px; padding-bottom:5px;"><div style="display:flex; justify-content:space-between;"><div>Laboratory Serial Number: <span class="line" style="width:180px; font-weight:bold;">${p.labSerialNumber}</span></div><div>Date Specimen Examined: <strong>${p.dateResult || p.dateExaminedStr || ''}</strong></div></div></td></tr></table><table class="res-table-inner"><tr style="background:#d9d9d9;"><th width="40%">DIAGNOSTIC TESTS</th><th width="60%">RESULTS</th></tr><tr><td style="text-align:left; padding-left:20px; height:50px; vertical-align:middle; width:40%;">${p.isNAAT ? 'NPOC-NAAT' : 'Xpert MTB/RIF Ultra'}</td><td class="${p.gxpClass}" style="font-weight:bold; font-size:9.5pt; vertical-align:middle; text-align:center; padding: 8px; line-height: 1.3;">${p.gxpText}</td></tr><tr><td style="padding:0; vertical-align:middle;"><div style="padding:10px;">Smear Microscopy</div></td><td style="padding:0;"><table style="width:100%; border:none; margin:0;" cellspacing="0"><tr><td rowspan="2" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:25%; vertical-align:middle;">Reading</td><td style="border:none; border-right:1px solid #000; border-bottom:1px solid #000; width:37.5%;">1</td><td style="border:none; border-bottom:1px solid #000; width:37.5%; ${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'text-decoration:line-through; color:#999;' : ''}">2</td></tr><tr><td class="smear-reading-box" style="border:none; border-right:1px solid #000; border-bottom:1px solid #000;">${p.smear1}</td><td class="smear-reading-box" style="border:none; border-bottom:1px solid #000; ${p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '') ? 'background:#f0f0f0;' : ''}">${(p.reason === 'Follow-up' && (!p.smear2 || p.smear2.trim() === '')) ? 'N/A' : p.smear2}</td></tr><tr><td style="border:none; border-right:1px solid #000; font-size:8.5pt; vertical-align:middle;">Laboratory Diagnosis</td><td class="${p.dssmClass} diagnosis-text-large" colspan="2" style="border:none;">${p.dssmText}</td></tr></table></td></tr></table><div class="content-spacer"></div><div class="footer-section"><div class="sig-container"><div class="sig-block" style="text-align:left;"><div class="sig-label">Performed By:</div><div class="sig-visual-area" style="justify-content: flex-start;">${performer.sigUrl ? `<img src="${performer.sigUrl}" class="esig-img" style="left:0; transform:none;">` : ""}<div class="sig-name" style="text-align:left;">${performer.name || preparedByName}</div></div><div class="sig-info" style="text-align:left;">${performer.role}<br>Lic No. ${performer.license || "__________"}</div></div><div class="sig-block" style="text-align:right;"><div class="sig-label" style="text-align:right;">Noted By:</div><div class="sig-visual-area" style="justify-content: flex-end;"><div class="sig-name" style="text-align:right;">RODOLFO S. NARCISO JR. MD</div></div><div class="sig-info" style="font-weight:bold; text-transform:uppercase; text-align:right;">Municipal Health Officer</div></div></div><div style="margin-top:8px; font-size:8px;">Date and Time Released: <span class="line" style="width:200px;">${new Date().toLocaleString()}</span></div><div style="padding-top:2px; border-top:1px solid #ddd; text-align:center; margin-top:5px;"><div style="font-size:4px; color:#555; font-style:italic;">This report is system generated by the Angono MHO Laboratory Information System.<br>Please note that these results are confidential and intended only for the use of the individual or entity to whom they are addressed.<br>Any alteration to this document renders it invalid.</div></div><div class="footer-red">"Angono Dream, Artist Paradise, Keep Moving"</div></div></div>`;
         const breakTag = (index < patientsArray.length - 1) ? '<div class="page-break"></div>' : ''; combinedHtml += pageHtml + breakTag;
     });
 

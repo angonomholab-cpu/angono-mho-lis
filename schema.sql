@@ -88,6 +88,20 @@ create index idx_lab_tests_name_trgm on lab_tests using gin (patient_name gin_tr
 create index idx_lab_tests_date on lab_tests (date desc);
 
 -- ------------------------------------------------------------
+-- PENDING SMS (Queue para sa Next Working Day / Scheduled SMS)
+-- ------------------------------------------------------------
+create table if not exists pending_sms (
+  id uuid primary key default gen_random_uuid(),
+  phone text not null,
+  message text not null,
+  send_at timestamptz not null,
+  status text default 'pending',     -- pending, sent, failed
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_pending_sms_status_send on pending_sms (status, send_at);
+
+-- ------------------------------------------------------------
 -- ROW LEVEL SECURITY
 -- ------------------------------------------------------------
 -- Paalala: hindi gumagamit ang app na ito ng Supabase Auth — sarili niyang
@@ -102,12 +116,14 @@ alter table staff enable row level security;
 alter table app_users enable row level security;
 alter table patients enable row level security;
 alter table lab_tests enable row level security;
+alter table pending_sms enable row level security;
 
 create policy "allow all - facilities" on facilities for all using (true) with check (true);
 create policy "allow all - staff" on staff for all using (true) with check (true);
 create policy "allow all - app_users" on app_users for all using (true) with check (true);
 create policy "allow all - patients" on patients for all using (true) with check (true);
 create policy "allow all - lab_tests" on lab_tests for all using (true) with check (true);
+create policy "allow all - pending_sms" on pending_sms for all using (true) with check (true);
 
 -- ------------------------------------------------------------
 -- OPTIONAL: unang admin account (para makapag-login ka agad)
@@ -115,3 +131,4 @@ create policy "allow all - lab_tests" on lab_tests for all using (true) with che
 -- ------------------------------------------------------------
 -- insert into app_users (username, password, full_name, role, facility, status)
 -- values ('admin', 'PALITAN_MO_ITO', 'Administrator', 'ADMIN', 'ALL', 'ACTIVE');
+

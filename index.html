@@ -595,6 +595,8 @@
                                     <div class="vertical-test-list" id="test-buttons-container">
                                         <div class="test-btn-vert" onclick="openTestDetails('mtb')" id="btn-mtb"><i
                                                 class="ph ph-virus"></i><span>GeneXpert MTB</span></div>
+                                        <div class="test-btn-vert" onclick="openTestDetails('naat')" id="btn-naat"><i
+                                                class="ph ph-dna"></i><span>NPOC-NAAT</span></div>
                                         <div class="test-btn-vert" onclick="openTestDetails('dssm')" id="btn-dssm"><i
                                                 class="ph ph-microscope"></i><span>DSSM / AFB</span></div>
                                         <div class="test-btn-vert" onclick="toggleSimple('viral')" id="btn-viral"><i
@@ -786,6 +788,7 @@
                                 <div id="registry-tabs" class="chip-group" style="flex-wrap: nowrap; gap: 4px;">
                                     <button class="chip reg-tab-btn" onclick="openRegistryTab('GXP')" data-tab="GXP">GXP
                                         MTB</button>
+                                    <button class="chip reg-tab-btn" onclick="openRegistryTab('NAAT')" data-tab="NAAT">NPOC-NAAT</button>
                                     <button class="chip reg-tab-btn" onclick="openRegistryTab('DSSM')"
                                         data-tab="DSSM">DSSM</button>
                                     <button class="chip reg-tab-btn" onclick="openRegistryTab('GXVL')"
@@ -1784,6 +1787,10 @@
                                             type="checkbox" class="test-toggle" data-test="GXP"
                                             onchange="saveTestToggles()">
                                         <span class="slider"></span></label></div>
+                                <div class="switch-row"><span>NPOC-NAAT</span> <label class="switch"><input
+                                            type="checkbox" class="test-toggle" data-test="NAAT"
+                                            onchange="saveTestToggles()">
+                                        <span class="slider"></span></label></div>
                                 <div class="switch-row"><span>DSSM / AFB</span> <label class="switch"><input
                                             type="checkbox" class="test-toggle" data-test="DSSM"
                                             onchange="saveTestToggles()"> <span class="slider"></span></label></div>
@@ -1996,6 +2003,16 @@
                                             placeholder="09123456789">
                                         <button class="btn btn-secondary" onclick="testSendSms()"><i
                                                 class="ph ph-paper-plane-tilt"></i> Test</button>
+                                    </div>
+                                </div>
+                                <div class="field-group" style="margin-top:8px; padding:10px; background:var(--bg-subtle); border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                                    <label class="field-label" style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span><i class="ph ph-clock-countdown"></i> Scheduled SMS Queue</span>
+                                        <span id="sms-queue-count" style="font-size:0.75rem; font-weight:bold; color:var(--pri);">Checking...</span>
+                                    </label>
+                                    <div style="display:flex; gap:8px; margin-top:6px;">
+                                        <button type="button" class="btn btn-secondary text-xs" style="flex:1;" onclick="checkSmsQueueStatus()"><i class="ph ph-arrows-clockwise"></i> Check Queue</button>
+                                        <button type="button" class="btn btn-primary text-xs" style="flex:1;" onclick="checkAndSendPendingSMS(true)"><i class="ph ph-paper-plane-right"></i> Send Due SMS Now</button>
                                     </div>
                                 </div>
                                 <div
@@ -2669,7 +2686,7 @@
 
         function applyTestToggles() {
             let prefs = JSON.parse(localStorage.getItem('mho-test-prefs') || "{}");
-            const mapping = { "GXP": { entry: "btn-mtb", reg: "GXP" }, "DSSM": { entry: "btn-dssm", reg: "DSSM" }, "GXVL": { entry: "btn-viral", reg: "GXVL" }, "SERO": { entry: "btn-sero", reg: "SERO" }, "HEMA": { entry: "btn-hema", reg: "HEMA" }, "CHEM": { entry: "btn-chem", reg: "CHEM" }, "UA": { entry: "btn-uria", reg: "UA" }, "FA": { entry: "btn-feca", reg: "FA" }, "DENGUE": { entry: "btn-dengue", reg: "DENGUE" }, "GRAM": { entry: "btn-gram", reg: "GRAM" } };
+            const mapping = { "GXP": { entry: "btn-mtb", reg: "GXP" }, "NAAT": { entry: "btn-naat", reg: "NAAT" }, "DSSM": { entry: "btn-dssm", reg: "DSSM" }, "GXVL": { entry: "btn-viral", reg: "GXVL" }, "SERO": { entry: "btn-sero", reg: "SERO" }, "HEMA": { entry: "btn-hema", reg: "HEMA" }, "CHEM": { entry: "btn-chem", reg: "CHEM" }, "UA": { entry: "btn-uria", reg: "UA" }, "FA": { entry: "btn-feca", reg: "FA" }, "DENGUE": { entry: "btn-dengue", reg: "DENGUE" }, "GRAM": { entry: "btn-gram", reg: "GRAM" } };
 
             Object.keys(mapping).forEach(key => {
                 let isEnabled = prefs[key] !== false;
