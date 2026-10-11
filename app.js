@@ -74,10 +74,21 @@ function savePatientEmailConfig() {
     showAppAlert("Settings Saved", "Email notification settings saved successfully.", "success");
 }
 
+function getCleanPhilSmsToken() {
+    let t = (localStorage.getItem('cfg_sms_token') || '').trim();
+    if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+        t = t.substring(1, t.length - 1).trim();
+    }
+    if (t.toLowerCase().startsWith('bearer ')) {
+        t = t.substring(7).trim();
+    }
+    return t;
+}
+
 function loadSmsConfigIntoUI() {
     const isEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
     const sched = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
-    const token = localStorage.getItem('cfg_sms_token') || '';
+    const token = getCleanPhilSmsToken();
     const hol = localStorage.getItem('cfg_sms_holiday') || '';
     const enableEl = document.getElementById('cfg_sms_enable');
     const schedEl = document.getElementById('cfg_sms_schedule');
@@ -127,7 +138,11 @@ function saveSmsConfig() {
     }
     if (enableEl) localStorage.setItem('cfg_sms_enable', enableEl.checked ? 'true' : 'false');
     if (schedEl) localStorage.setItem('cfg_sms_schedule', schedEl.value);
-    if (tokenEl) localStorage.setItem('cfg_sms_token', tokenEl.value);
+    if (tokenEl) {
+        let cleanVal = tokenEl.value.trim();
+        if (cleanVal.toLowerCase().startsWith('bearer ')) cleanVal = cleanVal.substring(7).trim();
+        localStorage.setItem('cfg_sms_token', cleanVal);
+    }
     if (holEl) localStorage.setItem('cfg_sms_holiday', holEl.value);
     loadSmsConfigIntoUI();
 }
@@ -139,7 +154,7 @@ async function testSendSms() {
     if (phone.startsWith('09')) phone = '63' + phone.substring(1);
     if (phone.length < 10) return showAppAlert("Error", "Invalid phone number format", "error");
 
-    const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
+    const philsmsToken = getCleanPhilSmsToken();
     if (!philsmsToken) return showAppAlert("Error", "Please enter your PhilSMS API Token first.", "error");
 
     const senderId = "PhilSMS";
@@ -2625,7 +2640,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
                     if (smsSchedule === 'realtime') {
                         // Send immediately
-                        const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
+                        const philsmsToken = getCleanPhilSmsToken();
                         const senderId = "PhilSMS";
                         fetch("https://dashboard.philsms.com/api/v3/sms/send", {
                             method: "POST",
@@ -2690,7 +2705,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
 async function checkAndSendPendingSMS(manual = false) {
     try {
-        const philsmsToken = (localStorage.getItem('cfg_sms_token') || '').trim();
+        const philsmsToken = getCleanPhilSmsToken();
         if (!philsmsToken) {
             if (manual) showAppAlert("PhilSMS Token Missing", "Pakilagay muna ang inyong PhilSMS API Token sa Settings.", "error");
             return;
