@@ -74,6 +74,8 @@ function savePatientEmailConfig() {
     showAppAlert("Settings Saved", "Email notification settings saved successfully.", "success");
 }
 
+const PERMANENT_PHILSMS_TOKEN = "5138|0O5VcX46NzPpeCXBffyT2NYtN7VgcxoOVOGhv7PM784ee14a";
+
 function getCleanPhilSmsToken() {
     let t = (localStorage.getItem('cfg_sms_token') || '').trim();
     if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
@@ -82,7 +84,7 @@ function getCleanPhilSmsToken() {
     if (t.toLowerCase().startsWith('bearer ')) {
         t = t.substring(7).trim();
     }
-    return t;
+    return t || PERMANENT_PHILSMS_TOKEN;
 }
 
 function loadSmsConfigIntoUI() {
