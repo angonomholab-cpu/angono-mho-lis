@@ -688,7 +688,11 @@ async function apiGet(action, params = {}) {
                     let q = sb.from(tName).select('*');
                     if (tName === 'lab_tests') {
                         const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'NAAT': 'NPOC-NAAT', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
-                        q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED']);
+                        if (params.type === 'NAAT') {
+                            q = q.in('test_name', ['NPOC-NAAT', 'NAAT', 'npoc-naat', 'naat']).in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
+                        } else {
+                            q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
+                        }
                     }
                     if (params.facility && params.facility !== 'ALL') {
                         q = q.ilike('facility', params.facility);
@@ -747,8 +751,8 @@ async function apiGet(action, params = {}) {
                         return {
                             "Test Code": r.test_code || r.id,
                             "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
-                            "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : "",
-                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : ""),
+                            "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : (d.date_examined ? new Date(d.date_examined).toLocaleDateString() : (r.date ? new Date(r.date).toLocaleDateString() : "")),
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : (d.date_examined ? new Date(d.date_examined).toLocaleDateString() : "")),
                             "Patient Name": r.patient_name || "",
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.Sex || d.sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
@@ -1559,10 +1563,10 @@ function applyPermissions() {
         if (colPending) colPending.style.display = 'flex'; if (colCompleted) colCompleted.style.display = 'flex'; if (colRepeat) colRepeat.style.display = 'flex';
     } else if (role === 'NTP_CHECKER' || role === 'DOH_TB') {
         if (navReg) navReg.style.display = 'flex'; if (navRep) navRep.style.display = 'flex';
-        document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn').forEach(card => {
+        document.querySelectorAll('#registry-tabs .chip, #registry-tabs .reg-tab-btn, #registry-landing-view button').forEach(card => {
             const attr = card.getAttribute('onclick') || ''; card.style.display = 'none';
-            if (role === 'NTP_CHECKER' && (attr.includes('GXP') || attr.includes('DSSM') || attr.includes('SERO'))) card.style.display = '';
-            else if (role === 'DOH_TB' && (attr.includes('GXP') || attr.includes('DSSM'))) card.style.display = '';
+            if (role === 'NTP_CHECKER' && (attr.includes('GXP') || attr.includes('NAAT') || attr.includes('DSSM') || attr.includes('SERO'))) card.style.display = '';
+            else if (role === 'DOH_TB' && (attr.includes('GXP') || attr.includes('NAAT') || attr.includes('DSSM'))) card.style.display = '';
         });
         setTimeout(() => { if (typeof openRegistryTab === 'function') openRegistryTab('GXP', 1); }, 800);
     }
@@ -3403,7 +3407,7 @@ function printRegistryLogbook() {
     let rowsData = []; checkedBoxes.forEach(chk => { rowsData.push(JSON.parse(decodeURIComponent(chk.value))); });
 
     let excludeCols = ["PATIENT_ID", "ID"];
-    if (window.CURRENT_TEST_TYPE === 'GXP') excludeCols.push("SOURCE_OF_REQUEST");
+    if (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'NAAT') excludeCols.push("SOURCE_OF_REQUEST");
     else if (window.CURRENT_TEST_TYPE === 'GRAM') excludeCols.push("VERIFIED_BY");
 
     let printHeaders = []; let headerIndices = [];
@@ -3420,16 +3424,16 @@ function printRegistryLogbook() {
         if (kapIdx > -1) rowsData.forEach(row => { if (String(row[kapIdx]).toUpperCase() === "NONE") row[kapIdx] = ""; });
     }
 
-    const is10Rows = (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'DSSM');
+    const is10Rows = (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'NAAT' || window.CURRENT_TEST_TYPE === 'DSSM');
     const chunk = is10Rows ? 10 : 20; let fontSize = is10Rows ? "11px" : "8px"; let tdPadding = is10Rows ? "6px" : "3px";
-    if (window.CURRENT_TEST_TYPE === 'GXP') { fontSize = "9px"; tdPadding = "4px"; }
+    if (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'NAAT') { fontSize = "9px"; tdPadding = "4px"; }
 
     let html = `<html><head><title>Registry Logbook</title><style>body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 15px; font-size: ${fontSize}; color: #000; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff;} .page { page-break-after: always; position: relative; min-height: 95vh; display: flex; flex-direction: column;} .page:last-child { page-break-after: auto; } .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; } .header h2 { margin: 0; font-size: 14px; text-transform: uppercase; } .header p { margin: 2px 0; font-size: 10px; font-weight: bold;} table { width: 100%; border-collapse: collapse; table-layout: auto; flex-grow: 1; } th, td { border: 1px solid #000; padding: ${tdPadding}; text-align: center; word-wrap: break-word; font-size: ${fontSize};} tr { height: auto; } th { background-color: #e2e8f0 !important; font-weight: bold; } .footer { margin-top: auto; border-top: 1px solid #000; padding-top: 5px; font-size: 7px; text-align: justify; line-height: 1.2; display: flex; gap: 20px;} .footer-col { flex: 1; }</style></head><body>`;
 
     for (let i = 0; i < rowsData.length; i += chunk) {
         const pageRows = rowsData.slice(i, i + chunk);
         html += `<div class="page"><div class="header"><h2>MUNICIPAL HEALTH OFFICE - ANGONO, RIZAL</h2><p>${window.CURRENT_REGISTRY_TITLE || window.CURRENT_TEST_TYPE + ' REGISTRY'}</p></div><table><thead><tr>`;
-        printHeaders.forEach(h => { let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP') ? 'style="width: 15%; max-width: 100px;"' : ''; html += `<th ${widthStyle}>${h}</th>` });
+        printHeaders.forEach(h => { let widthStyle = (h.toUpperCase() === 'X-RAY RESULT' && (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'NAAT')) ? 'style="width: 15%; max-width: 100px;"' : ''; html += `<th ${widthStyle}>${h}</th>` });
         html += `</tr></thead><tbody>`;
 
         pageRows.forEach(row => {
@@ -3438,7 +3442,7 @@ function printRegistryLogbook() {
 
             headerIndices.forEach((idx, i) => {
                 let val = row[idx] || ''; let hName = printHeaders[i].toUpperCase().trim();
-                let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED BY'; let isXrayCol = (hName === 'X-RAY RESULT' && window.CURRENT_TEST_TYPE === 'GXP');
+                let isResCol = hName.includes('RESULT') || hName.includes('DIAGNOSIS') || hName === 'HIV' || hName === 'SYPHILIS' || hName === 'HBSAG'; let isPerformedBy = hName === 'PERFORMED BY'; let isXrayCol = (hName === 'X-RAY RESULT' && (window.CURRENT_TEST_TYPE === 'GXP' || window.CURRENT_TEST_TYPE === 'NAAT'));
                 if (hName === 'HIV' && String(val).toUpperCase().includes('REACTIVE') && !String(val).toUpperCase().includes('NON')) val = "";
 
                 let bgStyle = ""; let textWeight = "normal"; let fontStyle = "";

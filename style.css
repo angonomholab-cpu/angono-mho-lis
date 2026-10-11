@@ -2420,6 +2420,11 @@ body.dark-mode .workspace-header {
     filter: grayscale(1);
 }
 
+.reg-tab-btn.disabled-test,
+#registry-landing-view button.disabled-test {
+    display: none !important;
+}
+
 /* Categorized Diagnostic Icon Accents */
 #btn-mtb i {
     color: var(--pri);

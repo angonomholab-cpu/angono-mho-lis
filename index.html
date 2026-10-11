@@ -751,10 +751,12 @@
                                     class="ph ph-books"></i> Select Registry</h2>
                             <div
                                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; width: 100%; max-width: 800px; justify-content: center;">
-                                <button class="btn btn-secondary" onclick="openRegistryTab('GXP')"
+                                <button class="btn btn-secondary reg-tab-btn" onclick="openRegistryTab('GXP')"
                                     style="height:80px; font-size:1.1rem; font-weight:bold;">GXP
                                     MTB</button>
-                                <button class="btn btn-secondary" onclick="openRegistryTab('DSSM')"
+                                <button class="btn btn-secondary reg-tab-btn" onclick="openRegistryTab('NAAT')"
+                                    style="height:80px; font-size:1.1rem; font-weight:bold;">NPOC-NAAT</button>
+                                <button class="btn btn-secondary reg-tab-btn" onclick="openRegistryTab('DSSM')"
                                     style="height:80px; font-size:1.1rem; font-weight:bold;">DSSM</button>
                                 <button class="btn btn-secondary" onclick="openRegistryTab('GXVL')"
                                     style="height:80px; font-size:1.1rem; font-weight:bold;">Viral
@@ -2694,10 +2696,16 @@
                 let entryBtn = document.getElementById(m.entry);
                 if (entryBtn) { if (isEnabled) entryBtn.classList.remove('disabled-test'); else entryBtn.classList.add('disabled-test'); }
 
-                document.querySelectorAll('#registry-tabs .reg-tab-btn').forEach(card => {
+                document.querySelectorAll('#registry-tabs .reg-tab-btn, #registry-landing-view button').forEach(card => {
                     let onclickAttr = card.getAttribute('onclick') || "";
                     if (onclickAttr.includes(`'${m.reg}'`) || onclickAttr.includes(`"${m.reg}"`)) {
-                        if (isEnabled) card.classList.remove('disabled-test'); else card.classList.add('disabled-test');
+                        if (isEnabled) {
+                            card.classList.remove('disabled-test');
+                            card.style.display = '';
+                        } else {
+                            card.classList.add('disabled-test');
+                            card.style.display = 'none';
+                        }
                     }
                 });
             });
