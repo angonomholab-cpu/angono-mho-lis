@@ -2977,13 +2977,22 @@ window.sendDueOrAllPendingSMS = async function(forceAll = false) {
 window.syncTodayUnsentResultsToQueue = async function() {
     try {
         const todayStr = new Date().toISOString().split('T')[0];
-        // Query today's lab tests that are encoded/completed
-        const { data: tests, error } = await sb.from('lab_tests')
+        // Query tests examined or registered today that are encoded/completed
+        const { data: rawTests, error } = await sb.from('lab_tests')
             .select('*')
             .in('status', ['ENCODED', 'COMPLETED'])
-            .gte('created_at', todayStr + 'T00:00:00Z');
+            .order('created_at', { ascending: false })
+            .limit(150);
 
         if (error) throw error;
+        // Filter tests that were examined today or created today
+        const tests = (rawTests || []).filter(t => {
+            const examinedStr = String(t.date_examined || "");
+            const detailsStr = typeof t.details === 'string' ? t.details : JSON.stringify(t.details || {});
+            const createdStr = String(t.created_at || "");
+            return examinedStr.startsWith(todayStr) || detailsStr.includes(todayStr) || createdStr.startsWith(todayStr);
+        });
+
         if (!tests || tests.length === 0) {
             return showAppAlert("Info", "Walang nahanap na encoded tests ngayong araw.", "info");
         }
