@@ -116,12 +116,37 @@ function loadSmsConfigIntoUI() {
     if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
 }
 
+window.switchCompletedSubTab = function(tab) {
+    const btnResults = document.getElementById('tab-btn-completed-results');
+    const btnSms = document.getElementById('tab-btn-completed-sms');
+    const listResults = document.getElementById('list-completed');
+    const listSms = document.getElementById('list-completed-sms');
+    const actions = document.getElementById('completed-sms-quick-actions');
+
+    if (tab === 'sms') {
+        if (btnResults) btnResults.classList.remove('active');
+        if (btnSms) btnSms.classList.add('active');
+        if (listResults) listResults.style.display = 'none';
+        if (listSms) listSms.style.display = 'flex';
+        if (actions) actions.style.display = 'flex';
+        checkSmsQueueStatus();
+    } else {
+        if (btnSms) btnSms.classList.remove('active');
+        if (btnResults) btnResults.classList.add('active');
+        if (listSms) listSms.style.display = 'none';
+        if (listResults) listResults.style.display = 'block';
+        if (actions) actions.style.display = 'none';
+    }
+};
+
 window.checkSmsQueueStatus = async function() {
     const queueEl = document.getElementById('sms-queue-count');
     const listEl = document.getElementById('sms-queue-list');
-    if (!queueEl) return;
+    const listCompletedSms = document.getElementById('list-completed-sms');
+    const completedSmsBadge = document.getElementById('count-completed-sms');
+
     try {
-        queueEl.innerText = "Checking...";
+        if (queueEl) queueEl.innerText = "Checking...";
         const { data: queueItems, error } = await sb.from('pending_sms')
             .select('*')
             .order('send_at', { ascending: true })
@@ -129,65 +154,74 @@ window.checkSmsQueueStatus = async function() {
 
         if (error) {
             console.warn("pending_sms table check error:", error);
-            queueEl.innerHTML = `<span style="color:var(--danger); cursor:pointer;" title="${error.message}">⚠️ Error loading queue</span>`;
+            if (queueEl) queueEl.innerHTML = `<span style="color:var(--danger); cursor:pointer;" title="${error.message}">⚠️ Error loading queue</span>`;
             if (listEl) listEl.innerHTML = `<div class="text-xs text-muted" style="padding:10px; text-align:center;">Error: ${error.message}</div>`;
+            if (listCompletedSms) listCompletedSms.innerHTML = `<div class="text-xs text-muted" style="padding:10px; text-align:center;">Error: ${error.message}</div>`;
             return;
         }
 
         const pendingItems = (queueItems || []).filter(item => item.status === 'pending');
         const count = pendingItems.length;
-        queueEl.innerHTML = `<span style="color:${count > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--success)'}; font-weight:700;">${count} messages pending</span>`;
+        if (queueEl) queueEl.innerHTML = `<span style="color:${count > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--success)'}; font-weight:700;">${count} messages pending</span>`;
+        if (completedSmsBadge) completedSmsBadge.innerText = count;
 
-        if (listEl) {
-            if (!queueItems || queueItems.length === 0) {
-                listEl.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.75rem; background:var(--bg-main); border-radius:var(--radius-sm); border:1px dashed var(--border-color);"><i class="ph ph-chat-teardrop-slash" style="font-size:1.4rem; display:block; margin-bottom:4px; opacity:0.6;"></i>Walang nakapilang SMS sa queue sa kasalukuyan.</div>`;
-            } else {
-                listEl.innerHTML = queueItems.map(item => {
-                    const isPending = item.status === 'pending';
-                    const sendDate = new Date(item.send_at);
-                    const now = new Date();
-                    const isOverdue = isPending && sendDate <= now;
-                    const dateFormatted = sendDate.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+        const cardsHtml = (!queueItems || queueItems.length === 0)
+            ? `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.75rem; background:var(--bg-main); border-radius:var(--radius-sm); border:1px dashed var(--border-color);"><i class="ph ph-chat-teardrop-slash" style="font-size:1.4rem; display:block; margin-bottom:4px; opacity:0.6;"></i>Walang nakapilang SMS sa queue sa kasalukuyan.</div>`
+            : queueItems.map(item => {
+                const isPending = item.status === 'pending';
+                const sendDate = new Date(item.send_at);
+                const now = new Date();
+                const isOverdue = isPending && sendDate <= now;
+                const dateFormatted = sendDate.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 
-                    return `
-                    <div style="background:var(--bg-main); border:1px solid ${isPending ? (isOverdue ? '#f59e0b' : 'var(--border-color)') : 'var(--border-color)'}; border-radius:var(--radius-sm); padding:8px 10px; font-size:0.75rem; display:flex; flex-direction:column; gap:4px; opacity:${isPending ? '1' : '0.75'};">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                            <span style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:5px;">
-                                <i class="ph ph-phone" style="color:var(--pri);"></i> ${item.phone}
+                return `
+                <div style="background:var(--bg-main); border:1px solid ${isPending ? (isOverdue ? '#f59e0b' : 'var(--border-color)') : 'var(--border-color)'}; border-radius:var(--radius-sm); padding:8px 10px; font-size:0.75rem; display:flex; flex-direction:column; gap:4px; opacity:${isPending ? '1' : '0.75'};">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                        <span style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:5px;">
+                            <i class="ph ph-phone" style="color:var(--pri);"></i> ${item.phone}
+                        </span>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <span class="badge ${isPending ? (isOverdue ? 'badge-warning' : 'badge-neutral') : 'badge-success'}" style="font-size:0.65rem; padding:1px 6px;">
+                                ${isPending ? (isOverdue ? 'DUE NOW' : 'SCHEDULED') : 'SENT'}
                             </span>
-                            <div style="display:flex; gap:5px; align-items:center;">
-                                <span class="badge ${isPending ? (isOverdue ? 'badge-warning' : 'badge-neutral') : 'badge-success'}" style="font-size:0.65rem; padding:1px 6px;">
-                                    ${isPending ? (isOverdue ? 'DUE NOW' : 'SCHEDULED') : 'SENT'}
-                                </span>
-                                <span style="color:var(--text-muted); font-size:0.7rem;">
-                                    <i class="ph ph-clock"></i> ${dateFormatted}
-                                </span>
-                            </div>
+                            <span style="color:var(--text-muted); font-size:0.7rem;">
+                                <i class="ph ph-clock"></i> ${dateFormatted}
+                            </span>
                         </div>
-                        <div style="background:var(--bg-subtle); padding:6px 8px; border-radius:4px; color:var(--text-main); font-size:0.72rem; line-height:1.35; border-left:3px solid ${isPending ? 'var(--pri)' : 'var(--success)'}; word-break:break-word;">
-                            ${item.message}
-                        </div>
-                        <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
-                            ${isPending ? `
-                                <button type="button" class="btn btn-primary text-xs" style="padding:2px 8px; font-size:0.7rem;" onclick="sendSinglePendingSMS('${item.id}', this)" title="Ipadala agad ito ngayon">
-                                    <i class="ph ph-paper-plane-tilt"></i> Send Now
-                                </button>
-                                <button type="button" class="btn btn-icon text-xs" style="padding:2px 6px; color:var(--danger);" onclick="deletePendingSMS('${item.id}')" title="Alisin sa queue">
-                                    <i class="ph ph-trash"></i>
-                                </button>
-                            ` : `
-                                <button type="button" class="btn btn-icon text-xs" style="padding:2px 6px; color:var(--text-muted);" onclick="deletePendingSMS('${item.id}')" title="Burahin sa listahan">
-                                    <i class="ph ph-trash"></i>
-                                </button>
-                            `}
-                        </div>
-                    </div>`;
-                }).join('');
-            }
+                    </div>
+                    <div style="background:var(--bg-subtle); padding:6px 8px; border-radius:4px; color:var(--text-main); font-size:0.72rem; line-height:1.35; border-left:3px solid ${isPending ? 'var(--pri)' : 'var(--success)'}; word-break:break-word;">
+                        ${item.message}
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
+                        ${isPending ? `
+                            <button type="button" class="btn btn-primary text-xs" style="padding:2px 8px; font-size:0.7rem;" onclick="sendSinglePendingSMS('${item.id}', this)" title="Ipadala agad ito ngayon">
+                                <i class="ph ph-paper-plane-tilt"></i> Send Now
+                            </button>
+                            <button type="button" class="btn btn-icon text-xs" style="padding:2px 6px; color:var(--danger);" onclick="deletePendingSMS('${item.id}')" title="Alisin sa queue">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        ` : `
+                            <button type="button" class="btn btn-icon text-xs" style="padding:2px 6px; color:var(--text-muted);" onclick="deletePendingSMS('${item.id}')" title="Burahin sa listahan">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        `}
+                    </div>
+                </div>`;
+            }).join('');
+
+        if (listEl) listEl.innerHTML = cardsHtml;
+        if (listCompletedSms) {
+            listCompletedSms.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.72rem; color:var(--text-muted); padding:0 2px;">
+                <span><strong>${count}</strong> nakapilang text (para bukas 9:00 AM)</span>
+                <button type="button" class="btn btn-ghost text-xs" style="padding:2px 6px; font-size:0.7rem; color:var(--pri); text-decoration:underline;" onclick="syncTodayUnsentResultsToQueue()"><i class="ph ph-arrow-counter-clockwise"></i> Re-check Examined Today</button>
+            </div>
+            ` + cardsHtml;
         }
     } catch (err) {
-        queueEl.innerHTML = `<span style="color:var(--danger);">Error checking</span>`;
+        if (queueEl) queueEl.innerHTML = `<span style="color:var(--danger);">Error checking</span>`;
         if (listEl) listEl.innerHTML = `<div class="text-xs text-muted" style="padding:10px; text-align:center;">Error: ${err.message}</div>`;
+        if (listCompletedSms) listCompletedSms.innerHTML = `<div class="text-xs text-muted" style="padding:10px; text-align:center;">Error: ${err.message}</div>`;
     }
 };
 
@@ -2581,6 +2615,7 @@ function renderLists() {
 
     const cPend = document.getElementById('count-pending'); if (cPend) cPend.innerText = `(${fPending.length})`;
     const mwnPend = document.getElementById('mwn-badge-pending'); if (mwnPend) mwnPend.innerText = fPending.length;
+    const cComp = document.getElementById('count-completed'); if (cComp) cComp.innerText = `(${fComp.length})`;
 }
 
 async function saveResult(id, safeId, btn) {
@@ -2977,24 +3012,29 @@ window.sendDueOrAllPendingSMS = async function(forceAll = false) {
 window.syncTodayUnsentResultsToQueue = async function() {
     try {
         const todayStr = new Date().toISOString().split('T')[0];
-        // Query tests examined or registered today that are encoded/completed
+        // Query tests encoded or completed
         const { data: rawTests, error } = await sb.from('lab_tests')
             .select('*')
             .in('status', ['ENCODED', 'COMPLETED'])
             .order('created_at', { ascending: false })
-            .limit(150);
+            .limit(200);
 
         if (error) throw error;
-        // Filter tests that were examined today or created today
+
+        // STRICT: filter tests where date_examined (EXAMINED TODAY) is today, NOT registry created_at!
         const tests = (rawTests || []).filter(t => {
             const examinedStr = String(t.date_examined || "");
-            const detailsStr = typeof t.details === 'string' ? t.details : JSON.stringify(t.details || {});
-            const createdStr = String(t.created_at || "");
-            return examinedStr.startsWith(todayStr) || detailsStr.includes(todayStr) || createdStr.startsWith(todayStr);
+            let detailsExamined = "";
+            try {
+                const d = typeof t.details === 'string' ? JSON.parse(t.details) : (t.details || {});
+                detailsExamined = String(d.date_examined || "");
+            } catch (e) { }
+
+            return examinedStr.startsWith(todayStr) || detailsExamined.startsWith(todayStr);
         });
 
         if (!tests || tests.length === 0) {
-            return showAppAlert("Info", "Walang nahanap na encoded tests ngayong araw.", "info");
+            return showAppAlert("Info", "Walang nahanap na tests na na-examine ngayong araw (" + todayStr + ").", "info");
         }
 
         // Fetch current queue to avoid duplicate phone & test
@@ -3013,6 +3053,12 @@ window.syncTodayUnsentResultsToQueue = async function() {
             if (tCode === 'NAAT') {
                 const isNeg = (resCode === 'N' || resCode.includes('NOT DETECTED') || resCode.includes('NEG'));
                 if (!isNeg) continue;
+            }
+
+            // DSSM skip positive (only text negative)
+            if (tCode === 'DSSM') {
+                const dssmDiag = String(dObj.Diagnosis || dObj.diagnosis || resCode || "").toUpperCase();
+                if (dssmDiag.includes('POS')) continue;
             }
 
             // Get patient info
@@ -3053,7 +3099,7 @@ window.syncTodayUnsentResultsToQueue = async function() {
             queuedCount++;
         }
 
-        showAppAlert("Sync Complete", queuedCount > 0 ? `Na-queue ang ${queuedCount} bagong SMS para sa mga result ngayong araw!` : "Lahat ng eligible results ngayong araw ay nasa queue na.", "success");
+        showAppAlert("Sync Complete", queuedCount > 0 ? `Na-queue ang ${queuedCount} bagong SMS para sa mga result na na-examine ngayong araw!` : "Lahat ng eligible results na na-examine ngayong araw ay nasa queue na.", "success");
         checkSmsQueueStatus();
     } catch (e) {
         showAppAlert("Sync Error", e.message || "Failed to sync today's results.", "error");

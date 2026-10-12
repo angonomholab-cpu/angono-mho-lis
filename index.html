@@ -652,10 +652,26 @@
                                     style="padding-top: 10px; background: var(--bg-subtle);"></div>
                             </div>
                             <div class="workspace-col" id="col-completed">
-                                <div class="workspace-header">
-                                    <h2><i class="ph ph-check-circle"></i> Completed</h2>
+                                <div class="workspace-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <div class="compact-toggle" style="margin:0; background:var(--bg-subtle); padding:2px; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; gap:2px;">
+                                            <button type="button" class="toggle-btn active" id="tab-btn-completed-results" onclick="switchCompletedSubTab('results')" style="font-size:0.75rem; padding:4px 10px; border-radius:4px; font-weight:600;">
+                                                <i class="ph ph-check-circle"></i> Completed <span id="count-completed" style="margin-left:2px;">(0)</span>
+                                            </button>
+                                            <button type="button" class="toggle-btn" id="tab-btn-completed-sms" onclick="switchCompletedSubTab('sms')" style="font-size:0.75rem; padding:4px 10px; border-radius:4px; font-weight:600;">
+                                                <i class="ph ph-chat-teardrop-dots"></i> Pending SMS <span id="count-completed-sms" class="badge" style="margin-left:4px; font-size:0.65rem; background:var(--pri); color:white; padding:1px 6px; border-radius:10px;">0</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="completed-sms-quick-actions" style="display:none; gap:6px; align-items:center;">
+                                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="checkSmsQueueStatus()" title="Refresh Queue"><i class="ph ph-arrows-clockwise"></i></button>
+                                        <button type="button" class="btn btn-primary text-xs" style="padding:4px 10px;" onclick="sendDueOrAllPendingSMS(true)" title="Ipadala na agad lahat ng nakapilang SMS ngayon"><i class="ph ph-paper-plane-right"></i> Send All</button>
+                                    </div>
                                 </div>
                                 <div id="list-completed" class="patient-list"></div>
+                                <div id="list-completed-sms" class="patient-list" style="display:none; padding:10px; flex-direction:column; gap:8px; overflow-y:auto;">
+                                    <div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.75rem;"><i class="ph ph-spinner ph-spin"></i> Kinakarga ang queue...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2652,7 +2668,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=41"></script>
+    <script src="app.js?v=42"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
