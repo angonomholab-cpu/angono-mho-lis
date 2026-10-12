@@ -2538,8 +2538,9 @@ async function saveResult(id, safeId, btn) {
 
             let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || newResults["Repeat"] || newResults["Test Type"] || "").toUpperCase();
             let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
+            const resCode = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat, resCode);
 
             await loadPendingData();
         }
@@ -2564,8 +2565,9 @@ async function saveAndPrintResult(id, safeId, btn) {
 
             let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || newResults["Repeat"] || newResults["Test Type"] || "").toUpperCase();
             let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
+            const resCode = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat, resCode);
 
             await loadPendingData();
             printDirect(null, id, tCodePrint);
@@ -2574,16 +2576,42 @@ async function saveAndPrintResult(id, safeId, btn) {
     } catch (err) { btn.disabled = false; btn.innerHTML = oldText; showAppAlert("Error", String(err), "error"); }
 }
 
-async function notifyPatientResultReady(patientId, patientName, testName, testCode, isRepeat = false) {
+async function notifyPatientResultReady(patientId, patientName, testName, testCode, isRepeat = false, resultCode = "") {
     try {
         if (!patientId) return;
 
         // Map internal test IDs to formal test codes
         if (testCode === 'mtb') testCode = 'GXP';
-        if (testCode === 'naat' || testCode === 'npoc') testCode = 'NAAT';
+        if (testCode === 'naat' || testCode === 'npoc' || String(testCode).toUpperCase().includes('NAAT') || String(testCode).toUpperCase().includes('NPOC')) testCode = 'NAAT';
         if (testCode === 'dssm') testCode = 'DSSM';
         if (testCode === 'viral') testCode = 'GXVL';
         if (testCode === 'gram') testCode = 'GRAM';
+
+        // For NPOC-NAAT: strictly proceed with SMS result notification ONLY if result is negative ('N')
+        if (testCode === 'NAAT') {
+            let resCodeToCheck = resultCode;
+            if (!resCodeToCheck) {
+                try {
+                    const { data: testRec } = await sb.from('lab_tests')
+                        .select('details')
+                        .eq('patient_id', patientId)
+                        .in('test_name', ['NPOC-NAAT', 'NAAT', 'npoc-naat', 'naat'])
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    if (testRec && testRec.details) {
+                        const dObj = typeof testRec.details === 'string' ? JSON.parse(testRec.details) : testRec.details;
+                        resCodeToCheck = dObj.ResultCode || dObj.resultCode || dObj.Result || "";
+                    }
+                } catch (e) { }
+            }
+            const resUpper = String(resCodeToCheck || "").toUpperCase().trim();
+            const isNeg = (resUpper === 'N' || resUpper.includes('NOT DETECTED') || resUpper.includes('NEG'));
+            if (!isNeg) {
+                console.log("NPOC-NAAT result is not negative (ResultCode: " + resCodeToCheck + "). Skipping routine result ready SMS.");
+                return;
+            }
+        }
 
         const { data } = await sb.from('patients').select('email, full_name, contact, facility').eq('id', patientId).maybeSingle();
 
@@ -3940,7 +3968,8 @@ async function batchSaveResults(isPrint) {
                 if (isPrint) printRequests.push({ testCode: id, testName: tCodePrint });
                 // Send automated Result Ready notification
                 let isBatchRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
-                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isBatchRepeat);
+                const resCode = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
+                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isBatchRepeat, resCode);
             }
         } catch (e) { }
     }
