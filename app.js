@@ -4299,7 +4299,11 @@ async function batchSaveResults(isPrint) {
 function processNtpResultsClient(p) {
     p.gxpText = ""; p.gxpClass = ""; p.dssmText = ""; p.dssmClass = ""; p.smear1 = ""; p.smear2 = "";
     p.dateCollected = p.dateRequest || ""; p.dateDispatched = p.dateRequest || ""; p.dateSpecReceived = p.dateRequest || ""; p.dateExaminedStr = p.dateExamined || ""; p.dateReleasedStr = p.dateResult || ""; p.labSerialNumber = p.testCode || p.id;
-    const tName = (p.testName || "").toUpperCase(); p.isDSSM = tName.includes("DSSM") || tName.includes("AFB"); p.isGXP = tName.includes("GXP") || tName.includes("GEN"); p.isNAAT = tName.includes("NAAT") || tName.includes("NPOC");
+    const tName = (p.testName || "").toUpperCase();
+    const tCode = (p.testCode || "").toUpperCase();
+    p.isDSSM = tName.includes("DSSM") || tName.includes("AFB") || tCode.includes("DSSM") || tCode.includes("AFB");
+    p.isNAAT = tName.includes("NAAT") || tName.includes("NPOC") || tCode.includes("NAAT") || tCode.includes("NPOC");
+    p.isGXP = !p.isNAAT && !p.isDSSM && (tName.includes("GXP") || tName.includes("GEN") || tCode.includes("GXP"));
     const initialWarning = " (INITIAL RESULT ONLY. FOR REPEAT COLLECTION AND TESTING)"; const findRes = (key) => p.results?.find(r => r.param && r.param.toUpperCase() === key.toUpperCase())?.res || "";
     const cachedP = cachedPatients.find(cp => cp.id === p.id) || {}; p.address = (p.address && p.address !== "undefined") ? p.address : (cachedP.address || ""); p.contact = (p.contact && p.contact !== "undefined") ? p.contact : (cachedP.contact || "");
     // 🔴 FIX: Idinagdag ang TB Case No para lumabas sa mismong form
@@ -4326,12 +4330,12 @@ function processNtpResultsClient(p) {
     if (p.results) {
         p.results.forEach(r => {
             const k = String(r.param).trim(); const v = String(r.res || "").trim(); const vUpper = v.toUpperCase();
-            if (k === "ResultCode") {
+            if (k === "ResultCode" || k.toUpperCase() === "RESULTCODE" || k.toUpperCase() === "RESULT") {
                 if (p.isNAAT) {
-                    if (vUpper === "N") {
+                    if (vUpper === "N" || vUpper.includes("NOT DETECTED")) {
                         p.gxpText = "MTB NOT DETECTED.";
                         p.gxpClass = "res-n";
-                    } else if (vUpper === "T") {
+                    } else if (vUpper === "T" || vUpper.includes("DETECTED")) {
                         p.gxpText = "MTB DETECTED.";
                         p.gxpClass = "res-t";
                     } else if (vUpper === "I" || vUpper.includes("ERR") || vUpper.includes("INV")) {
@@ -4345,6 +4349,20 @@ function processNtpResultsClient(p) {
             }
             if (k === "Smear1") { let countVal = findRes("Smear1_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear1 = "+" + countVal; else p.smear1 = v; } if (k === "Smear2") { let countVal = findRes("Smear2_Count"); if (countVal !== "" && !countVal.includes("#")) p.smear2 = "+" + countVal; else p.smear2 = v; } if (k === "Diagnosis") { p.dssmText = v; p.dssmClass = vUpper.includes("POS") ? "res-rr" : "res-n"; }
         });
+    }
+
+    if (p.isNAAT && !p.gxpText) {
+        const rc = (findRes("ResultCode") || findRes("resultCode") || findRes("Result") || findRes("result") || "").toUpperCase().trim();
+        if (rc === "N" || rc.includes("NOT DETECTED")) {
+            p.gxpText = "MTB NOT DETECTED.";
+            p.gxpClass = "res-n";
+        } else if (rc === "T" || rc.includes("DETECTED")) {
+            p.gxpText = "MTB DETECTED.";
+            p.gxpClass = "res-t";
+        } else if (rc === "I" || rc.includes("ERR") || rc.includes("INV")) {
+            p.gxpText = "INVALID / ERROR.";
+            p.gxpClass = "res-i";
+        }
     }
 
     // 🟢 4. DSSM Follow-up Auto-detect Rules (applied AFTER smears are parsed)
@@ -4386,8 +4404,8 @@ function mapSupabaseToPrintObject(d) {
         dateRequest: d.date ? new Date(d.date).toLocaleDateString() : TODAY_STR,
         dateExamined: detailsObj.date_examined || detailsObj.dateEncoded || d.date ? new Date(detailsObj.date_examined || detailsObj.dateEncoded || d.date).toLocaleDateString() : TODAY_STR,
         dateResult: new Date().toLocaleDateString(),
-        testCode: d.test_code || d.id || "",
-        testName: d.test_name || d.test || "Laboratory Test",
+        testCode: d.test_code || d.testCode || d.id || "",
+        testName: d.test_name || d.test || detailsObj.test_name || detailsObj.testName || "Laboratory Test",
         encoder: d.encoder || currentUser.fullName || "System",
         performedBy: detailsObj["Performed By"] || detailsObj.performedBy || d.encoder || currentUser.fullName || "",
         preparedBy: detailsObj["Prepared By"] || detailsObj.preparedBy || d.encoder || currentUser.fullName || "",
@@ -4542,11 +4560,7 @@ async function printDirect(e, id, testName) {
             pData.find(d => String(d.id).trim() === cleanId || String(d.testCode).trim() === cleanId);
 
         if (!item && cleanId) {
-            let { data } = await sb.from('lab_tests').select('*').eq('test_code', cleanId).maybeSingle();
-            if (!data && /^\d+$/.test(cleanId)) {
-                const { data: d2 } = await sb.from('lab_tests').select('*').eq('id', cleanId).maybeSingle();
-                data = d2;
-            }
+            let { data } = await sb.from('lab_tests').select('*').or(`test_code.eq.${cleanId},id.eq.${cleanId}`).maybeSingle();
             if (data) {
                 item = { id: data.id, testCode: data.test_code || data.id, patientId: data.patient_id, name: data.patient_name, test: data.test_name, details: data.details, status: data.status, facility: data.facility, encoder: data.encoder, date: data.date };
             }
