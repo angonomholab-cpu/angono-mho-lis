@@ -158,6 +158,137 @@ window.setSmsSyncDateQuick = function(which) {
     window.syncResultsToQueueByDate(dateStr);
 };
 
+window.formatFacilityLocationName = function(facName) {
+    if (!facName || !String(facName).trim()) return "health center ng inyong barangay";
+    let clean = String(facName).trim();
+    const lower = clean.toLowerCase();
+    if (
+        lower.includes("hospital") || 
+        lower.includes("medics") || 
+        lower.includes("clinic") || 
+        lower.startsWith("bhs") || 
+        lower.startsWith("rhu") || 
+        lower.includes("main")
+    ) {
+        return clean;
+    }
+    return `BHS ${clean}`;
+};
+
+window.toggleEditSmsCard = function(btn, isEditing) {
+    const card = btn.closest('.sms-queue-card');
+    if (!card) return;
+    const viewEl = card.querySelector('.sms-msg-view');
+    const editEl = card.querySelector('.sms-msg-edit');
+    const actionBtns = card.querySelector('.sms-card-actions');
+    if (isEditing) {
+        if (viewEl) viewEl.style.display = 'none';
+        if (editEl) editEl.style.display = 'flex';
+        if (actionBtns) actionBtns.style.display = 'none';
+        const textarea = editEl.querySelector('.sms-msg-textarea');
+        if (textarea) {
+            textarea.focus();
+            window.updateSmsCharCount(textarea);
+        }
+    } else {
+        if (viewEl) viewEl.style.display = 'block';
+        if (editEl) editEl.style.display = 'none';
+        if (actionBtns) actionBtns.style.display = 'flex';
+        const textarea = editEl.querySelector('.sms-msg-textarea');
+        const origMsg = card.getAttribute('data-original-message') || '';
+        if (textarea) textarea.value = origMsg;
+    }
+};
+
+window.updateSmsCharCount = function(textarea) {
+    const card = textarea.closest('.sms-queue-card');
+    if (!card) return;
+    const counter = card.querySelector('.sms-char-counter');
+    const len = textarea.value.length;
+    const smsParts = len <= 160 ? 1 : Math.ceil(len / 153);
+    if (counter) {
+        counter.innerText = `${len} chars (${smsParts} SMS)`;
+        counter.style.color = len > 160 ? 'var(--warning, #f59e0b)' : 'var(--text-muted)';
+    }
+};
+
+window.quickReplaceSmsText = function(btn, type) {
+    const card = btn.closest('.sms-queue-card');
+    if (!card) return;
+    const textarea = card.querySelector('.sms-msg-textarea');
+    if (!textarea) return;
+
+    let text = textarea.value;
+
+    if (type === 'main') {
+        if (/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Main[^.]+?)(?=\.|$)/i.test(text)) {
+            text = text.replace(/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Main[^.]+?)(?=\.|$)/i, 'dito sa Main Health Center');
+        } else if (/(?:sa|dito\s+sa)\s+[^.]+?(?=\.|$)/i.test(text)) {
+            text = text.replace(/(?:sa|dito\s+sa)\s+[^.]+?(?=\.|$)/i, 'dito sa Main Health Center');
+        } else {
+            text = text.replace(/\.?$/, ' dito sa Main Health Center.');
+        }
+    } else if (type === '8am') {
+        if (/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i.test(text)) {
+            text = text.replace(/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i, 'ng 8:00 AM');
+        } else if (/kunin\s+/i.test(text)) {
+            text = text.replace(/kunin\s+/i, 'kunin ng 8:00 AM ');
+        }
+    } else if (type === '10am') {
+        if (/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i.test(text)) {
+            text = text.replace(/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i, 'ng 10:00 AM');
+        } else if (/kunin\s+/i.test(text)) {
+            text = text.replace(/kunin\s+/i, 'kunin ng 10:00 AM ');
+        }
+    } else if (type === '1pm') {
+        if (/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i.test(text)) {
+            text = text.replace(/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i, 'ng 1:00 PM');
+        } else if (/kunin\s+/i.test(text)) {
+            text = text.replace(/kunin\s+/i, 'kunin ng 1:00 PM ');
+        }
+    } else if (type === '3pm') {
+        if (/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i.test(text)) {
+            text = text.replace(/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i, 'ng 3:00 PM');
+        } else if (/kunin\s+/i.test(text)) {
+            text = text.replace(/kunin\s+/i, 'kunin ng 3:00 PM ');
+        }
+    }
+
+    textarea.value = text;
+    window.updateSmsCharCount(textarea);
+    textarea.focus();
+};
+
+window.saveEditSmsMessage = async function(btn, id) {
+    const card = btn.closest('.sms-queue-card');
+    if (!card) return;
+    const textarea = card.querySelector('.sms-msg-textarea');
+    const newMsg = textarea ? textarea.value.trim() : '';
+
+    if (!newMsg) {
+        return showAppAlert("Bawal ang Walang Laman", "Hindi maaaring blangko ang nilalaman ng SMS.", "warning");
+    }
+
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+
+    try {
+        const { error } = await sb.from('pending_sms').update({ message: newMsg }).eq('id', id);
+        if (error) throw error;
+
+        showAppAlert("SMS Na-update", "Matagumpay na nabago ang mensahe sa SMS queue.", "success");
+        if (typeof checkSmsQueueStatus === 'function') {
+            await checkSmsQueueStatus();
+        }
+    } catch (err) {
+        console.error("Failed to update SMS message:", err);
+        showAppAlert("Error", err.message || "Failed to update SMS message.", "error");
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+    }
+};
+
 window.checkSmsQueueStatus = async function() {
     const queueEl = document.getElementById('sms-queue-count');
     const listEl = document.getElementById('sms-queue-list');
@@ -234,8 +365,12 @@ window.checkSmsQueueStatus = async function() {
                     borderStyle = 'border-left: 3px solid var(--success);';
                 }
 
+                const escapedMsg = (item.message || '').replace(/"/g, '&quot;');
+                const charLen = (item.message || '').length;
+                const smsParts = charLen <= 160 ? 1 : Math.ceil(charLen / 153);
+
                 return `
-                <div style="background:var(--bg-main); border:1px solid var(--border-color); ${borderStyle} border-radius:var(--radius-sm); padding:8px 10px; font-size:0.75rem; display:flex; flex-direction:column; gap:5px;">
+                <div class="sms-queue-card" data-sms-id="${item.id}" data-original-message="${escapedMsg}" style="background:var(--bg-main); border:1px solid var(--border-color); ${borderStyle} border-radius:var(--radius-sm); padding:8px 10px; font-size:0.75rem; display:flex; flex-direction:column; gap:5px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
                         <span style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:5px;">
                             <i class="ph ph-phone" style="color:var(--pri);"></i> ${item.phone}
@@ -247,10 +382,52 @@ window.checkSmsQueueStatus = async function() {
                             </span>
                         </div>
                     </div>
-                    <div style="background:var(--bg-subtle); padding:6px 8px; border-radius:4px; color:var(--text-main); font-size:0.72rem; line-height:1.35; word-break:break-word;">
+
+                    <!-- View Mode -->
+                    <div class="sms-msg-view" style="background:var(--bg-subtle); padding:6px 8px; border-radius:4px; color:var(--text-main); font-size:0.72rem; line-height:1.35; word-break:break-word;">
                         ${item.message}
                     </div>
-                    <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
+
+                    <!-- Edit Mode (Hidden by default) -->
+                    <div class="sms-msg-edit" style="display:none; flex-direction:column; gap:6px; background:var(--bg-subtle); padding:6px 8px; border-radius:4px; border:1px solid var(--pri);">
+                        <textarea class="form-input sms-msg-textarea" rows="3" style="width:100%; font-size:0.72rem; line-height:1.35; padding:4px 6px; resize:vertical; background:var(--bg-main); color:var(--text-main); font-family:inherit;" oninput="updateSmsCharCount(this)">${item.message}</textarea>
+                        
+                        <!-- Quick Replace Shortcuts -->
+                        <div style="display:flex; flex-wrap:wrap; gap:3px; align-items:center;">
+                            <span style="font-size:0.65rem; color:var(--text-muted); font-weight:600; margin-right:2px;">I-quick change:</span>
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, 'main')" title="Palitan ang pickup location ng 'dito sa Main Health Center'">
+                                <i class="ph ph-buildings"></i> Sa Main
+                            </button>
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, '8am')" title="Gawing 8:00 AM">
+                                <i class="ph ph-clock"></i> 8:00 AM
+                            </button>
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, '10am')" title="Gawing 10:00 AM">
+                                <i class="ph ph-clock"></i> 10:00 AM
+                            </button>
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, '1pm')" title="Gawing 1:00 PM">
+                                <i class="ph ph-clock"></i> 1:00 PM
+                            </button>
+                        </div>
+
+                        <!-- Edit Controls: Counter & Save/Cancel -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                            <span class="sms-char-counter" style="font-size:0.65rem; color:var(--text-muted); font-family:monospace;">${charLen} chars (${smsParts} SMS)</span>
+                            <div style="display:flex; gap:4px;">
+                                <button type="button" class="btn btn-secondary text-xs" style="padding:2px 8px; font-size:0.68rem;" onclick="toggleEditSmsCard(this, false)">
+                                    Kanselahin
+                                </button>
+                                <button type="button" class="btn btn-primary text-xs" style="padding:2px 10px; font-size:0.68rem;" onclick="saveEditSmsMessage(this, '${item.id}')">
+                                    <i class="ph ph-check"></i> I-save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons (View Mode) -->
+                    <div class="sms-card-actions" style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
+                        <button type="button" class="btn btn-secondary text-xs" style="padding:2px 8px; font-size:0.7rem;" onclick="toggleEditSmsCard(this, true)" title="I-edit ang mensahe, oras, o pickup center">
+                            <i class="ph ph-pencil-simple"></i> Edit
+                        </button>
                         ${isPending ? `
                             <button type="button" class="btn btn-primary text-xs" style="padding:2px 8px; font-size:0.7rem;" onclick="sendSinglePendingSMS('${item.id}', this)" title="Ipadala agad ito ngayon">
                                 <i class="ph ph-paper-plane-tilt"></i> Send Now
@@ -2834,7 +3011,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                 if (phone.length >= 10) {
                     let locationText = "";
                     if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
-                        locationText = facilityName ? `sa ${facilityName}` : "sa health center ng inyong barangay";
+                        locationText = facilityName ? `sa ${window.formatFacilityLocationName(facilityName)}` : "sa health center ng inyong barangay";
                     } else if (testCode === 'GXVL' || testCode === 'GRAM') {
                         locationText = "sa Angono May Puso Social Hygiene Clinic";
                     }
@@ -3244,7 +3421,7 @@ window.syncResultsToQueueByDate = async function(customDate) {
             let rawName = pt.full_name || "";
             let firstName = rawName.includes(',') ? rawName.split(',')[1].trim().split(' ')[0] : rawName.trim().split(' ')[0];
             let locationText = (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT')
-                ? (pt.facility ? `sa ${pt.facility}` : "sa health center ng inyong barangay")
+                ? (pt.facility ? `sa ${window.formatFacilityLocationName(pt.facility)}` : "sa health center ng inyong barangay")
                 : "sa Angono May Puso Social Hygiene Clinic";
 
             let displayTest = tCode === 'GXP' ? 'GeneXpert' : (tCode === 'NAAT' ? 'NPOC-NAAT' : (tCode === 'GXVL' ? 'Viral Load' : (tCode === 'GRAM' ? 'Gram Stain' : 'DSSM')));
