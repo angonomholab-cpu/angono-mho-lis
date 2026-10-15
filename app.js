@@ -139,6 +139,25 @@ window.switchCompletedSubTab = function(tab) {
     }
 };
 
+window.SMS_QUEUE_FILTER = window.SMS_QUEUE_FILTER || 'all';
+
+window.setSmsQueueFilter = function(filter) {
+    window.SMS_QUEUE_FILTER = filter;
+    window.checkSmsQueueStatus();
+};
+
+window.setSmsSyncDateQuick = function(which) {
+    let target = new Date();
+    if (which === 'yesterday') {
+        target.setDate(target.getDate() - 1);
+    }
+    const dateStr = target.toLocaleDateString('en-CA');
+    const picker = document.getElementById('sms-sync-date-picker');
+    if (picker) picker.value = dateStr;
+    window.SELECTED_SMS_SYNC_DATE = dateStr;
+    window.syncResultsToQueueByDate(dateStr);
+};
+
 window.checkSmsQueueStatus = async function() {
     const queueEl = document.getElementById('sms-queue-count');
     const listEl = document.getElementById('sms-queue-list');
@@ -147,10 +166,11 @@ window.checkSmsQueueStatus = async function() {
 
     try {
         if (queueEl) queueEl.innerText = "Checking...";
+        // Fetch up to 200 items ordered by send_at descending so recent and active items are always at top
         const { data: queueItems, error } = await sb.from('pending_sms')
             .select('*')
-            .order('send_at', { ascending: true })
-            .limit(100);
+            .order('send_at', { ascending: false })
+            .limit(200);
 
         if (error) {
             console.warn("pending_sms table check error:", error);
@@ -160,36 +180,74 @@ window.checkSmsQueueStatus = async function() {
             return;
         }
 
-        const pendingItems = (queueItems || []).filter(item => item.status === 'pending');
-        const count = pendingItems.length;
-        if (queueEl) queueEl.innerHTML = `<span style="color:${count > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--success)'}; font-weight:700;">${count} messages pending</span>`;
-        if (completedSmsBadge) completedSmsBadge.innerText = count;
+        const allItems = queueItems || [];
+        const pendingItems = allItems.filter(item => item.status === 'pending');
+        const sentItems = allItems.filter(item => item.status === 'sent');
+        const pendingCount = pendingItems.length;
+        const sentCount = sentItems.length;
+        const allCount = allItems.length;
 
-        const cardsHtml = (!queueItems || queueItems.length === 0)
-            ? `<div style="text-align:center; padding:15px; color:var(--text-muted); font-size:0.75rem; background:var(--bg-main); border-radius:var(--radius-sm); border:1px dashed var(--border-color);"><i class="ph ph-chat-teardrop-slash" style="font-size:1.4rem; display:block; margin-bottom:4px; opacity:0.6;"></i>Walang nakapilang SMS sa queue sa kasalukuyan.</div>`
-            : queueItems.map(item => {
+        if (queueEl) queueEl.innerHTML = `<span style="color:${pendingCount > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--success)'}; font-weight:700;">${pendingCount} messages pending (${sentCount} sent)</span>`;
+        if (completedSmsBadge) completedSmsBadge.innerText = pendingCount;
+
+        // Determine current date default for the sync picker
+        const existingPicker = document.getElementById('sms-sync-date-picker');
+        let curDateVal = (existingPicker && existingPicker.value) ? existingPicker.value : window.SELECTED_SMS_SYNC_DATE;
+        if (!curDateVal) {
+            const defDate = new Date();
+            if (defDate.getHours() < 12) {
+                defDate.setDate(defDate.getDate() - 1);
+            }
+            curDateVal = defDate.toLocaleDateString('en-CA');
+            window.SELECTED_SMS_SYNC_DATE = curDateVal;
+        }
+
+        // Apply selected filter
+        let filteredItems = allItems;
+        if (window.SMS_QUEUE_FILTER === 'pending') {
+            filteredItems = pendingItems;
+        } else if (window.SMS_QUEUE_FILTER === 'sent') {
+            filteredItems = sentItems;
+        }
+
+        const cardsHtml = (!filteredItems || filteredItems.length === 0)
+            ? `<div style="text-align:center; padding:18px 12px; color:var(--text-muted); font-size:0.75rem; background:var(--bg-main); border-radius:var(--radius-sm); border:1px dashed var(--border-color);"><i class="ph ph-chat-teardrop-slash" style="font-size:1.4rem; display:block; margin-bottom:4px; opacity:0.6;"></i>Walang mensahe sa kategoryang '${window.SMS_QUEUE_FILTER.toUpperCase()}'.</div>`
+            : filteredItems.map(item => {
                 const isPending = item.status === 'pending';
                 const sendDate = new Date(item.send_at);
                 const now = new Date();
                 const isOverdue = isPending && sendDate <= now;
                 const dateFormatted = sendDate.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 
+                let badgeHtml = '';
+                let borderStyle = '';
+                if (isPending) {
+                    if (isOverdue) {
+                        badgeHtml = `<span class="badge" style="font-size:0.65rem; padding:1px 6px; background:#f59e0b; color:white;"><i class="ph ph-warning-circle"></i> DUE TODAY</span>`;
+                        borderStyle = 'border-left: 3px solid #f59e0b;';
+                    } else {
+                        badgeHtml = `<span class="badge badge-neutral" style="font-size:0.65rem; padding:1px 6px;"><i class="ph ph-clock"></i> SCHEDULED</span>`;
+                        borderStyle = 'border-left: 3px solid var(--pri);';
+                    }
+                } else {
+                    badgeHtml = `<span class="badge badge-success" style="font-size:0.65rem; padding:1px 6px; background:var(--success); color:white;"><i class="ph ph-check-circle"></i> SENT</span>`;
+                    borderStyle = 'border-left: 3px solid var(--success);';
+                }
+
                 return `
-                <div style="background:var(--bg-main); border:1px solid ${isPending ? (isOverdue ? '#f59e0b' : 'var(--border-color)') : 'var(--border-color)'}; border-radius:var(--radius-sm); padding:8px 10px; font-size:0.75rem; display:flex; flex-direction:column; gap:4px; opacity:${isPending ? '1' : '0.75'};">
+                <div style="background:var(--bg-main); border:1px solid var(--border-color); ${borderStyle} border-radius:var(--radius-sm); padding:8px 10px; font-size:0.75rem; display:flex; flex-direction:column; gap:5px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
                         <span style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:5px;">
                             <i class="ph ph-phone" style="color:var(--pri);"></i> ${item.phone}
                         </span>
-                        <div style="display:flex; gap:5px; align-items:center;">
-                            <span class="badge ${isPending ? (isOverdue ? 'badge-warning' : 'badge-neutral') : 'badge-success'}" style="font-size:0.65rem; padding:1px 6px;">
-                                ${isPending ? (isOverdue ? 'DUE NOW' : 'SCHEDULED') : 'SENT'}
-                            </span>
-                            <span style="color:var(--text-muted); font-size:0.7rem;">
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            ${badgeHtml}
+                            <span style="color:var(--text-muted); font-size:0.68rem;">
                                 <i class="ph ph-clock"></i> ${dateFormatted}
                             </span>
                         </div>
                     </div>
-                    <div style="background:var(--bg-subtle); padding:6px 8px; border-radius:4px; color:var(--text-main); font-size:0.72rem; line-height:1.35; border-left:3px solid ${isPending ? 'var(--pri)' : 'var(--success)'}; word-break:break-word;">
+                    <div style="background:var(--bg-subtle); padding:6px 8px; border-radius:4px; color:var(--text-main); font-size:0.72rem; line-height:1.35; word-break:break-word;">
                         ${item.message}
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
@@ -201,6 +259,9 @@ window.checkSmsQueueStatus = async function() {
                                 <i class="ph ph-trash"></i>
                             </button>
                         ` : `
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:2px 8px; font-size:0.7rem;" onclick="resendSinglePendingSMS('${item.id}', this)" title="Ipadala muli ang mensaheng ito">
+                                <i class="ph ph-arrow-counter-clockwise"></i> Re-send
+                            </button>
                             <button type="button" class="btn btn-icon text-xs" style="padding:2px 6px; color:var(--text-muted);" onclick="deletePendingSMS('${item.id}')" title="Burahin sa listahan">
                                 <i class="ph ph-trash"></i>
                             </button>
@@ -212,9 +273,41 @@ window.checkSmsQueueStatus = async function() {
         if (listEl) listEl.innerHTML = cardsHtml;
         if (listCompletedSms) {
             listCompletedSms.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.72rem; color:var(--text-muted); padding:0 2px;">
-                <span><strong>${count}</strong> nakapilang text (para bukas 9:00 AM)</span>
-                <button type="button" class="btn btn-ghost text-xs" style="padding:2px 6px; font-size:0.7rem; color:var(--pri); text-decoration:underline;" onclick="syncTodayUnsentResultsToQueue()"><i class="ph ph-arrow-counter-clockwise"></i> Re-check Examined Today</button>
+            <!-- Top Controls: Customizable Date Sync -->
+            <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:8px 10px; margin-bottom:8px; display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.75rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:4px;">
+                        <i class="ph ph-calendar-check" style="color:var(--pri);"></i> I-sync ang SMS ayon sa Date Examined:
+                    </span>
+                    <div style="display:flex; gap:4px;">
+                        <button type="button" class="btn btn-secondary text-xs" style="padding:2px 6px; font-size:0.68rem;" onclick="setSmsSyncDateQuick('yesterday')" title="Piliin ang petsa kahapon">Kahapon</button>
+                        <button type="button" class="btn btn-secondary text-xs" style="padding:2px 6px; font-size:0.68rem;" onclick="setSmsSyncDateQuick('today')" title="Piliin ang araw na ito">Ngayon</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="date" id="sms-sync-date-picker" class="form-input" style="padding:3px 8px; font-size:0.75rem; height:28px; flex:1;" value="${curDateVal}">
+                    <button type="button" id="btn-sync-sms-by-date" class="btn btn-primary text-xs" style="padding:3px 10px; font-size:0.75rem; height:28px; white-space:nowrap; display:flex; align-items:center; gap:4px;" onclick="syncResultsToQueueByDate(document.getElementById('sms-sync-date-picker').value)">
+                        <i class="ph ph-arrows-clockwise"></i> Fetch SMS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Segmented Filter Tabs for Queue -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding:0 2px; flex-wrap:wrap; gap:4px;">
+                <div class="compact-toggle" style="margin:0; background:var(--bg-subtle); padding:2px; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; gap:2px;">
+                    <button type="button" class="toggle-btn ${window.SMS_QUEUE_FILTER === 'all' ? 'active' : ''}" onclick="setSmsQueueFilter('all')" style="font-size:0.68rem; padding:2px 8px;">
+                        Lahat (${allCount})
+                    </button>
+                    <button type="button" class="toggle-btn ${window.SMS_QUEUE_FILTER === 'pending' ? 'active' : ''}" onclick="setSmsQueueFilter('pending')" style="font-size:0.68rem; padding:2px 8px;">
+                        Pending (${pendingCount})
+                    </button>
+                    <button type="button" class="toggle-btn ${window.SMS_QUEUE_FILTER === 'sent' ? 'active' : ''}" onclick="setSmsQueueFilter('sent')" style="font-size:0.68rem; padding:2px 8px;">
+                        Sent (${sentCount})
+                    </button>
+                </div>
+                <span style="font-size:0.7rem; color:var(--text-muted);">
+                    ${pendingCount > 0 ? `<strong style="color:var(--warning);">${pendingCount} nakapilang ipadala</strong>` : 'Walang nakapilang text'}
+                </span>
             </div>
             ` + cardsHtml;
         }
@@ -2727,7 +2820,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
         // --- SMS NOTIFICATION (PhilSMS) ---
         const allowedTestsForSms = ['GXP', 'DSSM', 'GXVL', 'GRAM', 'NAAT'];
-        const smsEnabled = localStorage.getItem('cfg_sms_enable') === 'true';
+        const smsEnabled = localStorage.getItem('cfg_sms_enable') !== 'false';
         const smsSchedule = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
 
         if (smsEnabled && data && data.contact && allowedTestsForSms.includes(testCode)) {
@@ -3009,19 +3102,76 @@ window.sendDueOrAllPendingSMS = async function(forceAll = false) {
     }
 };
 
-window.syncTodayUnsentResultsToQueue = async function() {
+window.resendSinglePendingSMS = async function(id, btn) {
+    const philsmsToken = getCleanPhilSmsToken();
+    if (!philsmsToken) return showAppAlert("PhilSMS Token Missing", "Pakilagay muna ang inyong PhilSMS API Token sa Settings.", "error");
+
     try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        // Query tests encoded or completed
+        const { data: item, error: fErr } = await sb.from('pending_sms').select('*').eq('id', id).maybeSingle();
+        if (fErr || !item) throw new Error("Record not found in queue.");
+
+        if (!confirm(`Ipadala muli ang SMS kay ${item.phone}?`)) return;
+
+        const oldHtml = btn ? btn.innerHTML : "";
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>'; }
+
+        const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${philsmsToken}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                recipient: item.phone,
+                sender_id: "PhilSMS",
+                type: "plain",
+                message: item.message
+            })
+        });
+        const result = await res.json();
+        console.log("PhilSMS Re-sent:", result);
+        if (result.status === 'error' || result.message === 'Unauthenticated.') {
+            throw new Error(result.message || "Failed to authenticate with PhilSMS.");
+        }
+
+        await sb.from('pending_sms').update({ status: 'sent', send_at: new Date().toISOString() }).eq('id', id);
+        showAppAlert("SMS Sent", "Matagumpay na naipadala muli ang SMS kay " + item.phone, "success");
+        checkSmsQueueStatus();
+    } catch (e) {
+        showAppAlert("SMS Error", e.message || "Failed to send SMS.", "error");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+    }
+};
+
+window.syncResultsToQueueByDate = async function(customDate) {
+    try {
+        let targetDateStr = customDate;
+        if (!targetDateStr) {
+            const picker = document.getElementById('sms-sync-date-picker');
+            targetDateStr = picker ? picker.value : "";
+        }
+        if (!targetDateStr) {
+            targetDateStr = new Date().toLocaleDateString('en-CA');
+        }
+
+        window.SELECTED_SMS_SYNC_DATE = targetDateStr;
+
+        const syncBtn = document.getElementById('btn-sync-sms-by-date');
+        const oldSyncText = syncBtn ? syncBtn.innerHTML : "";
+        if (syncBtn) { syncBtn.disabled = true; syncBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Fetching...'; }
+
+        // Fetch up to 300 tests ordered by date_examined desc so target dates are captured regardless of created_at
         const { data: rawTests, error } = await sb.from('lab_tests')
             .select('*')
             .in('status', ['ENCODED', 'COMPLETED'])
-            .order('created_at', { ascending: false })
-            .limit(200);
+            .order('date_examined', { ascending: false, nullsFirst: false })
+            .limit(300);
 
         if (error) throw error;
 
-        // STRICT: filter tests where date_examined (EXAMINED TODAY) is today, NOT registry created_at!
+        // Filter tests where date_examined matches targetDateStr
         const tests = (rawTests || []).filter(t => {
             const examinedStr = String(t.date_examined || "");
             let detailsExamined = "";
@@ -3030,18 +3180,37 @@ window.syncTodayUnsentResultsToQueue = async function() {
                 detailsExamined = String(d.date_examined || "");
             } catch (e) { }
 
-            return examinedStr.startsWith(todayStr) || detailsExamined.startsWith(todayStr);
+            return examinedStr.startsWith(targetDateStr) || detailsExamined.startsWith(targetDateStr);
         });
 
         if (!tests || tests.length === 0) {
-            return showAppAlert("Info", "Walang nahanap na tests na na-examine ngayong araw (" + todayStr + ").", "info");
+            if (syncBtn) { syncBtn.disabled = false; syncBtn.innerHTML = oldSyncText; }
+            return showAppAlert("Walang Nahanap", `Walang nahanap na tests na na-examine noong ${targetDateStr}.`, "info");
         }
 
-        // Fetch current queue to avoid duplicate phone & test
+        // Fetch current queue to avoid duplicate phone & message
         const { data: existingQueue } = await sb.from('pending_sms').select('phone, message').eq('status', 'pending');
         const existingSet = new Set((existingQueue || []).map(x => `${x.phone}:::${x.message}`));
 
+        // Calculate target send date:
+        // If targetDateStr is in the past (e.g. yesterday or earlier), it is DUE TODAY!
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        let targetSendDate = new Date();
+        if (targetDateStr < todayStr) {
+            // Examined yesterday or earlier -> Scheduled for TODAY!
+            targetSendDate.setHours(9, 0, 0, 0);
+        } else {
+            // Examined today or future -> Scheduled for NEXT WORKING DAY 9:00 AM
+            targetSendDate.setDate(targetSendDate.getDate() + 1);
+            targetSendDate.setHours(9, 0, 0, 0);
+            while (targetSendDate.getDay() === 0 || targetSendDate.getDay() === 6) {
+                targetSendDate.setDate(targetSendDate.getDate() + 1);
+            }
+        }
+
         let queuedCount = 0;
+        let skippedCount = 0;
+
         for (let t of tests) {
             const tCode = getTestCodeFromName(t.test_name);
             if (!['GXP', 'DSSM', 'GXVL', 'GRAM', 'NAAT'].includes(tCode)) continue;
@@ -3049,13 +3218,13 @@ window.syncTodayUnsentResultsToQueue = async function() {
             const dObj = typeof t.details === 'string' ? JSON.parse(t.details) : (t.details || {});
             const resCode = String(dObj.ResultCode || dObj.resultCode || dObj.Result || "").toUpperCase().trim();
 
-            // NAAT must be negative
+            // NAAT must be negative ('N')
             if (tCode === 'NAAT') {
                 const isNeg = (resCode === 'N' || resCode.includes('NOT DETECTED') || resCode.includes('NEG'));
                 if (!isNeg) continue;
             }
 
-            // DSSM skip positive (only text negative)
+            // DSSM skip positive (only negative)
             if (tCode === 'DSSM') {
                 const dssmDiag = String(dObj.Diagnosis || dObj.diagnosis || resCode || "").toUpperCase();
                 if (dssmDiag.includes('POS')) continue;
@@ -3081,29 +3250,42 @@ window.syncTodayUnsentResultsToQueue = async function() {
             let displayTest = tCode === 'GXP' ? 'GeneXpert' : (tCode === 'NAAT' ? 'NPOC-NAAT' : (tCode === 'GXVL' ? 'Viral Load' : (tCode === 'GRAM' ? 'Gram Stain' : 'DSSM')));
             let smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
 
-            if (existingSet.has(`${phone}:::${smsMessage}`)) continue;
-
-            // Target next working day 9am
-            let targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + 1);
-            targetDate.setHours(9, 0, 0, 0);
-            while (targetDate.getDay() === 0 || targetDate.getDay() === 6) targetDate.setDate(targetDate.getDate() + 1);
+            if (existingSet.has(`${phone}:::${smsMessage}`)) {
+                skippedCount++;
+                continue;
+            }
 
             await sb.from('pending_sms').insert([{
                 phone: phone,
                 message: smsMessage,
-                send_at: targetDate.toISOString(),
+                send_at: targetSendDate.toISOString(),
                 status: 'pending'
             }]);
             existingSet.add(`${phone}:::${smsMessage}`);
             queuedCount++;
         }
 
-        showAppAlert("Sync Complete", queuedCount > 0 ? `Na-queue ang ${queuedCount} bagong SMS para sa mga result na na-examine ngayong araw!` : "Lahat ng eligible results na na-examine ngayong araw ay nasa queue na.", "success");
+        if (syncBtn) { syncBtn.disabled = false; syncBtn.innerHTML = oldSyncText; }
+
+        let alertMsg = `Petsa: ${targetDateStr}\nNa-queue: ${queuedCount} bagong SMS.`;
+        if (targetDateStr < todayStr) {
+            alertMsg += `\nNakatakda: Ngayong araw (Due Today).`;
+        } else {
+            alertMsg += `\nNakatakda: Bukas 9:00 AM.`;
+        }
+        if (skippedCount > 0) {
+            alertMsg += `\n(${skippedCount} ay nasa queue na).`;
+        }
+
+        showAppAlert("Sync Complete", alertMsg, "success");
         checkSmsQueueStatus();
     } catch (e) {
-        showAppAlert("Sync Error", e.message || "Failed to sync today's results.", "error");
+        showAppAlert("Sync Error", e.message || "Failed to sync results.", "error");
     }
+};
+
+window.syncTodayUnsentResultsToQueue = async function() {
+    return window.syncResultsToQueueByDate(null);
 };
 
 // Check every 10 minutes (600000 ms) while the app is open
