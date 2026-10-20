@@ -1422,9 +1422,10 @@ async function apiPost(action, payload) {
                     } catch (e) { }
                 }
 
-                if (repeatTag.includes('INITIAL') || (isNAAT && resCode === 'T')) {
+                const isPosNAAT = isNAAT && (resCode === 'T' || resCode.includes('DETECTED') || resCode.includes('POS'));
+                if (repeatTag.includes('INITIAL') || isPosNAAT) {
                     testStatus = 'FOR REPEAT';
-                    if (isNAAT && resCode === 'T') {
+                    if (isNAAT) {
                         details.Repeat = 'INITIAL';
                         details.Result = 'MTB DETECTED. (FOR LC-NAAT TESTING)';
                     }
@@ -2958,7 +2959,7 @@ async function saveResult(id, safeId, btn) {
     if ((tCodePrint === "GXP" || tCodePrint === "NAAT") && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
     const isNAAT = tCodePrint === "NAAT" || String(item.test || "").toUpperCase().includes("NAAT") || String(item.test || "").toUpperCase().includes("NPOC");
     const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
-    if (isNAAT && resCode === "T") {
+    if (isNAAT && (resCode === "T" || resCode.includes("DETECTED") || resCode.includes("POS"))) {
         newResults["Repeat"] = "INITIAL";
         newResults["Result"] = "MTB DETECTED. (FOR LC-NAAT TESTING)";
     }
@@ -2991,7 +2992,7 @@ async function saveAndPrintResult(id, safeId, btn) {
     if ((tCodePrint === "GXP" || tCodePrint === "NAAT") && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
     const isNAAT = tCodePrint === "NAAT" || String(item.test || "").toUpperCase().includes("NAAT") || String(item.test || "").toUpperCase().includes("NPOC");
     const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
-    if (isNAAT && resCode === "T") {
+    if (isNAAT && (resCode === "T" || resCode.includes("DETECTED") || resCode.includes("POS"))) {
         newResults["Repeat"] = "INITIAL";
         newResults["Result"] = "MTB DETECTED. (FOR LC-NAAT TESTING)";
     }
@@ -4886,7 +4887,7 @@ async function batchSaveResults(isPrint) {
         const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
         const isNAAT = tCodePrint === 'NAAT' || String(item.test || "").toUpperCase().includes('NAAT') || String(item.test || "").toUpperCase().includes('NPOC');
 
-        if (isNAAT && resCode === 'T') {
+        if (isNAAT && (resCode === 'T' || resCode.includes('DETECTED') || resCode.includes('POS'))) {
             batchStatus = 'FOR REPEAT';
             newResults["Repeat"] = "INITIAL";
             newResults["Result"] = "MTB DETECTED. (FOR LC-NAAT TESTING)";
