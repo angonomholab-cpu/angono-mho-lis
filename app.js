@@ -1,6 +1,6 @@
 // 🟢 PURE SUPABASE ARCHITECTURE (ULTIMATE FIX) 🟢
 // Wala nang Google Apps Script! Direktang kakausapin ng app ang database mo.
-console.log("app.js build: 2026-09-22-streamlined (strict columns, exact check constraints 'PENDING', 'ENCODED', 'FOR REPEAT')");
+console.log("app.js build: 2026-10-20-for-repeat-fix (Direct status update to PENDING + Delete button for For Repeat)");
 
 let currentUser = { username: "", facility: "", role: "", fullName: "" };
 let labOrders = {};
@@ -116,7 +116,7 @@ function loadSmsConfigIntoUI() {
     if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
 }
 
-window.switchCompletedSubTab = function(tab) {
+window.switchCompletedSubTab = function (tab) {
     const btnResults = document.getElementById('tab-btn-completed-results');
     const btnSms = document.getElementById('tab-btn-completed-sms');
     const listResults = document.getElementById('list-completed');
@@ -141,12 +141,12 @@ window.switchCompletedSubTab = function(tab) {
 
 window.SMS_QUEUE_FILTER = window.SMS_QUEUE_FILTER || 'all';
 
-window.setSmsQueueFilter = function(filter) {
+window.setSmsQueueFilter = function (filter) {
     window.SMS_QUEUE_FILTER = filter;
     window.checkSmsQueueStatus();
 };
 
-window.setSmsSyncDateQuick = function(which) {
+window.setSmsSyncDateQuick = function (which) {
     let target = new Date();
     if (which === 'yesterday') {
         target.setDate(target.getDate() - 1);
@@ -158,16 +158,16 @@ window.setSmsSyncDateQuick = function(which) {
     window.syncResultsToQueueByDate(dateStr);
 };
 
-window.formatFacilityLocationName = function(facName) {
+window.formatFacilityLocationName = function (facName) {
     if (!facName || !String(facName).trim()) return "health center ng inyong barangay";
     let clean = String(facName).trim();
     const lower = clean.toLowerCase();
     if (
-        lower.includes("hospital") || 
-        lower.includes("medics") || 
-        lower.includes("clinic") || 
-        lower.startsWith("bhs") || 
-        lower.startsWith("rhu") || 
+        lower.includes("hospital") ||
+        lower.includes("medics") ||
+        lower.includes("clinic") ||
+        lower.startsWith("bhs") ||
+        lower.startsWith("rhu") ||
         lower.includes("main")
     ) {
         return clean;
@@ -175,7 +175,7 @@ window.formatFacilityLocationName = function(facName) {
     return `BHS ${clean}`;
 };
 
-window.toggleEditSmsCard = function(btn, isEditing) {
+window.toggleEditSmsCard = function (btn, isEditing) {
     const card = btn.closest('.sms-queue-card');
     if (!card) return;
     const viewEl = card.querySelector('.sms-msg-view');
@@ -200,7 +200,7 @@ window.toggleEditSmsCard = function(btn, isEditing) {
     }
 };
 
-window.updateSmsCharCount = function(textarea) {
+window.updateSmsCharCount = function (textarea) {
     const card = textarea.closest('.sms-queue-card');
     if (!card) return;
     const counter = card.querySelector('.sms-char-counter');
@@ -212,7 +212,7 @@ window.updateSmsCharCount = function(textarea) {
     }
 };
 
-window.quickReplaceSmsText = function(btn, type) {
+window.quickReplaceSmsText = function (btn, type) {
     const card = btn.closest('.sms-queue-card');
     if (!card) return;
     const textarea = card.querySelector('.sms-msg-textarea');
@@ -221,12 +221,20 @@ window.quickReplaceSmsText = function(btn, type) {
     let text = textarea.value;
 
     if (type === 'main') {
-        if (/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Main[^.]+?)(?=\.|$)/i.test(text)) {
-            text = text.replace(/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Main[^.]+?)(?=\.|$)/i, 'dito sa Main Health Center');
+        if (/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Angono\s+Social\s+Hygiene\s+Clinic[^.]+?|Main[^.]+?)(?=\.|$)/i.test(text)) {
+            text = text.replace(/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Angono\s+Social\s+Hygiene\s+Clinic[^.]+?|Main[^.]+?)(?=\.|$)/i, 'dito sa Main Health Center');
         } else if (/(?:sa|dito\s+sa)\s+[^.]+?(?=\.|$)/i.test(text)) {
             text = text.replace(/(?:sa|dito\s+sa)\s+[^.]+?(?=\.|$)/i, 'dito sa Main Health Center');
         } else {
             text = text.replace(/\.?$/, ' dito sa Main Health Center.');
+        }
+    } else if (type === 'ashc') {
+        if (/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Angono\s+Social\s+Hygiene\s+Clinic[^.]+?|Main[^.]+?)(?=\.|$)/i.test(text)) {
+            text = text.replace(/(?:sa|dito\s+sa)\s+(?:BHS\s+[^.]+?|health\s+center[^.]+?|Angono\s+May\s+Puso[^.]+?|Angono\s+Social\s+Hygiene\s+Clinic[^.]+?|Main[^.]+?)(?=\.|$)/i, 'sa Angono Social Hygiene Clinic');
+        } else if (/(?:sa|dito\s+sa)\s+[^.]+?(?=\.|$)/i.test(text)) {
+            text = text.replace(/(?:sa|dito\s+sa)\s+[^.]+?(?=\.|$)/i, 'sa Angono Social Hygiene Clinic');
+        } else {
+            text = text.replace(/\.?$/, ' sa Angono Social Hygiene Clinic.');
         }
     } else if (type === '8am') {
         if (/(?:ng\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)/i.test(text)) {
@@ -259,7 +267,7 @@ window.quickReplaceSmsText = function(btn, type) {
     textarea.focus();
 };
 
-window.saveEditSmsMessage = async function(btn, id) {
+window.saveEditSmsMessage = async function (btn, id) {
     const card = btn.closest('.sms-queue-card');
     if (!card) return;
     const textarea = card.querySelector('.sms-msg-textarea');
@@ -289,7 +297,7 @@ window.saveEditSmsMessage = async function(btn, id) {
     }
 };
 
-window.checkSmsQueueStatus = async function() {
+window.checkSmsQueueStatus = async function () {
     const queueEl = document.getElementById('sms-queue-count');
     const listEl = document.getElementById('sms-queue-list');
     const listCompletedSms = document.getElementById('list-completed-sms');
@@ -397,6 +405,9 @@ window.checkSmsQueueStatus = async function() {
                             <span style="font-size:0.65rem; color:var(--text-muted); font-weight:600; margin-right:2px;">I-quick change:</span>
                             <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, 'main')" title="Palitan ang pickup location ng 'dito sa Main Health Center'">
                                 <i class="ph ph-buildings"></i> Sa Main
+                            </button>
+                            <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, 'ashc')" title="Palitan ang pickup location ng 'sa Angono Social Hygiene Clinic'">
+                                <i class="ph ph-first-aid"></i> Sa Social Hygiene
                             </button>
                             <button type="button" class="btn btn-secondary text-xs" style="padding:1px 6px; font-size:0.65rem; height:20px; line-height:1;" onclick="quickReplaceSmsText(this, '8am')" title="Gawing 8:00 AM">
                                 <i class="ph ph-clock"></i> 8:00 AM
@@ -954,8 +965,14 @@ async function apiGet(action, params = {}) {
                     status: "success", data: rows.map(r => {
                         let d = {};
                         try { d = typeof r.details === 'string' ? JSON.parse(r.details) : (r.details || {}); } catch (e) { }
-                        let resVal = d.ResultCode || d.Diagnosis || d.VL_Choice || d.Dengue_Result || d.result || "";
+                        let resVal = d.Result || d.ResultCode || d.Diagnosis || d.VL_Choice || d.Dengue_Result || d.result || "";
                         const stUpper = String(r.status || "").toUpperCase();
+                        const tUpper = String(r.test_name || "").toUpperCase();
+                        const isNAAT = tUpper.includes("NAAT") || tUpper.includes("NPOC");
+                        const resCode = String(d.ResultCode || d.resultCode || "").toUpperCase().trim();
+                        if (isNAAT && resCode === 'T' && (!resVal || resVal === 'T')) {
+                            resVal = "MTB DETECTED. (FOR LC-NAAT TESTING)";
+                        }
                         if (!resVal && (stUpper === 'PENDING' || stUpper === 'FOR REPEAT')) {
                             resVal = stUpper === 'FOR REPEAT' ? "For Repeat Testing" : "Pending Examination";
                         }
@@ -1131,7 +1148,7 @@ async function apiGet(action, params = {}) {
                             "X-Ray Result": d["X-Ray Result"] || d.xray || "",
                             "Result Code": d.ResultCode || d.resultCode || d.result || "",
                             "Grade": d.Grade || d.grade || "",
-                            "Repeat": d.Repeat || d.repeat || "",
+                            "Repeat": d.Repeat || d.repeat || ((params.type === 'NAAT' && String(d.ResultCode || d.resultCode || '').toUpperCase().trim() === 'T') ? 'INITIAL' : ''),
                             "Appearance": d.Appearance || d.appearance || "",
                             "Remarks": d.Remarks || d.remarks || "",
                             "Performed By": d["Performed By"] || d.performedBy || r.encoder || ""
@@ -1391,8 +1408,26 @@ async function apiPost(action, payload) {
 
                 let testStatus = 'ENCODED';
                 let repeatTag = String(details.Repeat || details["Test Type"] || "").toUpperCase();
-                if (repeatTag.includes('INITIAL')) {
+                const tName = String(payload.updatedTest || details.test_name || details.test || "").toUpperCase();
+                let isNAAT = tName.includes("NAAT") || tName.includes("NPOC");
+                const resCode = String(details.ResultCode || details.resultCode || details.Result || "").trim().toUpperCase();
+
+                if (!isNAAT && !tName && payload.testId) {
+                    try {
+                        const { data: currentTest } = await sb.from('lab_tests').select('test_name, test_code').eq('id', payload.testId).maybeSingle();
+                        if (currentTest) {
+                            const dbName = String(currentTest.test_name || currentTest.test_code || "").toUpperCase();
+                            if (dbName.includes("NAAT") || dbName.includes("NPOC")) isNAAT = true;
+                        }
+                    } catch (e) { }
+                }
+
+                if (repeatTag.includes('INITIAL') || (isNAAT && resCode === 'T')) {
                     testStatus = 'FOR REPEAT';
+                    if (isNAAT && resCode === 'T') {
+                        details.Repeat = 'INITIAL';
+                        details.Result = 'MTB DETECTED. (FOR LC-NAAT TESTING)';
+                    }
                 }
 
                 const { error } = await sb.from('lab_tests').update({
@@ -1520,11 +1555,24 @@ async function apiPost(action, payload) {
                 return { status: "success" };
             }
             case "updateRegistryDetails": {
-                const { data: row, error: selErr } = await sb.from('lab_tests').select('details').eq('test_code', payload.testCode).maybeSingle();
+                const { data: row, error: selErr } = await sb.from('lab_tests').select('details, test_name, test_code').eq('test_code', payload.testCode).maybeSingle();
                 if (selErr) return { status: "error", message: selErr.message };
                 if (!row) return { status: "error", message: "Record not found." };
                 const merged = { ...(row.details || {}), ...payload.updates };
-                const { error } = await sb.from('lab_tests').update({ details: merged }).eq('test_code', payload.testCode);
+                let updFields = { details: merged };
+                const tName = String(row.test_name || row.test_code || "").toUpperCase();
+                const isNAAT = tName.includes("NAAT") || tName.includes("NPOC");
+                const resCode = String(merged.ResultCode || merged.resultCode || merged.Result || merged["Result Code"] || "").trim().toUpperCase();
+
+                if (isNAAT && resCode === 'T') {
+                    updFields.status = 'FOR REPEAT';
+                    merged.Repeat = 'INITIAL';
+                    merged.Result = 'MTB DETECTED. (FOR LC-NAAT TESTING)';
+                } else if (String(merged.Repeat || merged["Test Type"] || "").toUpperCase().includes('INITIAL')) {
+                    updFields.status = 'FOR REPEAT';
+                }
+
+                const { error } = await sb.from('lab_tests').update(updFields).eq('test_code', payload.testCode);
                 if (error) return { status: "error", message: error.message };
                 return { status: "success" };
             }
@@ -2831,11 +2879,18 @@ function renderLists() {
 
     const pendingCardsHtml = fPending.map(item => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let tCode = getTestCodeFromName(item.test); let subTxt = ""; let repeatBadge = "";
-        try { let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); if (d.Age) subTxt = `(${d.Age}/${d.Sex})`; } catch (e) { }
+        try {
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+            if (d.Age) subTxt = `(${d.Age}/${d.Sex})`;
+            let rpt = d.Repeat || d["Test Type"] || "";
+            if (String(rpt).toUpperCase().includes('REPEAT')) {
+                repeatBadge = `<span class="badge badge-warning" style="margin-left:4px; font-size:0.65rem; background:var(--warning); color:white; padding:1px 5px; border-radius:3px;">REPEAT</span>`;
+            }
+        } catch (e) { }
 
         let actionsHtml = ''; let checkboxHtml = '';
 
-        if (role === 'ADMIN' || role === 'STAFF' || (isEncoder && item.encoder === currentUser.username)) { actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`; }
+        if (role !== 'VIEWER') { actionsHtml = `<div style="display:flex; gap:5px;"><button onclick="editPendingFull('${item.id}')" class="btn-icon" title="Edit Full Profile"><i class="ph ph-pencil-simple"></i></button><button onclick="customConfirm('Delete this request?', () => deleteEntry('${item.id}'))" class="btn-icon" style="color:var(--danger);" title="Delete"><i class="ph ph-trash"></i></button></div>`; }
 
         let clickAttr = '';
         let expandAreaHtml = '';
@@ -2864,8 +2919,16 @@ function renderLists() {
 
     if (rList) {
         rList.innerHTML = fRepeat.map(item => {
-            const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, ""); let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); let fac = d.facility || d.Facility || "N/A";
-            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div></div>${isViewer || isEncoder ? '' : `<button class="btn-icon" id="btn-repeat-${safeId}" style="color:var(--warning); background: transparent; padding: 4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1.2rem;"></i></button>`}</div>`;
+            const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+            let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+            let fac = d.facility || d.Facility || "N/A";
+            let tCodePrint = getTestCodeFromName(item.test);
+            const canPrint = (role === 'ADMIN' || role === 'STAFF');
+            const printBtns = canPrint ? `<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success); padding: 4px;" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri); padding: 4px;" title="Download PDF"><i class="ph ph-download-simple"></i></button>` : '';
+            const moveBtn = `<button class="btn btn-secondary text-xs" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:600; padding:3px 8px; display:inline-flex; align-items:center; gap:4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1rem;"></i> Move to Pending</button>`;
+            const deleteBtn = `<button class="btn-icon" id="btn-del-repeat-${safeId}" onclick="deleteRepeatRequest('${item.id}')" style="color:var(--danger); padding: 4px;" title="Delete Repeat Request"><i class="ph ph-trash" style="font-size: 1.15rem;"></i></button>`;
+            const resSummary = (tCodePrint === 'NAAT' && (d.ResultCode === 'T' || d.Result)) ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:2px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'}</div>` : '';
+            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div>${resSummary}</div><div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">${printBtns}${moveBtn}${deleteBtn}</div></div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if (cRep) cRep.innerText = `(${fRepeat.length})`;
         const mwnRep = document.getElementById('mwn-badge-repeat'); if (mwnRep) mwnRep.innerText = fRepeat.length;
@@ -2880,7 +2943,8 @@ function renderLists() {
         const undoBtn = canUndo ? `<button class="btn-icon" id="btn-undo-${item.id}" onclick="undoResult('${item.id}')" style="color: var(--warning);" title="Undo Result"><i class="ph ph-arrow-u-up-left"></i></button>` : '';
         const canPrint = (role === 'ADMIN' || role === 'STAFF');
         const printBtns = canPrint ? `<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success);" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri);" title="Download PDF"><i class="ph ph-download-simple"></i></button>` : '';
-        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:8px;">${undoBtn}${printBtns}</div></div>`;
+        const smsBtn = (role !== 'VIEWER' && ['GXP', 'DSSM', 'GXVL', 'GRAM', 'NAAT'].includes(tCodePrint)) ? `<button class="btn-icon" onclick="sendDirectTestSMS('${item.id}', '${tCodePrint}')" style="color: var(--info, #0284c7);" title="Send SMS Notice"><i class="ph ph-chat-teardrop-dots"></i></button>` : '';
+        return `<div class="completed-card" style="margin-bottom:8px;"><div style="overflow:hidden; flex-grow:1;"><div class="pc-name">${item.name} ${repeatBadge}</div><div class="pc-meta"><span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 4px; border-radius:3px; font-family:monospace; margin-right:5px;">${displaySerial}</span>${item.test}</div></div><div style="display:flex; gap:6px; align-items:center;">${undoBtn}${printBtns}${smsBtn}</div></div>`;
     }).join('');
 
     const cPend = document.getElementById('count-pending'); if (cPend) cPend.innerText = `(${fPending.length})`;
@@ -2892,6 +2956,12 @@ async function saveResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if ((tCodePrint === "GXP" || tCodePrint === "NAAT") && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+    const isNAAT = tCodePrint === "NAAT" || String(item.test || "").toUpperCase().includes("NAAT") || String(item.test || "").toUpperCase().includes("NPOC");
+    const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
+    if (isNAAT && resCode === "T") {
+        newResults["Repeat"] = "INITIAL";
+        newResults["Result"] = "MTB DETECTED. (FOR LC-NAAT TESTING)";
+    }
     const performerName = newResults["Performed By"] || currentUser.fullName || currentUser.username;
     const preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
     newResults["Performed By"] = performerName;
@@ -2905,10 +2975,10 @@ async function saveResult(id, safeId, btn) {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
             let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || newResults["Repeat"] || newResults["Test Type"] || "").toUpperCase();
-            let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
-            const resCode = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
+            let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT') || (isNAAT && resCode === "T");
+            const resCodeSaved = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat, resCode);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat, resCodeSaved);
 
             await loadPendingData();
         }
@@ -2919,6 +2989,12 @@ async function saveAndPrintResult(id, safeId, btn) {
     const inputs = document.querySelectorAll('.res-' + safeId); const item = window.pendingData.find(d => String(d.id) === String(id).trim());
     let newResults = {}; inputs.forEach(inp => { newResults[inp.getAttribute('data-key')] = inp.value; }); let detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let tCodePrint = getTestCodeFromName(item.test);
     if ((tCodePrint === "GXP" || tCodePrint === "NAAT") && (!newResults["Remarks"] || newResults["Remarks"].trim() === "")) { if (detailsObj["X-Ray Result"]) { newResults["Remarks"] = "X-Ray: " + detailsObj["X-Ray Result"]; } }
+    const isNAAT = tCodePrint === "NAAT" || String(item.test || "").toUpperCase().includes("NAAT") || String(item.test || "").toUpperCase().includes("NPOC");
+    const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
+    if (isNAAT && resCode === "T") {
+        newResults["Repeat"] = "INITIAL";
+        newResults["Result"] = "MTB DETECTED. (FOR LC-NAAT TESTING)";
+    }
     const performerName = newResults["Performed By"] || currentUser.fullName || currentUser.username;
     const preparedByName = newResults["Prepared By"] || detailsObj["Prepared By"] || detailsObj.preparedBy || item.encoder || "";
     newResults["Performed By"] = performerName;
@@ -2932,10 +3008,10 @@ async function saveAndPrintResult(id, safeId, btn) {
             btn.style.background = "var(--success)"; btn.style.color = "white"; btn.innerHTML = '<i class="ph ph-check"></i> Saved';
 
             let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || newResults["Repeat"] || newResults["Test Type"] || "").toUpperCase();
-            let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
-            const resCode = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
+            let isRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT') || (isNAAT && resCode === "T");
+            const resCodeSaved = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
             // Trigger 2: Send Result Ready email (Soft copy disclaimer included)
-            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat, resCode);
+            notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isRepeat, resCodeSaved);
 
             await loadPendingData();
             printDirect(null, id, tCodePrint);
@@ -2949,11 +3025,12 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
         if (!patientId) return;
 
         // Map internal test IDs to formal test codes
-        if (testCode === 'mtb') testCode = 'GXP';
-        if (testCode === 'naat' || testCode === 'npoc' || String(testCode).toUpperCase().includes('NAAT') || String(testCode).toUpperCase().includes('NPOC')) testCode = 'NAAT';
-        if (testCode === 'dssm') testCode = 'DSSM';
-        if (testCode === 'viral') testCode = 'GXVL';
-        if (testCode === 'gram') testCode = 'GRAM';
+        const tCodeUpper = String(testCode || "").toUpperCase();
+        if (tCodeUpper.includes('MTB') || tCodeUpper.includes('GXP') || tCodeUpper.includes('GENEXPERT')) testCode = 'GXP';
+        else if (tCodeUpper.includes('NAAT') || tCodeUpper.includes('NPOC')) testCode = 'NAAT';
+        else if (tCodeUpper.includes('DSSM') || tCodeUpper.includes('AFB')) testCode = 'DSSM';
+        else if (tCodeUpper.includes('VIRAL') || tCodeUpper.includes('VL') || tCodeUpper.includes('GXVL')) testCode = 'GXVL';
+        else if (tCodeUpper.includes('GRAM')) testCode = 'GRAM';
 
         // For NPOC-NAAT: strictly proceed with SMS result notification ONLY if result is negative ('N')
         if (testCode === 'NAAT') {
@@ -2981,13 +3058,42 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
             }
         }
 
+        let patientEmail = "";
+        let patientFullName = patientName || "";
+        let patientContact = "";
+        let patientFacility = "";
+
         const { data } = await sb.from('patients').select('email, full_name, contact, facility').eq('id', patientId).maybeSingle();
+        if (data) {
+            patientEmail = data.email || "";
+            patientFullName = data.full_name || patientName || "";
+            patientContact = data.contact || "";
+            patientFacility = data.facility || "";
+        }
+
+        // Fallback: If contact or facility is missing in patients table, check lab_tests
+        if (!patientContact || !patientFacility) {
+            try {
+                const { data: ltRec } = await sb.from('lab_tests')
+                    .select('facility, details')
+                    .eq('patient_id', patientId)
+                    .order('date', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (ltRec) {
+                    if (!patientFacility && ltRec.facility) patientFacility = ltRec.facility;
+                    let d = typeof ltRec.details === 'string' ? JSON.parse(ltRec.details) : (ltRec.details || {});
+                    if (!patientContact && (d.contact || d.Contact)) patientContact = d.contact || d.Contact;
+                    if (!patientFacility && (d.facility || d.Facility)) patientFacility = d.facility || d.Facility;
+                }
+            } catch (e) { }
+        }
 
         // --- EMAIL NOTIFICATION ---
-        if (data && data.email && data.email.includes('@')) {
+        if (patientEmail && patientEmail.includes('@')) {
             sendPatientEmail({
-                toEmail: data.email,
-                patientName: data.full_name || patientName,
+                toEmail: patientEmail,
+                patientName: patientFullName,
                 patientId: patientId,
                 testName: testName,
                 testCode: testCode,
@@ -3000,29 +3106,24 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
         const smsEnabled = localStorage.getItem('cfg_sms_enable') !== 'false';
         const smsSchedule = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
 
-        if (smsEnabled && data && data.contact && allowedTestsForSms.includes(testCode)) {
-            const facilityName = data.facility || "";
+        if (smsEnabled && patientContact && allowedTestsForSms.includes(testCode)) {
+            const facilityName = patientFacility || "";
             const facilityLow = facilityName.toLowerCase();
-            const isExcluded = facilityLow.includes("angono medics") || facilityLow.includes("san isidro hospital");
+            const isExcluded = (testCode !== 'GXVL' && testCode !== 'GRAM') && (facilityLow.includes("angono medics") || facilityLow.includes("san isidro hospital"));
 
             if (!isExcluded) {
-                let phone = data.contact.replace(/[^0-9]/g, '');
+                let phone = patientContact.replace(/[^0-9]/g, '');
                 if (phone.startsWith('09')) phone = '63' + phone.substring(1);
                 if (phone.length >= 10) {
                     let locationText = "";
                     if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
                         locationText = facilityName ? `sa ${window.formatFacilityLocationName(facilityName)}` : "sa health center ng inyong barangay";
                     } else if (testCode === 'GXVL' || testCode === 'GRAM') {
-                        locationText = "sa Angono May Puso Social Hygiene Clinic";
+                        locationText = "sa Angono Social Hygiene Clinic";
                     }
 
-                    let rawName = data.full_name || patientName || "";
-                    let firstName = rawName;
-                    if (rawName.includes(',')) {
-                        firstName = rawName.split(',')[1].trim().split(' ')[0];
-                    } else {
-                        firstName = rawName.trim().split(' ')[0];
-                    }
+                    let rawName = patientFullName || "";
+                    let firstName = rawName.includes(',') ? rawName.split(',')[1].trim().split(' ')[0] : rawName.trim().split(' ')[0];
 
                     let displayTest = testCode;
                     if (testCode === 'GXP') displayTest = "GeneXpert";
@@ -3033,12 +3134,10 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
                     let smsMessage = "";
                     if (isRepeat) {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen sa Angono MHO Lab.`;
+                    } else if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
                     } else {
-                        if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
-                            smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
-                        } else {
-                            smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Kunin ito ${locationText}.`;
-                        }
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ${locationText}.`;
                     }
 
                     if (smsSchedule === 'realtime') {
@@ -3171,7 +3270,7 @@ async function checkAndSendPendingSMS(manual = false) {
     }
 }
 
-window.sendSinglePendingSMS = async function(id, btn) {
+window.sendSinglePendingSMS = async function (id, btn) {
     const philsmsToken = getCleanPhilSmsToken();
     if (!philsmsToken) return showAppAlert("PhilSMS Token Missing", "Pakilagay muna ang inyong PhilSMS API Token sa Settings.", "error");
 
@@ -3213,7 +3312,7 @@ window.sendSinglePendingSMS = async function(id, btn) {
     }
 };
 
-window.deletePendingSMS = async function(id) {
+window.deletePendingSMS = async function (id) {
     if (!confirm("Sigurado ka bang nais mong alisin ang text message na ito sa queue?")) return;
     try {
         const { error } = await sb.from('pending_sms').delete().eq('id', id);
@@ -3225,7 +3324,7 @@ window.deletePendingSMS = async function(id) {
     }
 };
 
-window.sendDueOrAllPendingSMS = async function(forceAll = false) {
+window.sendDueOrAllPendingSMS = async function (forceAll = false) {
     if (!forceAll) {
         return checkAndSendPendingSMS(true);
     }
@@ -3279,7 +3378,7 @@ window.sendDueOrAllPendingSMS = async function(forceAll = false) {
     }
 };
 
-window.resendSinglePendingSMS = async function(id, btn) {
+window.resendSinglePendingSMS = async function (id, btn) {
     const philsmsToken = getCleanPhilSmsToken();
     if (!philsmsToken) return showAppAlert("PhilSMS Token Missing", "Pakilagay muna ang inyong PhilSMS API Token sa Settings.", "error");
 
@@ -3322,7 +3421,79 @@ window.resendSinglePendingSMS = async function(id, btn) {
     }
 };
 
-window.syncResultsToQueueByDate = async function(customDate) {
+window.sendDirectTestSMS = async function (testId, testCode) {
+    try {
+        const philsmsToken = getCleanPhilSmsToken();
+        if (!philsmsToken) {
+            return showAppAlert("PhilSMS Token Missing", "Pakilagay muna ang inyong PhilSMS API Token sa Settings.", "error");
+        }
+
+        const { data: testRec, error: tErr } = await sb.from('lab_tests').select('*').eq('id', testId).maybeSingle();
+        if (tErr || !testRec) throw new Error("Record not found.");
+
+        const dObj = typeof testRec.details === 'string' ? JSON.parse(testRec.details) : (testRec.details || {});
+        let patientContact = dObj.contact || dObj.Contact || "";
+        let patientName = testRec.patient_name || "";
+        let facilityName = testRec.facility || dObj.facility || dObj.Facility || "";
+
+        if (!patientContact && testRec.patient_id) {
+            const { data: pt } = await sb.from('patients').select('contact, full_name, facility').eq('id', testRec.patient_id).maybeSingle();
+            if (pt) {
+                if (pt.contact) patientContact = pt.contact;
+                if (!patientName && pt.full_name) patientName = pt.full_name;
+                if (!facilityName && pt.facility) facilityName = pt.facility;
+            }
+        }
+
+        if (!patientContact) {
+            return showAppAlert("Walang Contact Number", `Walang nakitang cellphone number para kay ${patientName || 'pasyente'}.`, "warning");
+        }
+
+        let phone = patientContact.replace(/[^0-9]/g, '');
+        if (phone.startsWith('09')) phone = '63' + phone.substring(1);
+        if (phone.length < 10) {
+            return showAppAlert("Invalid Phone Number", `Ang number (${patientContact}) ay hindi valid o kulang sa digits.`, "error");
+        }
+
+        let firstName = patientName.includes(',') ? patientName.split(',')[1].trim().split(' ')[0] : patientName.trim().split(' ')[0];
+        const tCode = getTestCodeFromName(testCode || testRec.test_name);
+
+        let locationText = (tCode === 'GXVL' || tCode === 'GRAM')
+            ? "sa Angono Social Hygiene Clinic"
+            : (facilityName ? `sa ${window.formatFacilityLocationName(facilityName)}` : "sa health center ng inyong barangay");
+
+        let displayTest = tCode === 'GXP' ? 'GeneXpert' : (tCode === 'NAAT' ? 'NPOC-NAAT' : (tCode === 'GXVL' ? 'Viral Load' : (tCode === 'GRAM' ? 'Gram Stain' : 'DSSM')));
+
+        const msg = (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT')
+            ? `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`
+            : `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ${locationText}.`;
+
+        customConfirm(`Ipadala ang SMS kay ${firstName} (${phone})?\n\n"${msg}"`, async () => {
+            try {
+                showAppAlert("Sending...", "Ipinapadala ang SMS via PhilSMS...", "info");
+                const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
+                    body: JSON.stringify({ recipient: phone, sender_id: "PhilSMS", type: "plain", message: msg })
+                });
+                const result = await res.json();
+                if (result.status === 'success' || result.message === 'SMS sent successfully' || result.status === 'queued') {
+                    showAppAlert("SMS Sent!", `Matagumpay na naipadala ang SMS kay ${firstName}.`, "success");
+                    await apiPost("logAudit", { username: currentUser.username || "Staff", action: "SEND SMS", details: `Sent SMS result notification to ${phone} for ${displayTest}` });
+                    if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
+                } else {
+                    throw new Error(result.message || "Failed to send SMS via PhilSMS.");
+                }
+            } catch (err) {
+                showAppAlert("SMS Failed", err.message || "Hindi naipadala ang SMS.", "error");
+            }
+        });
+    } catch (e) {
+        showAppAlert("Error", e.message || "Failed to process SMS.", "error");
+    }
+};
+
+window.syncResultsToQueueByDate = async function (customDate) {
     try {
         let targetDateStr = customDate;
         if (!targetDateStr) {
@@ -3412,7 +3583,7 @@ window.syncResultsToQueueByDate = async function(customDate) {
             if (!pt || !pt.contact) continue;
 
             const fac = (pt.facility || "").toLowerCase();
-            if (fac.includes("angono medics") || fac.includes("san isidro hospital")) continue;
+            if ((tCode !== 'GXVL' && tCode !== 'GRAM') && (fac.includes("angono medics") || fac.includes("san isidro hospital"))) continue;
 
             let phone = pt.contact.replace(/[^0-9]/g, '');
             if (phone.startsWith('09')) phone = '63' + phone.substring(1);
@@ -3420,12 +3591,14 @@ window.syncResultsToQueueByDate = async function(customDate) {
 
             let rawName = pt.full_name || "";
             let firstName = rawName.includes(',') ? rawName.split(',')[1].trim().split(' ')[0] : rawName.trim().split(' ')[0];
-            let locationText = (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT')
-                ? (pt.facility ? `sa ${window.formatFacilityLocationName(pt.facility)}` : "sa health center ng inyong barangay")
-                : "sa Angono May Puso Social Hygiene Clinic";
+            let locationText = (tCode === 'GXVL' || tCode === 'GRAM')
+                ? "sa Angono Social Hygiene Clinic"
+                : (pt.facility ? `sa ${window.formatFacilityLocationName(pt.facility)}` : "sa health center ng inyong barangay");
 
             let displayTest = tCode === 'GXP' ? 'GeneXpert' : (tCode === 'NAAT' ? 'NPOC-NAAT' : (tCode === 'GXVL' ? 'Viral Load' : (tCode === 'GRAM' ? 'Gram Stain' : 'DSSM')));
-            let smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
+            let smsMessage = (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT')
+                ? `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`
+                : `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ${locationText}.`;
 
             if (existingSet.has(`${phone}:::${smsMessage}`)) {
                 skippedCount++;
@@ -3461,7 +3634,7 @@ window.syncResultsToQueueByDate = async function(customDate) {
     }
 };
 
-window.syncTodayUnsentResultsToQueue = async function() {
+window.syncTodayUnsentResultsToQueue = async function () {
     return window.syncResultsToQueueByDate(null);
 };
 
@@ -3471,12 +3644,73 @@ setInterval(checkAndSendPendingSMS, 600000);
 setTimeout(checkAndSendPendingSMS, 5000);
 
 async function moveToPendingRepeat(idStr) {
-    const item = window.completedData.find(i => String(i.id) === String(idStr)); if (!item) return;
-    const btn = document.getElementById('btn-repeat-' + item.id.replace(/[^a-zA-Z0-9]/g, "")); if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Moving...'; btn.disabled = true; }
-    let d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details; let cleanDetails = { age: d.age || d.Age || "", sex: d.sex || d.Sex || "", facility: d.facility || d.Facility || "", address: d.address || d.Address || "", contact: d.contact || d.Contact || "", bday: d.bday || d.Bday || "", "History of Treatment": d["History of Treatment"] || "", "Source of Request": d["Source of Request"] || "", "X-Ray Result": d["X-Ray Result"] || "" };
-    let tCode = ""; try { tCode = getTestCodeFromName(item.test); } catch (e) { } const testEntry = { name: item.test, code: tCode, details: cleanDetails }; const formData = { patientId: item.patientId, fullName: item.name, bday: cleanDetails.bday, sex: cleanDetails.sex, age: cleanDetails.age, address: cleanDetails.address, contact: cleanDetails.contact, email: "", facility: cleanDetails.facility, encoderFullName: currentUser.fullName || currentUser.username, encoder: currentUser.username, testsData: JSON.stringify([testEntry]) };
-    try { const res = await apiPost("submitForm", { formObject: formData }); if (res && res.status === "success") { await apiPost("deletePendingTestById", { testId: item.id }); await loadPendingData(); } else { showAppAlert("Error", res ? res.message : "Error", "error"); if (btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } } } catch (err) { showAppAlert("Error", "Error moving.", "error"); if (btn) { btn.innerHTML = "Move to Pending"; btn.disabled = false; } }
+    const item = (window.pendingData || []).find(i => String(i.id) === String(idStr)) || (window.completedData || []).find(i => String(i.id) === String(idStr));
+    if (!item) {
+        showAppAlert("Error", "Record not found.", "error");
+        return;
+    }
+    const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+    const btn = document.getElementById('btn-repeat-' + safeId);
+    if (btn) { btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>'; btn.disabled = true; }
+    try {
+        let d = {};
+        try { d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {}); } catch(e) { d = item.details || {}; }
+        let cleanDetails = { ...d, Repeat: "REPEAT", "Test Type": "REPEAT" };
+        delete cleanDetails.Result;
+        delete cleanDetails.result;
+        delete cleanDetails.ResultCode;
+        delete cleanDetails.resultCode;
+        delete cleanDetails.date_examined;
+        delete cleanDetails.dateEncoded;
+        delete cleanDetails.Remarks;
+        delete cleanDetails.remarks;
+
+        const { error } = await sb.from('lab_tests').update({
+            status: 'PENDING',
+            details: cleanDetails,
+            date_examined: null,
+            date_released: null
+        }).eq('id', item.id);
+
+        if (error) throw error;
+
+        await apiPost("logAudit", {
+            username: currentUser.fullName || currentUser.username || "Staff",
+            action: "MOVE TO PENDING",
+            details: `Moved ${item.name} (${item.test}) to Pending for repeat examination`
+        });
+
+        showAppAlert("Moved to Pending", `${item.name} is now in Pending for repeat testing.`, "success");
+        await loadPendingData();
+    } catch (err) {
+        console.error("Move to pending error:", err);
+        showAppAlert("Error", "Failed to move to Pending: " + (err.message || err), "error");
+        if (btn) {
+            btn.innerHTML = '<i class="ph ph-arrow-circle-left" style="font-size: 1.25rem;"></i>';
+            btn.disabled = false;
+        }
+    }
 }
+window.moveToPendingRepeat = moveToPendingRepeat;
+
+window.deleteRepeatRequest = function (id) {
+    customConfirm('Sigurado ka bang nais mong burahin ang repeat request na ito?', async () => {
+        try {
+            const { error } = await sb.from('lab_tests').delete().eq('id', id);
+            if (error) throw error;
+            await apiPost("logAudit", {
+                username: currentUser.username || currentUser.fullName || "Staff",
+                action: "DELETE REPEAT",
+                details: `Deleted repeat test entry ${id}`
+            });
+            showAppAlert("Deleted", "Matagumpay na nabura ang repeat entry.", "info");
+            await loadPendingData();
+        } catch (e) {
+            console.error("Delete repeat entry error:", e);
+            showAppAlert("Error", "Hindi nabura ang entry: " + (e.message || e), "error");
+        }
+    });
+};
 
 function toggleExpand(safeId) { const el = document.getElementById('expand-' + safeId); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 
@@ -3616,11 +3850,17 @@ async function editFromRegistry(testId) {
 
 async function deleteEntry(id) {
     try {
-        await apiPost("deletePendingTestById", { testId: id });
-        await apiPost("logAudit", { username: currentUser.username, action: "DELETE", details: `Deleted test entry ${id}` });
-        loadPendingData();
-    } catch (e) { }
+        const { error } = await sb.from('lab_tests').delete().eq('id', id);
+        if (error) throw error;
+        await apiPost("logAudit", { username: currentUser.username || "Staff", action: "DELETE", details: `Deleted test entry ${id}` });
+        showAppAlert("Deleted", "Entry has been removed.", "info");
+        await loadPendingData();
+    } catch (e) {
+        console.error("Delete entry error:", e);
+        showAppAlert("Error", "Failed to delete entry: " + (e.message || e), "error");
+    }
 }
+window.deleteEntry = deleteEntry;
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if (sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if (box.querySelector('input')) box.querySelector('input').value = ""; } }
 function getResultTemplate(code, safeId, item) {
@@ -3684,7 +3924,29 @@ function getResultTemplate(code, safeId, item) {
         case 'NAAT':
         case 'NPOC': {
             const curSpec = itemDetails["Specimen"] || itemDetails.specimen || 'Sputum';
-            formHtml = `<div class="form-grid grid-2">${select('ResultCode', 'NPOC-NAAT Result', ['N', 'T', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="field-group full-width" style="margin-top:6px;"><label class="field-label">Type of Specimen</label><div class="compact-toggle"><button type="button" class="toggle-btn ${curSpec === 'Sputum' ? 'active' : ''}" onclick="let inp=this.parentNode.querySelector('input'); inp.value='Sputum'; this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');" data-val="Sputum">Sputum</button><button type="button" class="toggle-btn ${curSpec === 'Tongue Swab' ? 'active' : ''}" onclick="let inp=this.parentNode.querySelector('input'); inp.value='Tongue Swab'; this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');" data-val="Tongue Swab">Tongue Swab</button><input type="hidden" class="res-${safeId} form-input" data-key="Specimen" value="${curSpec}"></div></div></div>${rem}`;
+            const curRes = String(itemDetails["ResultCode"] || itemDetails.resultCode || itemDetails["Result"] || 'N').trim().toUpperCase();
+            formHtml = `<div class="form-grid grid-2">
+                <div class="field-group">
+                    <label class="field-label">NPOC-NAAT Result</label>
+                    <select class="res-${safeId} form-select" data-key="ResultCode" onchange="let h=document.getElementById('naat-hint-${safeId}'); if(h){ if(this.value==='T'){ h.innerHTML='<span style=\\'color:var(--danger); font-weight:600;\\'>⚠️ MTB DETECTED. (FOR LC-NAAT TESTING) — Mapupunta sa For Repeat</span>'; h.style.display='block'; } else if(this.value==='N'){ h.innerHTML='<span style=\\'color:var(--success); font-weight:600;\\'>MTB NOT DETECTED</span>'; h.style.display='block'; } else if(this.value==='I'){ h.innerHTML='<span style=\\'color:var(--text-muted); font-weight:600;\\'>INVALID / ERROR</span>'; h.style.display='block'; } else { h.style.display='none'; } }">
+                        <option value="N" ${curRes === 'N' ? 'selected' : ''}>N (MTB Not Detected)</option>
+                        <option value="T" ${curRes === 'T' ? 'selected' : ''}>T (MTB Detected - For LC-NAAT Testing)</option>
+                        <option value="I" ${curRes === 'I' ? 'selected' : ''}>I (Invalid / Error)</option>
+                    </select>
+                    <div id="naat-hint-${safeId}" style="font-size:0.75rem; margin-top:4px; ${curRes === 'T' ? '' : 'display:none;'}">
+                        ${curRes === 'T' ? '<span style="color:var(--danger); font-weight:600;">⚠️ MTB DETECTED. (FOR LC-NAAT TESTING) — Mapupunta sa For Repeat</span>' : ''}
+                    </div>
+                </div>
+                ${select('Appearance', 'Appearance', apps)}
+                <div class="field-group full-width" style="margin-top:6px;">
+                    <label class="field-label">Type of Specimen</label>
+                    <div class="compact-toggle">
+                        <button type="button" class="toggle-btn ${curSpec === 'Sputum' ? 'active' : ''}" onclick="let inp=this.parentNode.querySelector('input'); inp.value='Sputum'; this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');" data-val="Sputum">Sputum</button>
+                        <button type="button" class="toggle-btn ${curSpec === 'Tongue Swab' ? 'active' : ''}" onclick="let inp=this.parentNode.querySelector('input'); inp.value='Tongue Swab'; this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');" data-val="Tongue Swab">Tongue Swab</button>
+                        <input type="hidden" class="res-${safeId} form-input" data-key="Specimen" value="${curSpec}">
+                    </div>
+                </div>
+            </div>${rem}`;
             break;
         }
         case 'GXVL': formHtml = `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`; break;
@@ -4570,8 +4832,8 @@ function startAutoSync() {
                 if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF' && currentUser.facility !== 'ALL') q = q.ilike('facility', currentUser.facility);
                 const { data } = await q;
                 if (data) {
-                    window.pendingData = data.filter(d => d.status === 'PENDING').map(d => ({ id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date }));
-                    window.completedData = data.filter(d => d.status === 'ENCODED' || d.status === 'COMPLETED' || d.status === 'FOR REPEAT').map(d => ({ id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date }));
+                    window.pendingData = data.filter(d => d.status === 'PENDING' || d.status === 'FOR REPEAT').map(d => ({ id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date }));
+                    window.completedData = data.filter(d => d.status === 'ENCODED' || d.status === 'COMPLETED').map(d => ({ id: d.id, testCode: d.test_code || d.id, patientId: d.patient_id, name: d.patient_name, test: d.test_name, details: d.details, status: d.status, facility: d.facility, encoder: d.encoder, date: d.date }));
                     renderLists();
                 }
             } catch (e) { }
@@ -4621,7 +4883,16 @@ async function batchSaveResults(isPrint) {
 
         let batchStatus = 'ENCODED';
         let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
-        if (rptTag.includes('INITIAL')) batchStatus = 'FOR REPEAT';
+        const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
+        const isNAAT = tCodePrint === 'NAAT' || String(item.test || "").toUpperCase().includes('NAAT') || String(item.test || "").toUpperCase().includes('NPOC');
+
+        if (isNAAT && resCode === 'T') {
+            batchStatus = 'FOR REPEAT';
+            newResults["Repeat"] = "INITIAL";
+            newResults["Result"] = "MTB DETECTED. (FOR LC-NAAT TESTING)";
+        } else if (rptTag.includes('INITIAL')) {
+            batchStatus = 'FOR REPEAT';
+        }
 
         try {
             const { error } = await sb.from('lab_tests').update({ details: finalStr, status: batchStatus, encoder: performerName, date_examined: new Date().toISOString() }).eq('id', id);
@@ -4695,7 +4966,7 @@ function processNtpResultsClient(p) {
                         p.gxpText = "MTB NOT DETECTED.";
                         p.gxpClass = "res-n";
                     } else if (vUpper === "T" || vUpper.includes("DETECTED")) {
-                        p.gxpText = "MTB DETECTED.";
+                        p.gxpText = "MTB DETECTED. (FOR LC-NAAT TESTING)";
                         p.gxpClass = "res-t";
                     } else if (vUpper === "I" || vUpper.includes("ERR") || vUpper.includes("INV")) {
                         p.gxpText = "INVALID / ERROR.";
@@ -4716,7 +4987,7 @@ function processNtpResultsClient(p) {
             p.gxpText = "MTB NOT DETECTED.";
             p.gxpClass = "res-n";
         } else if (rc === "T" || rc.includes("DETECTED")) {
-            p.gxpText = "MTB DETECTED.";
+            p.gxpText = "MTB DETECTED. (FOR LC-NAAT TESTING)";
             p.gxpClass = "res-t";
         } else if (rc === "I" || rc.includes("ERR") || rc.includes("INV")) {
             p.gxpText = "INVALID / ERROR.";
