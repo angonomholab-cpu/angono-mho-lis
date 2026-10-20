@@ -3666,9 +3666,45 @@ async function moveToPendingRepeat(idStr) {
         delete cleanDetails.Remarks;
         delete cleanDetails.remarks;
 
+        // Generate automatic GeneXpert (GXP) test code based on current move-to-pending date
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const prefix = `GXP-${dateStr}-`;
+
+        let nextSeqNum = 1;
+        try {
+            const { data: existingGxp } = await sb.from('lab_tests')
+                .select('test_code, id')
+                .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
+
+            if (existingGxp && existingGxp.length > 0) {
+                let maxSeq = 0;
+                existingGxp.forEach(r => {
+                    const code = String(r.test_code || r.id || "");
+                    const parts = code.split('-');
+                    if (parts.length >= 3) {
+                        const seq = parseInt(parts[2], 10);
+                        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+                    }
+                });
+                nextSeqNum = maxSeq + 1;
+            }
+        } catch (e) {
+            console.warn("Could not calculate GXP sequence, using default 1:", e);
+        }
+
+        const seqStr = String(nextSeqNum).padStart(3, '0');
+        const newTestCode = `${prefix}${seqStr}`;
+
         const { error } = await sb.from('lab_tests').update({
+            id: newTestCode,
+            test_code: newTestCode,
+            test_name: 'GeneXpert MTB/Rif Ultra',
+            test_type: 'GeneXpert MTB/Rif Ultra',
             status: 'PENDING',
             details: cleanDetails,
+            date: now.toISOString(),
+            received_date: now.toISOString().split('T')[0],
             date_examined: null,
             date_released: null
         }).eq('id', item.id);
@@ -3678,16 +3714,16 @@ async function moveToPendingRepeat(idStr) {
         await apiPost("logAudit", {
             username: currentUser.fullName || currentUser.username || "Staff",
             action: "MOVE TO PENDING",
-            details: `Moved ${item.name} (${item.test}) to Pending for repeat examination`
+            details: `Moved ${item.name} from For Repeat to Pending as GeneXpert (${newTestCode})`
         });
 
-        showAppAlert("Moved to Pending", `${item.name} is now in Pending for repeat testing.`, "success");
+        showAppAlert("Moved to Pending", `${item.name} is now in Pending for GeneXpert examination (Test Code: ${newTestCode}).`, "success");
         await loadPendingData();
     } catch (err) {
         console.error("Move to pending error:", err);
         showAppAlert("Error", "Failed to move to Pending: " + (err.message || err), "error");
         if (btn) {
-            btn.innerHTML = '<i class="ph ph-arrow-circle-left" style="font-size: 1.25rem;"></i>';
+            btn.innerHTML = '<i class="ph ph-arrow-circle-left"></i> Move to Pending';
             btn.disabled = false;
         }
     }
@@ -3921,7 +3957,7 @@ function getResultTemplate(code, safeId, item) {
 
     let formHtml = "";
     switch (code) {
-        case 'GXP': formHtml = `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL'])}</div></div>${rem}`; break;
+        case 'GXP': formHtml = `<div class="form-grid grid-2">${select('ResultCode', 'MTB Result', ['N', 'T', 'TT', 'TI', 'RR', 'I'])} ${select('Appearance', 'Appearance', apps)} <div class="full-width">${select('Grade', 'Grade', ['', 'Very Low', 'Low', 'Medium', 'High'])}</div> <div class="full-width">${select('Repeat', 'Test Type', ['Standard', 'INITIAL', 'REPEAT'])}</div></div>${rem}`; break;
         case 'NAAT':
         case 'NPOC': {
             const curSpec = itemDetails["Specimen"] || itemDetails.specimen || 'Sputum';
