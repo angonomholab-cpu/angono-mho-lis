@@ -903,6 +903,7 @@ window.alert = function (message) { showAppAlert("Notice", message, "info"); };
 
 function parseAnyDate(dStr) {
     if (!dStr) return null;
+    if (dStr instanceof Date) return isNaN(dStr.getTime()) ? null : dStr;
     if (typeof dStr === 'string') {
         const clean = dStr.trim();
         const ymd = clean.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
@@ -911,12 +912,35 @@ function parseAnyDate(dStr) {
         }
         const mdy = clean.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
         if (mdy) {
-            return new Date(parseInt(mdy[3], 10), parseInt(mdy[1], 10) - 1, parseInt(mdy[2], 10));
+            const p1 = parseInt(mdy[1], 10);
+            const p2 = parseInt(mdy[2], 10);
+            const yr = parseInt(mdy[3], 10);
+            if (p1 > 12) {
+                // p1 is day (> 12), so it is DD/MM/YYYY
+                return new Date(yr, p2 - 1, p1);
+            } else {
+                // Standard MM/DD/YYYY
+                return new Date(yr, p1 - 1, p2);
+            }
         }
     }
     let d = new Date(dStr);
     if (!isNaN(d.getTime())) return d;
     return null;
+}
+
+function formatDateDisplay(dVal) {
+    if (!dVal) return "";
+    if (typeof dVal === 'string') {
+        const s = dVal.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    }
+    const d = parseAnyDate(dVal);
+    if (!d || isNaN(d.getTime())) return (typeof dVal === 'string' ? dVal : "");
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }
 
 async function apiGet(action, params = {}) {
@@ -1119,11 +1143,15 @@ async function apiGet(action, params = {}) {
                         const tMap = { 'GXP': 'GeneXpert MTB/Rif Ultra', 'NAAT': 'NPOC-NAAT', 'DSSM': 'DSSM', 'GXVL': 'Viral Load', 'SERO': 'Serology', 'HEMA': 'Hematology', 'CHEM': 'Blood Chemistry', 'UA': 'Urinalysis', 'FA': 'Fecalysis', 'DENGUE': 'Dengue Rapid Test', 'GRAM': 'Gram Stain' };
                         if (params.type === 'NAAT') {
                             q = q.in('test_name', ['NPOC-NAAT', 'NAAT', 'npoc-naat', 'naat']).in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
+                        } else if (params.type === 'GRAM') {
+                            q = q.or('test_name.ilike.%gram%,test_code.ilike.GRAM-%').in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
                         } else {
                             q = q.eq('test_name', tMap[params.type] || params.type).in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT']);
                         }
                     }
-                    if (params.facility && params.facility !== 'ALL') {
+                    const userRoleUpper = String(params.role || '').toUpperCase();
+                    const isPrivileged = ['ADMIN', 'STAFF'].includes(userRoleUpper);
+                    if (!isPrivileged && params.facility && params.facility !== 'ALL') {
                         q = q.ilike('facility', params.facility);
                     }
                     return q.order(dateColOrder, { ascending: isAsc });
@@ -1268,11 +1296,14 @@ async function apiGet(action, params = {}) {
                 if (params.type === 'GRAM' && tName === 'lab_tests') {
                     data = data.map(r => {
                         const d = typeof r.details === 'string' ? JSON.parse(r.details || '{}') : (r.details || {});
+                        const recDate = formatDateDisplay(r.received_date || r.date || d.request_date);
+                        const examDate = formatDateDisplay(r.date_examined || d.date_examined || recDate);
+                        const relDate = formatDateDisplay(r.date_released || examDate || recDate);
                         return {
                             "Test Code": r.test_code || r.id,
-                            "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
-                            "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : (d.date_examined ? new Date(d.date_examined).toLocaleDateString() : (r.date ? new Date(r.date).toLocaleDateString() : "")),
-                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : (d.date_examined ? new Date(d.date_examined).toLocaleDateString() : "")),
+                            "Date Received": recDate,
+                            "Date Examined": examDate,
+                            "Date Released": relDate,
                             "Patient Name": r.patient_name || "",
                             "Age": resolveAge(r, d),
                             "Sex": r.sex || d.sex || d.Sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
@@ -1347,7 +1378,7 @@ async function apiGet(action, params = {}) {
                 const headers = Object.keys(filteredData[0]).filter(h => !['details', 'count'].includes(h));
 
                 // 🟢 LATEST FIX: Monthly Filter date handling para masakop ang lahat ng formats ("Date Examined", "Date Received", etc.)
-                if (params.monthFilter) {
+                if (params.monthFilter && String(params.monthFilter).trim() !== '' && String(params.monthFilter).toUpperCase() !== 'ALL') {
                     let fVal = String(params.monthFilter).toLowerCase().trim();
                     filteredData = filteredData.filter(row => {
                         let rDate = row["Date Examined"] || row["Date Received"] || row["Date Released"] || row.Date || row.date_examined || row.date_received || row.date || row.created_at;
@@ -1370,7 +1401,7 @@ async function apiGet(action, params = {}) {
                 // 🟢 Column Filter + Search Query: Halimbawa Month = April + Column = Classification + Search = TB Patient
                 if (params.searchQuery && String(params.searchQuery).trim() !== '') {
                     const s = String(params.searchQuery).toLowerCase().trim();
-                    const colTarget = (params.colFilter && params.colFilter !== 'ALL') ? String(params.colFilter).toLowerCase().trim() : null;
+                    const colTarget = (params.colFilter && String(params.colFilter).toUpperCase() !== 'ALL') ? String(params.colFilter).toLowerCase().trim() : null;
 
                     filteredData = filteredData.filter(row => {
                         if (colTarget) {
@@ -4164,12 +4195,23 @@ window.toggleRegistryRowDrawer = function (drawerId, rowEl) {
 };
 
 async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = null, forceCol = null) {
+    const isNewTab = (window.CURRENT_TEST_TYPE !== type);
     window.CURRENT_TEST_TYPE = type; currentRegistryPage = page;
     const landing = document.getElementById('registry-landing-view');
     const main = document.getElementById('registry-main-content');
     if (landing && main) {
         landing.style.display = 'none';
         main.style.display = 'flex';
+    }
+
+    // Reset leftover search / month / col filters on tab switch so every logbook starts clean with all records visible
+    if (isNewTab) {
+        const rSearchEl = document.getElementById('regSearch');
+        if (rSearchEl) rSearchEl.value = "";
+        const mFilterEl = document.getElementById('monthFilter');
+        if (mFilterEl) mFilterEl.value = "";
+        const cFilterEl = document.getElementById('colFilter');
+        if (cFilterEl) cFilterEl.value = "ALL";
     }
 
     const titleEl = document.getElementById('regTitle');
@@ -4191,6 +4233,14 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
         if (res && res.status === "success" && res.data) {
             const registryData = res.data;
             if (registryData.error || (registryData.rows && registryData.rows.length > 0 && registryData.rows[0][0] && String(registryData.rows[0][0]).includes("RESTRICTED"))) { cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger); font-weight:bold;"><i class="ph ph-lock-key" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${registryData.rows ? registryData.rows[0][0] : "Access Restricted."}</div>`; return; }
+
+            // Handle NOTICE / empty results gracefully
+            if (registryData.headers && registryData.headers[0] === "NOTICE") {
+                const noticeMsg = (registryData.rows && registryData.rows[0] && registryData.rows[0][0]) || "No records found in this logbook.";
+                cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted); font-size:1rem;"><i class="ph ph-magnifying-glass" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${noticeMsg}</div>`;
+                if (document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = '';
+                return;
+            }
 
             window.CURRENT_REGISTRY_HEADERS = registryData.headers || []; window.CURRENT_REGISTRY_TITLE = registryData.title || type;
 
@@ -4436,8 +4486,15 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
             });
             html += `</tbody></table>`;
             cont.innerHTML = html; const topPagControls = document.getElementById('top-pagination-controls'); if (topPagControls) topPagControls.innerHTML = `<span class="badge badge-neutral" style="font-size:0.8rem;">Showing All ${registryData.totalRows} Records</span>`;
-        } else { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">No records found in this logbook.</div>'; if (document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
-    } catch (e) { cont.innerHTML = '<div style="padding:40px; text-align:center; color:var(--danger);">Error loading registry data. Please try again.</div>'; if (document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = ''; }
+        } else {
+            const errMsg = (res && res.message) ? res.message : "No records found in this logbook.";
+            cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-info" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${errMsg}</div>`;
+            if (document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = '';
+        }
+    } catch (e) {
+        cont.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger);"><i class="ph ph-warning-circle" style="font-size:2rem; display:block; margin-bottom:10px;"></i>Error loading registry data: ${e.message || e}</div>`;
+        if (document.getElementById('top-pagination-controls')) document.getElementById('top-pagination-controls').innerHTML = '';
+    }
 }
 
 let registrySearchTimeout = null;
