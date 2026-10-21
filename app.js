@@ -175,6 +175,51 @@ window.formatFacilityLocationName = function (facName) {
     return `BHS ${clean}`;
 };
 
+window.getNextAvailableTestCode = async function (tCode, dateStr, reservedCodes = new Set()) {
+    const prefix = `${tCode}-${dateStr}-`;
+    const usedSeqs = new Set();
+    const usedFullCodes = new Set(reservedCodes);
+
+    try {
+        const { data, error } = await sb.from('lab_tests')
+            .select('test_code, id')
+            .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
+
+        if (!error && data && data.length > 0) {
+            data.forEach(r => {
+                const code = String(r.test_code || r.id || "").trim();
+                if (code) {
+                    usedFullCodes.add(code);
+                    const parts = code.split('-');
+                    if (parts.length >= 3) {
+                        const seq = parseInt(parts[2], 10);
+                        if (!isNaN(seq) && seq > 0) {
+                            usedSeqs.add(seq);
+                        }
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.warn("Could not query existing test codes:", e);
+    }
+
+    // Find the lowest positive integer starting at 1 that is NOT in usedSeqs (fill gaps so numbers never skip)
+    let seq = 1;
+    while (usedSeqs.has(seq)) {
+        seq++;
+    }
+
+    // Ensure candidate code is also not in usedFullCodes (e.g. from same batch or alias)
+    let candidate = `${prefix}${String(seq).padStart(3, '0')}`;
+    while (usedFullCodes.has(candidate)) {
+        seq++;
+        candidate = `${prefix}${String(seq).padStart(3, '0')}`;
+    }
+
+    return { seq, testCode: candidate };
+};
+
 window.toggleEditSmsCard = function (btn, isEditing) {
     const card = btn.closest('.sms-queue-card');
     if (!card) return;
@@ -1379,6 +1424,7 @@ async function apiPost(action, payload) {
                 if (pErr) throw new Error("Patient Error: " + pErr.message);
 
                 const rows = [];
+                const reservedInBatch = new Set();
                 for (let t of tests) {
                     let d = typeof t.details === 'string' ? JSON.parse(t.details || "{}") : (t.details || {});
                     if (!d["Prepared By"]) {
@@ -1386,31 +1432,21 @@ async function apiPost(action, payload) {
                     }
                     let testCodeFinal = t.test_code || t.code;
 
-                    // Ensure testCodeFinal does not already exist in lab_tests (prevent duplicate key violation)
+                    // Ensure testCodeFinal does not already exist in lab_tests or in this batch (fill gaps if collision)
                     try {
-                        const { data: exist } = await sb.from('lab_tests').select('id').eq('id', testCodeFinal).maybeSingle();
-                        if (exist) {
+                        const { data: exist } = await sb.from('lab_tests').select('id').or(`id.eq.${testCodeFinal},test_code.eq.${testCodeFinal}`).maybeSingle();
+                        if (exist || reservedInBatch.has(testCodeFinal)) {
                             const parts = testCodeFinal.split('-');
                             if (parts.length >= 3) {
-                                const prefix = `${parts[0]}-${parts[1]}-`;
-                                const { data: dayTests } = await sb.from('lab_tests')
-                                    .select('test_code, id')
-                                    .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
-                                let maxSeq = 0;
-                                if (dayTests) {
-                                    dayTests.forEach(row => {
-                                        const c = String(row.test_code || row.id || "");
-                                        const p = c.split('-');
-                                        if (p.length >= 3) {
-                                            const n = parseInt(p[2], 10);
-                                            if (!isNaN(n) && n > maxSeq) maxSeq = n;
-                                        }
-                                    });
-                                }
-                                testCodeFinal = `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+                                const tCode = parts[0];
+                                const dateStr = parts[1];
+                                const res = await window.getNextAvailableTestCode(tCode, dateStr, reservedInBatch);
+                                testCodeFinal = res.testCode;
                             }
                         }
                     } catch (e) { }
+
+                    reservedInBatch.add(testCodeFinal);
 
                     rows.push({
                         id: testCodeFinal,
@@ -1492,7 +1528,7 @@ async function apiPost(action, payload) {
                 return { status: "success", data: "Updated" };
             }
             case "deletePendingTestById": {
-                await sb.from('lab_tests').delete().eq('id', payload.testId);
+                await sb.from('lab_tests').delete().or(`id.eq.${payload.testId},test_code.eq.${payload.testId}`);
                 return { status: "success" };
             }
             case "getSettingsData": {
@@ -2666,39 +2702,13 @@ async function finalSubmit() {
     const d = (reqDateEl && reqDateEl.value) ? new Date(reqDateEl.value) : new Date();
     const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 
-    let sequenceCounters = {};
+    let reservedInBatch = new Set();
 
     for (const key of Object.keys(labOrders)) {
         let tCode = availableTests[key].testCode;
-
-        if (sequenceCounters[tCode] === undefined) {
-            try {
-                const prefix = `${tCode}-${dateStr}-`;
-                const { data, error } = await sb.from('lab_tests')
-                    .select('test_code, id')
-                    .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
-
-                let maxSeq = 0;
-                if (!error && data && data.length > 0) {
-                    data.forEach(r => {
-                        const c = String(r.test_code || r.id || "");
-                        const parts = c.split('-');
-                        if (parts.length >= 3) {
-                            const seq = parseInt(parts[2], 10);
-                            if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
-                        }
-                    });
-                }
-                sequenceCounters[tCode] = maxSeq + 1;
-            } catch (e) {
-                sequenceCounters[tCode] = 1;
-            }
-        } else {
-            sequenceCounters[tCode]++;
-        }
-
-        const seqStr = String(sequenceCounters[tCode]).padStart(3, '0');
-        const generatedTestCode = `${tCode}-${dateStr}-${seqStr}`;
+        const res = await window.getNextAvailableTestCode(tCode, dateStr, reservedInBatch);
+        const generatedTestCode = res.testCode;
+        reservedInBatch.add(generatedTestCode);
 
         const entry = {
             test_code: generatedTestCode,
@@ -3703,35 +3713,11 @@ async function moveToPendingRepeat(idStr) {
         delete cleanDetails.Remarks;
         delete cleanDetails.remarks;
 
-        // Generate automatic GeneXpert (GXP) test code based on current move-to-pending date
+        // Generate automatic GeneXpert (GXP) test code based on current move-to-pending date (filling gaps)
         const now = new Date();
         const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-        const prefix = `GXP-${dateStr}-`;
-
-        let nextSeqNum = 1;
-        try {
-            const { data: existingGxp } = await sb.from('lab_tests')
-                .select('test_code, id')
-                .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
-
-            if (existingGxp && existingGxp.length > 0) {
-                let maxSeq = 0;
-                existingGxp.forEach(r => {
-                    const code = String(r.test_code || r.id || "");
-                    const parts = code.split('-');
-                    if (parts.length >= 3) {
-                        const seq = parseInt(parts[2], 10);
-                        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
-                    }
-                });
-                nextSeqNum = maxSeq + 1;
-            }
-        } catch (e) {
-            console.warn("Could not calculate GXP sequence, using default 1:", e);
-        }
-
-        const seqStr = String(nextSeqNum).padStart(3, '0');
-        const newTestCode = `${prefix}${seqStr}`;
+        const res = await window.getNextAvailableTestCode('GXP', dateStr);
+        const newTestCode = res.testCode;
 
         const { error } = await sb.from('lab_tests').update({
             id: newTestCode,
@@ -3770,7 +3756,7 @@ window.moveToPendingRepeat = moveToPendingRepeat;
 window.deleteRepeatRequest = function (id) {
     customConfirm('Sigurado ka bang nais mong burahin ang repeat request na ito?', async () => {
         try {
-            const { error } = await sb.from('lab_tests').delete().eq('id', id);
+            const { error } = await sb.from('lab_tests').delete().or(`id.eq.${id},test_code.eq.${id}`);
             if (error) throw error;
             await apiPost("logAudit", {
                 username: currentUser.username || currentUser.fullName || "Staff",
@@ -3924,7 +3910,7 @@ async function editFromRegistry(testId) {
 
 async function deleteEntry(id) {
     try {
-        const { error } = await sb.from('lab_tests').delete().eq('id', id);
+        const { error } = await sb.from('lab_tests').delete().or(`id.eq.${id},test_code.eq.${id}`);
         if (error) throw error;
         await apiPost("logAudit", { username: currentUser.username || "Staff", action: "DELETE", details: `Deleted test entry ${id}` });
         showAppAlert("Deleted", "Entry has been removed.", "info");
