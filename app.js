@@ -1378,25 +1378,54 @@ async function apiPost(action, payload) {
 
                 if (pErr) throw new Error("Patient Error: " + pErr.message);
 
-                const rows = tests.map(t => {
+                const rows = [];
+                for (let t of tests) {
                     let d = typeof t.details === 'string' ? JSON.parse(t.details || "{}") : (t.details || {});
                     if (!d["Prepared By"]) {
                         d["Prepared By"] = f.encoderFullName || f.encoder || (currentUser ? (currentUser.fullName || currentUser.username) : "System");
                     }
-                    return {
-                        id: t.test_code || t.code,
+                    let testCodeFinal = t.test_code || t.code;
+
+                    // Ensure testCodeFinal does not already exist in lab_tests (prevent duplicate key violation)
+                    try {
+                        const { data: exist } = await sb.from('lab_tests').select('id').eq('id', testCodeFinal).maybeSingle();
+                        if (exist) {
+                            const parts = testCodeFinal.split('-');
+                            if (parts.length >= 3) {
+                                const prefix = `${parts[0]}-${parts[1]}-`;
+                                const { data: dayTests } = await sb.from('lab_tests')
+                                    .select('test_code, id')
+                                    .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
+                                let maxSeq = 0;
+                                if (dayTests) {
+                                    dayTests.forEach(row => {
+                                        const c = String(row.test_code || row.id || "");
+                                        const p = c.split('-');
+                                        if (p.length >= 3) {
+                                            const n = parseInt(p[2], 10);
+                                            if (!isNaN(n) && n > maxSeq) maxSeq = n;
+                                        }
+                                    });
+                                }
+                                testCodeFinal = `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+                            }
+                        }
+                    } catch (e) { }
+
+                    rows.push({
+                        id: testCodeFinal,
                         patient_id: patientId,
                         patient_name: f.fullName,
                         test_name: t.name,
                         test_type: t.name,
-                        test_code: t.test_code || t.code,
+                        test_code: testCodeFinal,
                         details: d,
                         status: 'PENDING',
                         facility: f.facility,
                         encoder: f.encoder,
                         date: new Date().toISOString()
-                    };
-                });
+                    });
+                }
 
                 const { error: tErr } = await sb.from('lab_tests').insert(rows);
                 if (tErr) throw new Error("Lab Test Error: " + tErr.message);
@@ -2644,15 +2673,23 @@ async function finalSubmit() {
 
         if (sequenceCounters[tCode] === undefined) {
             try {
+                const prefix = `${tCode}-${dateStr}-`;
                 const { data, error } = await sb.from('lab_tests')
-                    .select('test_code')
-                    .like('test_code', `${tCode}-${dateStr}-%`);
+                    .select('test_code, id')
+                    .or(`test_code.like.${prefix}%,id.like.${prefix}%`);
 
-                if (!error && data) {
-                    sequenceCounters[tCode] = data.length + 1;
-                } else {
-                    sequenceCounters[tCode] = 1;
+                let maxSeq = 0;
+                if (!error && data && data.length > 0) {
+                    data.forEach(r => {
+                        const c = String(r.test_code || r.id || "");
+                        const parts = c.split('-');
+                        if (parts.length >= 3) {
+                            const seq = parseInt(parts[2], 10);
+                            if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+                        }
+                    });
                 }
+                sequenceCounters[tCode] = maxSeq + 1;
             } catch (e) {
                 sequenceCounters[tCode] = 1;
             }
