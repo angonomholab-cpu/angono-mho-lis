@@ -1106,7 +1106,7 @@ async function apiGet(action, params = {}) {
                 return { status: "success", data: data || [] };
             }
             case "getRegistryDataOptimized": {
-                const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'lab_tests', 'FA': 'export_fecalysis', 'GXP': 'lab_tests', 'GRAM': 'export_gram_stain', 'HEMA': 'export_hematology', 'SERO': 'lab_tests', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
+                const exportTables = { 'CHEM': 'export_blood_chem', 'DENGUE': 'export_dengue', 'DSSM': 'lab_tests', 'FA': 'export_fecalysis', 'GXP': 'lab_tests', 'GRAM': 'lab_tests', 'HEMA': 'export_hematology', 'SERO': 'lab_tests', 'UA': 'export_urinalysis', 'GXVL': 'export_viral_load' };
                 const tName = exportTables[params.type] || 'lab_tests';
 
                 const dateColFilter = (tName === 'lab_tests') ? 'date' : 'Date Examined';
@@ -1258,6 +1258,32 @@ async function apiGet(action, params = {}) {
                             "HIV": d.HIV || d.hiv || "",
                             "Syphilis": d.SYPHILIS || d.Syphilis || d.syphilis || "",
                             "HBsAg": d.HBSAG || d.HBsAg || d.hbsag || "",
+                            "Remarks": d.Remarks || d.remarks || "",
+                            "Performed By": d["Performed By"] || d.performedBy || r.encoder || ""
+                        };
+                    });
+                }
+
+                // 🟢 Map Gram Stain directly from lab_tests details para buo ang lahat ng records at details
+                if (params.type === 'GRAM' && tName === 'lab_tests') {
+                    data = data.map(r => {
+                        const d = typeof r.details === 'string' ? JSON.parse(r.details || '{}') : (r.details || {});
+                        return {
+                            "Test Code": r.test_code || r.id,
+                            "Date Received": r.received_date || (r.date ? new Date(r.date).toLocaleDateString() : ""),
+                            "Date Examined": r.date_examined ? new Date(r.date_examined).toLocaleDateString() : (d.date_examined ? new Date(d.date_examined).toLocaleDateString() : (r.date ? new Date(r.date).toLocaleDateString() : "")),
+                            "Date Released": r.date_released ? new Date(r.date_released).toLocaleDateString() : (r.date_examined ? new Date(r.date_examined).toLocaleDateString() : (d.date_examined ? new Date(d.date_examined).toLocaleDateString() : "")),
+                            "Patient Name": r.patient_name || "",
+                            "Age": resolveAge(r, d),
+                            "Sex": r.sex || d.sex || d.Sex || (pMap[r.patient_id] ? pMap[r.patient_id].sex : "") || "",
+                            "Facility": r.facility || d.Facility || d.facility || (pMap[r.patient_id] ? pMap[r.patient_id].facility : "") || "",
+                            "Source": d.Source || d.source || "",
+                            "GP Quantity": d.GP_Quantity || d.gp_quantity || d["GP Quantity"] || "",
+                            "GP Morphology": d.GP_Morphology || d.gp_morphology || d["GP Morphology"] || "",
+                            "GP Arrangement": d.GP_Arrangement || d.gp_arrangement || d["GP Arrangement"] || "",
+                            "GN Quantity": d.GN_Quantity || d.gn_quantity || d["GN Quantity"] || "",
+                            "GN Morphology": d.GN_Morphology || d.gn_morphology || d["GN Morphology"] || "",
+                            "GN Arrangement": d.GN_Arrangement || d.gn_arrangement || d["GN Arrangement"] || "",
                             "Remarks": d.Remarks || d.remarks || "",
                             "Performed By": d["Performed By"] || d.performedBy || r.encoder || ""
                         };
@@ -3819,6 +3845,12 @@ async function openRegistryEditModal(testCode) {
         'Dengue IgM': ['', 'Negative', 'Positive'],
         'ABO': ['A', 'B', 'AB', 'O'],
         'Rh': ['Positive', 'Negative'],
+        'GP Quantity': ['', 'None Seen', 'Rare', 'Few', 'Moderate', 'Abundant', 'Trace', '1+', '2+', '3+', '4+'],
+        'GN Quantity': ['', 'None Seen', 'Rare', 'Few', 'Moderate', 'Abundant', 'Trace', '1+', '2+', '3+', '4+'],
+        'GP Morphology': ['', 'Cocci', 'Bacilli', 'Coccobacilli'],
+        'GN Morphology': ['', 'Cocci', 'Bacilli', 'Coccobacilli'],
+        'GP Arrangement': ['', 'In Pairs', 'In Chains', 'In Clusters', 'Singles'],
+        'GN Arrangement': ['', 'In Pairs', 'In Chains', 'In Clusters', 'Singles'],
         'Performed By': (globalStaffList || []).map(s => s.name)
     };
 
@@ -4191,7 +4223,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
 
             const getColClass = (hOriginal) => {
                 const clean = String(hOriginal || '').toUpperCase().replace(/[_\s]+/g, '');
-                if (clean === 'AGE' || clean === 'SEX' || clean.includes('COUNT') || clean === 'REPEAT' || clean === 'GRADE') return 'reg-col-tight';
+                if (clean === 'AGE' || clean === 'SEX' || clean.includes('COUNT') || clean === 'REPEAT' || clean === 'GRADE' || clean.includes('QUANTITY') || clean.includes('QTY')) return 'reg-col-tight';
                 if (clean === 'NAME' || clean === 'PATIENTNAME') return 'reg-col-name';
                 if (clean.includes('RESULT') || clean.includes('DIAGNOSIS') || clean === 'HIV' || clean === 'SYPHILIS' || clean === 'HBSAG') return 'reg-col-res';
                 if (clean === 'TESTCODE' || clean === 'ID') return 'reg-col-code';
@@ -4220,6 +4252,12 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                 if (u === 'TEST TYPE') return 'Type';
                 if (u === 'X-RAY RESULT' || u === 'XRAY RESULT') return 'X-Ray';
                 if (u === 'F_NAME' || u === 'FACILITY') return 'Facility';
+                if (u === 'GP QUANTITY') return 'GP Qty';
+                if (u === 'GP MORPHOLOGY') return 'GP Morph';
+                if (u === 'GP ARRANGEMENT') return 'GP Arrange';
+                if (u === 'GN QUANTITY') return 'GN Qty';
+                if (u === 'GN MORPHOLOGY') return 'GN Morph';
+                if (u === 'GN ARRANGEMENT') return 'GN Arrange';
                 return fullText;
             };
 
@@ -4302,7 +4340,7 @@ async function openRegistryTab(type, page = 1, forceSearch = null, forceMonth = 
                         remarksHtml += itemHtml;
                     } else if (cClean === 'PERFORMEDBY' || cClean === 'ENCODER') {
                         performedHtml += itemHtml;
-                    } else if (isResCol || cClean.includes('GRADE') || cClean.includes('SMEAR') || cClean.includes('INTERPRETATION') || cClean === 'REPEAT' || cClean === 'TESTTYPE') {
+                    } else if (isResCol || cClean.includes('GRADE') || cClean.includes('SMEAR') || cClean.includes('INTERPRETATION') || cClean === 'REPEAT' || cClean === 'TESTTYPE' || cClean.includes('GP') || cClean.includes('GN') || cClean.includes('QUANTITY') || cClean.includes('MORPHOLOGY') || cClean.includes('ARRANGEMENT')) {
                         resultsHtml += itemHtml;
                     } else {
                         detailsHtml += itemHtml;
