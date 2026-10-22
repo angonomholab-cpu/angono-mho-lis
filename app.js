@@ -2251,7 +2251,118 @@ function setToggleValue(btn, inputId, val) {
     }
 }
 function setSelectValue(id, val) { const el = document.getElementById(id); if (!el || !val) return; if (el.tagName === 'INPUT' && el.type === 'hidden') { if (id === 'p_sex') setSex(val); else el.value = val; return; } const searchVal = String(val).toUpperCase().trim(); for (let i = 0; i < el.options.length; i++) { if (el.options[i].value.toUpperCase().trim() === searchVal || el.options[i].text.toUpperCase().trim() === searchVal) { el.selectedIndex = i; return; } } }
-function calculateAge() { const dob = new Date(document.getElementById('p_bday').value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--; document.getElementById('p_age').value = age; }
+window.calculateAge = function () {
+    const bdayEl = document.getElementById('p_bday');
+    const ageEl = document.getElementById('p_age');
+    if (!bdayEl || !ageEl) return;
+
+    const val = (bdayEl.value || '').trim();
+    if (!val) {
+        return;
+    }
+
+    let bYear, bMonth, bDay;
+    const match = val.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (match) {
+        bYear = parseInt(match[1], 10);
+        bMonth = parseInt(match[2], 10);
+        bDay = parseInt(match[3], 10);
+    } else {
+        const d = (typeof parseAnyDate === 'function') ? parseAnyDate(val) : new Date(val);
+        if (!d || isNaN(d.getTime())) return;
+        bYear = d.getFullYear();
+        bMonth = d.getMonth() + 1;
+        bDay = d.getDate();
+    }
+
+    const today = new Date();
+    // Incomplete year while typing (e.g. 0002 or < 1900)
+    if (bYear < 1900 || bYear > today.getFullYear() + 1) {
+        return;
+    }
+
+    const reqDateEl = document.getElementById('p_req_date');
+    let refDate = today;
+    if (reqDateEl && reqDateEl.value) {
+        const parsedReq = (typeof parseAnyDate === 'function') ? parseAnyDate(reqDateEl.value) : new Date(reqDateEl.value);
+        if (parsedReq && !isNaN(parsedReq.getTime())) refDate = parsedReq;
+    }
+
+    let age = refDate.getFullYear() - bYear;
+    const refMonth = refDate.getMonth() + 1;
+    const refDay = refDate.getDate();
+
+    if (refMonth < bMonth || (refMonth === bMonth && refDay < bDay)) {
+        age--;
+    }
+
+    if (age >= 0 && age <= 130) {
+        ageEl.value = age;
+    } else if (age < 0) {
+        ageEl.value = 0;
+    }
+};
+
+window.calculateBdayFromAge = function () {
+    const bdayEl = document.getElementById('p_bday');
+    const ageEl = document.getElementById('p_age');
+    if (!bdayEl || !ageEl) return;
+    if (bdayEl.value && bdayEl.value.trim() !== '') return;
+
+    const a = parseInt(ageEl.value, 10);
+    if (!isNaN(a) && a >= 0 && a <= 130) {
+        const reqDateEl = document.getElementById('p_req_date');
+        let refYear = new Date().getFullYear();
+        if (reqDateEl && reqDateEl.value) {
+            const parsedReq = (typeof parseAnyDate === 'function') ? parseAnyDate(reqDateEl.value) : new Date(reqDateEl.value);
+            if (parsedReq && !isNaN(parsedReq.getTime())) refYear = parsedReq.getFullYear();
+        }
+        const estYear = refYear - a;
+        bdayEl.value = `${estYear}-01-01`;
+        if (typeof generateSmartID === 'function') generateSmartID();
+    }
+};
+
+function initAgeAutoCalc() {
+    const bdayEl = document.getElementById('p_bday');
+    const ageEl = document.getElementById('p_age');
+    const reqDateEl = document.getElementById('p_req_date');
+
+    if (bdayEl) {
+        ['input', 'change', 'blur', 'keyup'].forEach(evt => {
+            bdayEl.addEventListener(evt, () => {
+                calculateAge();
+                if (typeof generateSmartID === 'function') generateSmartID();
+            });
+        });
+    }
+
+    if (ageEl) {
+        ['input', 'change', 'blur'].forEach(evt => {
+            ageEl.addEventListener(evt, () => {
+                calculateBdayFromAge();
+            });
+        });
+    }
+
+    if (reqDateEl) {
+        if (!reqDateEl.value) {
+            reqDateEl.value = new Date().toISOString().split('T')[0];
+        }
+        ['input', 'change'].forEach(evt => {
+            reqDateEl.addEventListener(evt, () => {
+                calculateAge();
+            });
+        });
+    }
+}
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAgeAutoCalc);
+    } else {
+        initAgeAutoCalc();
+    }
+}
 function generateSmartID() { if (isExistingPatient) return; const bday = document.getElementById('p_bday').value.replace(/-/g, "") || "00000000"; const name = document.getElementById('p_name').value.trim().toUpperCase(); let initials = "XX"; if (name) { const p = name.split(" "); initials = p.length > 1 ? p[0][0] + p[p.length - 1][0] : name.substring(0, 2); } document.getElementById('finalPatientId').value = `MHOA-${bday}-${initials}${Math.floor(Math.random() * 90 + 10)}`; }
 
 async function loadPatientCache() {
@@ -2279,7 +2390,23 @@ function runDirectSearch(q) {
             div.onclick = () => {
                 isExistingPatient = true; document.getElementById('finalPatientId').value = p.id; document.getElementById('p_name').value = p.name || ""; document.getElementById('p_address').value = p.address || ""; document.getElementById('p_contact').value = p.contact || ""; if (document.getElementById('p_email')) document.getElementById('p_email').value = p.email || "";
                 setSelectValue('p_sex', p.sex); setSelectValue('p_facility', p.facility);
-                if (p.bday) { try { const d = new Date(p.bday); document.getElementById('p_bday').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; calculateAge(); } catch (e) { } }
+                let bdayStr = p.bday || "";
+                if (!bdayStr && p.id) {
+                    const m = String(p.id).match(/MHOA-(\d{4})(\d{2})(\d{2})-/i);
+                    if (m && parseInt(m[1], 10) > 1900) {
+                        bdayStr = `${m[1]}-${m[2]}-${m[3]}`;
+                    }
+                }
+                if (bdayStr) {
+                    const formattedBday = (typeof formatDateDisplay === 'function') ? formatDateDisplay(bdayStr) : bdayStr.substring(0, 10);
+                    if (formattedBday) {
+                        const pBdayEl = document.getElementById('p_bday');
+                        if (pBdayEl) {
+                            pBdayEl.value = formattedBday;
+                            calculateAge();
+                        }
+                    }
+                }
                 box.style.display = 'none'; document.getElementById('new-entry-header').style.display = 'none'; document.getElementById('profile-header').style.display = 'flex';
                 fetchHistory(p.id, 'history-section', 'history-list');
             };
