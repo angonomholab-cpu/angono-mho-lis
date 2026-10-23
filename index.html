@@ -28,7 +28,69 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="style.css?v=34">
+    <link rel="stylesheet" href="style.css?v=35">
+    <script>
+        window.calculateAge = function () {
+            var bdayEl = document.getElementById('p_bday');
+            var ageEl = document.getElementById('p_age');
+            if (!bdayEl || !ageEl) return;
+            var val = (bdayEl.value || '').trim();
+            if (!val) return;
+            var bYear, bMonth, bDay;
+            var match = val.match(/^(\d{1,4})[-/](\d{1,2})[-/](\d{1,2})/);
+            if (match) {
+                bYear = parseInt(match[1], 10);
+                bMonth = parseInt(match[2], 10);
+                bDay = parseInt(match[3], 10);
+            } else {
+                var d = new Date(val);
+                if (!d || isNaN(d.getTime())) return;
+                bYear = d.getFullYear();
+                bMonth = d.getMonth() + 1;
+                bDay = d.getDate();
+            }
+            if (bYear < 100) {
+                bYear += (bYear > 30 ? 1900 : 2000);
+            }
+            var today = new Date();
+            if (bYear < 1900 || bYear > today.getFullYear() + 1) return;
+            var reqDateEl = document.getElementById('p_req_date');
+            var refDate = today;
+            if (reqDateEl && reqDateEl.value) {
+                var parsedReq = new Date(reqDateEl.value);
+                if (parsedReq && !isNaN(parsedReq.getTime())) refDate = parsedReq;
+            }
+            var age = refDate.getFullYear() - bYear;
+            var refMonth = refDate.getMonth() + 1;
+            var refDay = refDate.getDate();
+            if (refMonth < bMonth || (refMonth === bMonth && refDay < bDay)) {
+                age--;
+            }
+            if (age >= 0 && age <= 130) {
+                ageEl.value = age;
+            } else if (age < 0) {
+                ageEl.value = 0;
+            }
+        };
+        window.calculateBdayFromAge = function () {
+            var bdayEl = document.getElementById('p_bday');
+            var ageEl = document.getElementById('p_age');
+            if (!bdayEl || !ageEl) return;
+            if (bdayEl.value && bdayEl.value.trim() !== '') return;
+            var a = parseInt(ageEl.value, 10);
+            if (!isNaN(a) && a >= 0 && a <= 130) {
+                var reqDateEl = document.getElementById('p_req_date');
+                var refYear = new Date().getFullYear();
+                if (reqDateEl && reqDateEl.value) {
+                    var parsedReq = new Date(reqDateEl.value);
+                    if (parsedReq && !isNaN(parsedReq.getTime())) refYear = parsedReq.getFullYear();
+                }
+                var estYear = refYear - a;
+                bdayEl.value = estYear + '-01-01';
+                if (typeof window.generateSmartID === 'function') window.generateSmartID();
+            }
+        };
+    </script>
     <style>
         .switch-row {
             display: flex;
@@ -2677,7 +2739,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=57"></script>
+    <script src="app.js?v=58"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
@@ -2744,10 +2806,10 @@
             });
         }
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(() => console.log('✅ Service Worker registered'))
-                    .catch(err => console.log('❌ SW failed:', err));
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (var i = 0; i < registrations.length; i++) {
+                    registrations[i].unregister();
+                }
             });
         }
     </script>

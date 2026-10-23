@@ -2256,13 +2256,13 @@ window.calculateAge = function () {
     const ageEl = document.getElementById('p_age');
     if (!bdayEl || !ageEl) return;
 
-    const val = (bdayEl.value || '').trim();
+    let val = (bdayEl.value || '').trim();
     if (!val) {
         return;
     }
 
     let bYear, bMonth, bDay;
-    const match = val.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    const match = val.match(/^(\d{1,4})[-/](\d{1,2})[-/](\d{1,2})/);
     if (match) {
         bYear = parseInt(match[1], 10);
         bMonth = parseInt(match[2], 10);
@@ -2273,6 +2273,10 @@ window.calculateAge = function () {
         bYear = d.getFullYear();
         bMonth = d.getMonth() + 1;
         bDay = d.getDate();
+    }
+
+    if (bYear < 100) {
+        bYear += (bYear > 30 ? 1900 : 2000);
     }
 
     const today = new Date();
@@ -4113,6 +4117,82 @@ async function deleteEntry(id) {
 window.deleteEntry = deleteEntry;
 
 function handleDSSM(sel, safeId, num) { const box = document.getElementById(`s${num}n-${safeId}`); if (sel.value === '+N') box.style.display = 'block'; else { box.style.display = 'none'; if (box.querySelector('input')) box.querySelector('input').value = ""; } }
+
+window.handleVLNumInput = function(safeId) {
+    const numEl = document.getElementById('vl-num-' + safeId);
+    const logEl = document.getElementById('vl-log-' + safeId);
+    if (!numEl) return;
+    const val = numEl.value.trim();
+    if (val.includes('<')) {
+        if (logEl) logEl.value = "1.60";
+    } else {
+        const clean = val.replace(/[^0-9.]/g, '');
+        if (clean && !isNaN(clean) && parseFloat(clean) > 0) {
+            const calc = Math.log10(parseFloat(clean)).toFixed(2);
+            if (logEl) logEl.value = calc;
+        }
+    }
+    syncVLSentence(safeId);
+};
+
+window.syncVLSentence = function(safeId) {
+    const choiceEl = document.getElementById('vl-choice-' + safeId);
+    const numEl = document.getElementById('vl-num-' + safeId);
+    const logEl = document.getElementById('vl-log-' + safeId);
+    const sentEl = document.getElementById('vl-sent-' + safeId);
+    const resEl = document.getElementById('vl-res-' + safeId);
+    if (!sentEl) return;
+
+    const choice = choiceEl ? choiceEl.value.trim() : 'HIV-1 DETECTED';
+    const num = numEl ? numEl.value.trim() : '';
+    const log = logEl ? logEl.value.trim().replace(/^log\s*/i, '') : '';
+
+    let sentence = '';
+    if (choice.toUpperCase().includes('NOT DETECTED')) {
+        sentence = num ? `HIV-1 NOT DETECTED ${num} Copies/mL${log ? ` (log ${log})` : ''}` : 'HIV-1 NOT DETECTED';
+    } else if (choice.toUpperCase() === 'INVALID') {
+        sentence = 'INVALID / FOR REPEAT';
+    } else {
+        let qual = choice || 'HIV-1 DETECTED';
+        if (num && log) {
+            sentence = `${qual} ${num} Copies/mL (log ${log})`;
+        } else if (num) {
+            sentence = `${qual} ${num} Copies/mL`;
+        } else {
+            sentence = qual;
+        }
+    }
+    sentEl.value = sentence;
+    if (resEl) resEl.value = sentence;
+};
+
+window.applyVLQuick = function(safeId, type) {
+    const choiceEl = document.getElementById('vl-choice-' + safeId);
+    const numEl = document.getElementById('vl-num-' + safeId);
+    const logEl = document.getElementById('vl-log-' + safeId);
+    const sentEl = document.getElementById('vl-sent-' + safeId);
+    const resEl = document.getElementById('vl-res-' + safeId);
+    if (!sentEl) return;
+
+    if (type === 'detected_40') {
+        if (choiceEl) choiceEl.value = 'HIV-1 DETECTED';
+        if (numEl) numEl.value = '<40';
+        if (logEl) logEl.value = '1.60';
+        sentEl.value = 'HIV-1 DETECTED <40 Copies/mL (log 1.60)';
+    } else if (type === 'not_detected') {
+        if (choiceEl) choiceEl.value = 'HIV-1 NOT DETECTED';
+        if (numEl) numEl.value = '';
+        if (logEl) logEl.value = '';
+        sentEl.value = 'HIV-1 NOT DETECTED';
+    } else if (type === 'high_detected') {
+        if (choiceEl) choiceEl.value = 'HIV-1 DETECTED';
+        if (numEl) numEl.value = '>10,000,000';
+        if (logEl) logEl.value = '>7.00';
+        sentEl.value = 'HIV-1 DETECTED >10,000,000 Copies/mL (log >7.00)';
+    }
+    if (resEl) resEl.value = sentEl.value;
+};
+
 function getResultTemplate(code, safeId, item) {
     const gradings = ["Negative", "Trace", "1+", "2+", "3+", "4+"]; const apps = ["Watery", "Salivary", "Mucosalivary", "Mucopurulent", "Purulent", "Blood-Streaked"];
     let req = "";
@@ -4199,7 +4279,63 @@ function getResultTemplate(code, safeId, item) {
             </div>${rem}`;
             break;
         }
-        case 'GXVL': formHtml = `<div class="form-grid grid-1">${select('VL_Choice', 'Interpretation', ['HIV-1 NOT DETECTED', 'DETECTED_XX', 'DETECTED >1X10e7', 'DETECTED <40', 'INVALID'])}${input('VL_Number', 'Copies/mL')}</div>${rem}`; break;
+        case 'GXVL': {
+            const curChoice = itemDetails["VL_Choice"] || itemDetails.VL_Choice || "HIV-1 DETECTED";
+            const curNum = itemDetails["VL_Number"] || itemDetails.VL_Number || "<40";
+            const curLog = itemDetails["VL_Log"] || itemDetails.VL_Log || "1.60";
+            let curSentence = itemDetails["VL_Sentence"] || itemDetails["Result"] || itemDetails.result || "";
+            if (!curSentence) {
+                if (curChoice.toUpperCase().includes("NOT DETECTED")) {
+                    curSentence = "HIV-1 NOT DETECTED";
+                } else {
+                    curSentence = `${curChoice} ${curNum} Copies/mL (log ${curLog})`;
+                }
+            }
+            formHtml = `
+            <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:8px; padding:12px; margin-bottom:10px;">
+                <div style="font-size:0.75rem; font-weight:700; color:var(--pri); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                    <i class="ph ph-lightning"></i> Quick Result Presets
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+                    <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px; font-weight:600; font-size:0.75rem;" onclick="applyVLQuick('${safeId}', 'detected_40')">
+                        <i class="ph ph-check" style="color:var(--success);"></i> DETECTED &lt;40 (log 1.60)
+                    </button>
+                    <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px; font-weight:600; font-size:0.75rem;" onclick="applyVLQuick('${safeId}', 'not_detected')">
+                        <i class="ph ph-minus-circle" style="color:var(--text-muted);"></i> NOT DETECTED
+                    </button>
+                    <button type="button" class="btn btn-secondary text-xs" style="padding:4px 10px; font-weight:600; font-size:0.75rem;" onclick="applyVLQuick('${safeId}', 'high_detected')">
+                        <i class="ph ph-warning" style="color:var(--danger);"></i> &gt;10,000,000 (log &gt;7.00)
+                    </button>
+                </div>
+                <div class="form-grid grid-3">
+                    <div class="field-group">
+                        <label class="field-label" style="font-size:0.75rem;">Interpretation</label>
+                        <select class="res-${safeId} form-select" data-key="VL_Choice" id="vl-choice-${safeId}" onchange="syncVLSentence('${safeId}')">
+                            <option value="HIV-1 DETECTED" ${curChoice === 'HIV-1 DETECTED' ? 'selected' : ''}>HIV-1 DETECTED</option>
+                            <option value="HIV-1 NOT DETECTED" ${curChoice === 'HIV-1 NOT DETECTED' ? 'selected' : ''}>HIV-1 NOT DETECTED</option>
+                            <option value="INVALID" ${curChoice === 'INVALID' ? 'selected' : ''}>INVALID</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" style="font-size:0.75rem;">Copies/mL (Number)</label>
+                        <input type="text" class="res-${safeId} form-input" data-key="VL_Number" id="vl-num-${safeId}" value="${curNum}" placeholder="e.g. <40, 150" oninput="handleVLNumInput('${safeId}')">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" style="font-size:0.75rem;">Log Value (log10)</label>
+                        <input type="text" class="res-${safeId} form-input" data-key="VL_Log" id="vl-log-${safeId}" value="${curLog}" placeholder="e.g. 1.60" oninput="syncVLSentence('${safeId}')">
+                    </div>
+                </div>
+                <div class="field-group full-width" style="margin-top:10px;">
+                    <label class="field-label" style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+                        <span style="font-weight:700; color:var(--text-main);">Result Sentence (Lalabas sa Result Form):</span>
+                        <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">Maaaring baguhin nang direkta</span>
+                    </label>
+                    <input type="text" class="res-${safeId} form-input" data-key="VL_Sentence" id="vl-sent-${safeId}" value="${curSentence}" style="font-weight:700; font-size:0.95rem; color:var(--pri); background:var(--bg-body); border:1.5px solid var(--pri);" oninput="let r=document.getElementById('vl-res-${safeId}'); if(r) r.value=this.value;">
+                    <input type="hidden" class="res-${safeId} form-input" data-key="Result" id="vl-res-${safeId}" value="${curSentence}">
+                </div>
+            </div>${rem}`;
+            break;
+        }
         case 'DSSM': {
             let dssmSmears = (itemDetails["Category"] === "Follow-up") ? [1] : [1, 2];
             formHtml = `<div class="form-grid grid-2">${dssmSmears.map(n => `<div>${toggle(`Smear${n}`, `Smear ${n}`, ['0', '+N', '1+', '2+', '3+'], [], `handleDSSM(this,'${safeId}','${n}')`)}<div id="s${n}n-${safeId}" style="display:none;" class="field-group"><label class="field-label" style="margin-top:6px;">AFB Count</label><input type="number" class="res-${safeId} form-input" data-key="Smear${n}_Count"></div><div style="margin-top:6px;">${select(`Appearance${n}`, `Appearance ${n}`, apps)}</div></div>`).join('')}<div class="full-width" style="margin-top:10px; grid-column: 1 / -1;">${toggle('Diagnosis', 'Diagnosis', ['Negative', 'Positive'])}</div></div>${rem}`;
@@ -5617,10 +5753,10 @@ function localGenerateA5Html(patientsArray) {
     patientsArray.forEach((p, index) => {
         let verifier = getStaff(p.verifier);
         let performer = getStaff(p.performedBy || p.encoder);
-        const tName = (p.testName || "").toUpperCase();
+        const tCodeUpper = (p.testCode || "").toUpperCase();
         const isDengue = tName.includes("DENGUE") || tName.includes("NS1");
         const isGram = tName.includes("GRAM");
-        const isViral = tName.includes("VIRAL") || tName.includes("HIV-1") || tName.includes("GXVL");
+        const isViral = tName.includes("VIRAL") || tName.includes("HIV-1") || tName.includes("GXVL") || tCodeUpper.includes("GXVL") || tCodeUpper.includes("VIRAL");
         const isFecal = tName.includes("FECAL");
         const isUrine = tName.includes("URIN") || tName.includes("UA");
         const isSero = tName.includes("SERO") || tName.includes("HIV") || tName.includes("SYPHILIS") || tName.includes("HBSAG");
@@ -5636,7 +5772,77 @@ function localGenerateA5Html(patientsArray) {
 
         let mainContent = "";
 
-        if (isViral) { let choiceObj = p.results.find(r => r.param.toUpperCase().includes("CHOIC") || r.param.toUpperCase().includes("RESULT")); let numObj = p.results.find(r => r.param.toUpperCase().includes("NUMB") || r.param.toUpperCase().includes("COPIES")); let resultVal = choiceObj ? choiceObj.res : "N/A"; let copiesVal = numObj ? numObj.res : ""; let logVal = "N/A"; let cleanNum = String(copiesVal).replace(/[^0-9.]/g, ''); if (cleanNum && !isNaN(cleanNum)) { logVal = Math.log10(parseFloat(cleanNum)).toFixed(2); } else if (String(copiesVal).includes("<")) { logVal = "< 1.60"; } mainContent = `<div style="width:90%; margin-top:10px; border:2px solid #000; padding:15px;"><div style="font-weight:bold; font-size:12px; text-decoration:underline; margin-bottom:15px; text-align:center;">HIV-1 VIRAL LOAD QUANTIFICATION</div><table style="width:100%; border:none;"><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">HIV-1 QUALITATIVE RESULT:</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${resultVal}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">RESULT (Copies/mL):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${copiesVal || "N/A"}</td></tr><tr><td colspan="2" style="border:none; height:10px;"></td></tr><tr><td style="border:none; width:40%; font-weight:bold; font-size:11px;">LOG VALUE (log10):</td><td style="border-bottom:1px solid #000; font-weight:bold; font-size:12px; text-align:center;">${logVal}</td></tr></table><div style="font-size:8px; font-style:italic; margin-top:15px; text-align:center;">Test Method: Real-Time PCR (GeneXpert). Linear Range: 40 to 10,000,000 copies/mL.</div></div>`; }
+        if (isViral) {
+            let sentObj = p.results.find(r => {
+                const k = String(r.param || "").toUpperCase();
+                return k === "VL_SENTENCE" || k === "SENTENCE";
+            });
+            let resObj = p.results.find(r => {
+                const k = String(r.param || "").toUpperCase();
+                return k === "RESULT" && String(r.res || "").length > 5;
+            });
+            let choiceObj = p.results.find(r => {
+                const k = String(r.param || "").toUpperCase();
+                return k.includes("CHOIC") || k.includes("INTERPRET");
+            });
+            let numObj = p.results.find(r => {
+                const k = String(r.param || "").toUpperCase();
+                return k.includes("NUMB") || k.includes("COPIES");
+            });
+            let logObj = p.results.find(r => {
+                const k = String(r.param || "").toUpperCase();
+                return k.includes("LOG");
+            });
+
+            let sentenceResult = "";
+            if (sentObj && sentObj.res && String(sentObj.res).trim() !== "") {
+                sentenceResult = String(sentObj.res).trim();
+            } else if (resObj && resObj.res && String(resObj.res).trim() !== "") {
+                sentenceResult = String(resObj.res).trim();
+            } else {
+                let choiceVal = choiceObj ? String(choiceObj.res || "").trim() : "";
+                let numVal = numObj ? String(numObj.res || "").trim() : "";
+                let logVal = logObj ? String(logObj.res || "").trim() : "";
+
+                if (!logVal && numVal) {
+                    let cleanNum = numVal.replace(/[^0-9.]/g, '');
+                    if (cleanNum && !isNaN(cleanNum)) {
+                        logVal = Math.log10(parseFloat(cleanNum)).toFixed(2);
+                    } else if (numVal.includes("<")) {
+                        logVal = "1.60";
+                    }
+                }
+
+                if (choiceVal.toUpperCase().includes("NOT DETECTED")) {
+                    sentenceResult = numVal ? `HIV-1 NOT DETECTED ${numVal} Copies/mL${logVal ? ` (log ${logVal.replace(/^log\s*/i, '')})` : ''}` : "HIV-1 NOT DETECTED";
+                } else if (choiceVal.toUpperCase() === "INVALID") {
+                    sentenceResult = "INVALID / FOR REPEAT";
+                } else if (choiceVal || numVal) {
+                    let qual = choiceVal || "HIV-1 DETECTED";
+                    if (qual === "DETECTED_XX" || qual === "DETECTED") qual = "HIV-1 DETECTED";
+                    else if (!qual.toUpperCase().includes("HIV-1") && qual.toUpperCase().startsWith("DETECTED")) qual = "HIV-1 " + qual;
+
+                    if (numVal && logVal) {
+                        let cleanLog = logVal.replace(/^log\s*/i, '');
+                        sentenceResult = `${qual} ${numVal} Copies/mL (log ${cleanLog})`;
+                    } else if (numVal) {
+                        sentenceResult = `${qual} ${numVal} Copies/mL`;
+                    } else {
+                        sentenceResult = qual;
+                    }
+                } else {
+                    let genericRes = p.results.find(r => String(r.param || "").toUpperCase() === "RESULT");
+                    sentenceResult = (genericRes && genericRes.res) ? genericRes.res : "HIV-1 NOT DETECTED";
+                }
+            }
+
+            mainContent = `
+            <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; min-height:85px; margin:25px auto 15px auto;">
+                <div style="font-size:16px; font-weight:bold; text-align:center; color:#000; letter-spacing:0.3px; padding:14px 28px; border:2px solid #000; background:#fff; min-width:60%; max-width:90%;">
+                    ${sentenceResult}
+                </div>
+            </div>`;
+        }
         else if (isGram) { const findRes = (keyPart) => { let found = p.results.find(r => r.param.toUpperCase().includes(keyPart)); return (found && found.res && found.res.trim() !== "") ? found.res : "NONE SEEN"; }; let posQuant = findRes("GP_QUANT"); let posMorph = findRes("GP_MORPH"); let posArr = findRes("GP_ARRANG"); let negQuant = findRes("GN_QUANT"); let negMorph = findRes("GN_MORPH"); let negArr = findRes("GN_ARRANG"); mainContent = `<table class="res-table" style="width: 100%; margin-top: 10px;"><thead><tr><th width="20%">TEST</th><th width="20%">QUANTITY</th><th width="30%">MORPHOLOGY</th><th width="30%">ARRANGEMENT</th></tr></thead><tbody><tr><td style="font-weight:bold; padding:8px;">Gram Positive</td><td style="text-align:center;">${posQuant}</td><td style="text-align:center;">${posMorph}</td><td style="text-align:center;">${posArr}</td></tr><tr><td style="font-weight:bold; padding:8px;">Gram Negative</td><td style="text-align:center;">${negQuant}</td><td style="text-align:center;">${negMorph}</td><td style="text-align:center;">${negArr}</td></tr></tbody></table>`; }
         else if (isDengue) {
             let resObj = p.results.find(r => r.param.toUpperCase() === "DENGUE_RESULT" || r.param.toUpperCase().includes("ANTIGEN")); let resVal = resObj ? resObj.res : ""; let igg = p.results.find(r => r.param.toUpperCase().includes("IGG")); let igm = p.results.find(r => r.param.toUpperCase().includes("IGM")); let color = (String(resVal).toUpperCase().includes("POS") || String(resVal).toUpperCase().includes("REACTIVE")) ? "red" : "black";
