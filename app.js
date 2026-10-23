@@ -5753,6 +5753,7 @@ function localGenerateA5Html(patientsArray) {
     patientsArray.forEach((p, index) => {
         let verifier = getStaff(p.verifier);
         let performer = getStaff(p.performedBy || p.encoder);
+        const tName = (p.testName || "").toUpperCase();
         const tCodeUpper = (p.testCode || "").toUpperCase();
         const isDengue = tName.includes("DENGUE") || tName.includes("NS1");
         const isGram = tName.includes("GRAM");
