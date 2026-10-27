@@ -3904,6 +3904,10 @@ async function moveToPendingRepeat(idStr) {
         // Generate automatic GeneXpert (GXP) test code based on current move-to-pending date (filling gaps)
         const now = new Date();
         const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const todayIsoDate = now.toISOString().split('T')[0];
+        cleanDetails["Date Received"] = todayIsoDate;
+        cleanDetails.date_received = todayIsoDate;
+
         const res = await window.getNextAvailableTestCode('GXP', dateStr);
         const newTestCode = res.testCode;
 
@@ -3915,7 +3919,6 @@ async function moveToPendingRepeat(idStr) {
             status: 'PENDING',
             details: cleanDetails,
             date: now.toISOString(),
-            received_date: now.toISOString().split('T')[0],
             date_examined: null,
             date_released: null
         }).eq('id', item.id);
