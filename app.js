@@ -3161,10 +3161,14 @@ function renderLists() {
             let tCodePrint = getTestCodeFromName(item.test);
             const canPrint = (role === 'ADMIN' || role === 'STAFF');
             const printBtns = canPrint ? `<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success); padding: 4px;" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri); padding: 4px;" title="Download PDF"><i class="ph ph-download-simple"></i></button>` : '';
+            const smsRepeatBtn = `<button class="btn-icon" id="btn-sms-repeat-${safeId}" onclick="sendRepeatCollectionSms('${item.id}')" style="color:var(--pri); padding: 4px;" title="Ipadala / I-queue ang Repeat Collection SMS"><i class="ph ph-chat-teardrop-dots" style="font-size: 1.15rem;"></i></button>`;
             const moveBtn = `<button class="btn btn-secondary text-xs" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:600; padding:3px 8px; display:inline-flex; align-items:center; gap:4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1rem;"></i> Move to Pending</button>`;
             const deleteBtn = `<button class="btn-icon" id="btn-del-repeat-${safeId}" onclick="deleteRepeatRequest('${item.id}')" style="color:var(--danger); padding: 4px;" title="Delete Repeat Request"><i class="ph ph-trash" style="font-size: 1.15rem;"></i></button>`;
-            const resSummary = (tCodePrint === 'NAAT' && (d.ResultCode === 'T' || d.Result)) ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:2px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'}</div>` : '';
-            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div>${resSummary}</div><div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">${printBtns}${moveBtn}${deleteBtn}</div></div>`;
+            const isGxInitial = tCodePrint === 'GXP' || String(d.Repeat || d["Test Type"] || "").toUpperCase().includes('INITIAL');
+            const resSummary = (tCodePrint === 'NAAT' && (d.ResultCode === 'T' || d.Result)) 
+                ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:2px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'}</div>` 
+                : (isGxInitial ? `<div style="font-size:0.68rem; color:var(--warning); font-weight:600; margin-top:2px;">⚠️ FOR REPEAT COLLECTION (INITIAL)</div>` : '');
+            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div>${resSummary}</div><div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">${printBtns}${smsRepeatBtn}${moveBtn}${deleteBtn}</div></div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if (cRep) cRep.innerText = `(${fRepeat.length})`;
         const mwnRep = document.getElementById('mwn-badge-repeat'); if (mwnRep) mwnRep.innerText = fRepeat.length;
@@ -3369,7 +3373,7 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
                     let smsMessage = "";
                     if (isRepeat) {
-                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen sa Angono MHO Lab.`;
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText ? locationText : 'sa Angono MHO Lab'}.`;
                     } else if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
                     } else {
@@ -3749,7 +3753,7 @@ window.syncResultsToQueueByDate = async function (customDate) {
         // Fetch up to 300 tests ordered by date_examined desc so target dates are captured regardless of created_at
         const { data: rawTests, error } = await sb.from('lab_tests')
             .select('*')
-            .in('status', ['ENCODED', 'COMPLETED'])
+            .in('status', ['ENCODED', 'COMPLETED', 'FOR REPEAT'])
             .order('date_examined', { ascending: false, nullsFirst: false })
             .limit(300);
 
@@ -3801,6 +3805,8 @@ window.syncResultsToQueueByDate = async function (customDate) {
 
             const dObj = typeof t.details === 'string' ? JSON.parse(t.details) : (t.details || {});
             const resCode = String(dObj.ResultCode || dObj.resultCode || dObj.Result || "").toUpperCase().trim();
+            const rptTag = String(dObj.Repeat || dObj["Test Type"] || "").toUpperCase().trim();
+            const isRepeat = (t.status === 'FOR REPEAT') || rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
 
             // NAAT must be negative ('N')
             if (tCode === 'NAAT') {
@@ -3812,6 +3818,11 @@ window.syncResultsToQueueByDate = async function (customDate) {
             if (tCode === 'DSSM') {
                 const dssmDiag = String(dObj.Diagnosis || dObj.diagnosis || resCode || "").toUpperCase();
                 if (dssmDiag.includes('POS')) continue;
+            }
+
+            // If test is FOR REPEAT, only queue SMS for GeneXpert (GXP) na INITIAL / repeat collection
+            if (t.status === 'FOR REPEAT' && tCode !== 'GXP') {
+                continue;
             }
 
             // Get patient info
@@ -3832,9 +3843,14 @@ window.syncResultsToQueueByDate = async function (customDate) {
                 : (pt.facility ? `sa ${window.formatFacilityLocationName(pt.facility)}` : "sa health center ng inyong barangay");
 
             let displayTest = tCode === 'GXP' ? 'GeneXpert' : (tCode === 'NAAT' ? 'NPOC-NAAT' : (tCode === 'GXVL' ? 'Viral Load' : (tCode === 'GRAM' ? 'Gram Stain' : 'DSSM')));
-            let smsMessage = (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT')
-                ? `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`
-                : `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ${locationText}.`;
+            let smsMessage = "";
+            if (isRepeat) {
+                smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText ? locationText : 'sa Angono MHO Lab'}.`;
+            } else if (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT') {
+                smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
+            } else {
+                smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ${locationText}.`;
+            }
 
             if (existingSet.has(`${phone}:::${smsMessage}`)) {
                 skippedCount++;
@@ -3959,6 +3975,88 @@ window.deleteRepeatRequest = function (id) {
         } catch (e) {
             console.error("Delete repeat entry error:", e);
             showAppAlert("Error", "Hindi nabura ang entry: " + (e.message || e), "error");
+        }
+    });
+};
+
+window.sendRepeatCollectionSms = async function (testId) {
+    const item = (window.pendingData || []).find(i => String(i.id) === String(testId)) || (window.completedData || []).find(i => String(i.id) === String(testId));
+    if (!item) return showAppAlert("Error", "Record not found.", "error");
+
+    let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
+    let tCodePrint = getTestCodeFromName(item.test);
+    let displayTest = tCodePrint === 'GXP' ? 'GeneXpert' : (tCodePrint === 'NAAT' ? 'NPOC-NAAT' : item.test);
+
+    // Fetch patient contact and facility
+    let contact = d.contact || d.Contact || "";
+    let fac = d.facility || d.Facility || item.facility || "";
+    let fullName = item.name || "";
+
+    if (!contact && item.patientId) {
+        try {
+            const { data: pt } = await sb.from('patients').select('contact, facility, full_name').eq('id', item.patientId).maybeSingle();
+            if (pt) {
+                if (pt.contact) contact = pt.contact;
+                if (!fac && pt.facility) fac = pt.facility;
+                if (pt.full_name) fullName = pt.full_name;
+            }
+        } catch (e) { }
+    }
+
+    let phone = String(contact || "").replace(/[^0-9]/g, '');
+    if (phone.startsWith('09')) phone = '63' + phone.substring(1);
+    if (phone.length < 10) {
+        return showAppAlert("Walang Contact Number", `Walang nakitang valid na contact number para kay ${fullName}. Pakilagyan muna ng contact sa patient record.`, "warning");
+    }
+
+    let firstName = fullName.includes(',') ? fullName.split(',')[1].trim().split(' ')[0] : fullName.trim().split(' ')[0];
+    let locationText = fac ? `sa ${window.formatFacilityLocationName(fac)}` : "sa Angono MHO Lab";
+    let defaultMsg = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText}.`;
+
+    customConfirm(`Nais mo bang ipadala ang Repeat Collection SMS para kay ${fullName} (${phone})?\n\nMensahe:\n"${defaultMsg}"`, async () => {
+        const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
+        const btn = document.getElementById('btn-sms-repeat-' + safeId);
+        if (btn) btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
+        try {
+            const smsSchedule = localStorage.getItem('cfg_sms_schedule') || 'tomorrow';
+            if (smsSchedule === 'realtime') {
+                const philsmsToken = getCleanPhilSmsToken();
+                const res = await fetch("https://dashboard.philsms.com/api/v3/sms/send", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${philsmsToken}`, "Content-Type": "application/json", "Accept": "application/json" },
+                    body: JSON.stringify({ recipient: phone, sender_id: "PhilSMS", type: "plain", message: defaultMsg })
+                }).then(r => r.json());
+
+                if (res.status === 'error' || res.message === 'Unauthenticated.') {
+                    showAppAlert("SMS Failed", res.message || "Failed to authenticate with PhilSMS.", "error");
+                } else {
+                    showAppAlert("SMS Naipadala", `Matagumpay na naipadala ang Repeat Collection SMS kay ${fullName}.`, "success");
+                    await apiPost("logAudit", { username: currentUser.fullName || currentUser.username || "Staff", action: "SEND SMS", details: `Sent repeat collection SMS to ${phone} for ${displayTest}` });
+                }
+            } else {
+                // Queue to pending_sms
+                let targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + 1);
+                targetDate.setHours(9, 0, 0, 0);
+                while (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
+                    targetDate.setDate(targetDate.getDate() + 1);
+                }
+                const { error: insErr } = await sb.from('pending_sms').insert([{
+                    phone: phone,
+                    message: defaultMsg,
+                    send_at: targetDate.toISOString(),
+                    status: 'pending'
+                }]);
+                if (insErr) throw insErr;
+                showAppAlert("SMS Na-queue", `Naka-queue na ang Repeat Collection SMS para kay ${fullName}. Makikita ito sa Pending SMS tab.`, "success");
+                await apiPost("logAudit", { username: currentUser.fullName || currentUser.username || "Staff", action: "QUEUE SMS", details: `Queued repeat collection SMS to ${phone} for ${displayTest}` });
+                if (typeof checkSmsQueueStatus === 'function') checkSmsQueueStatus();
+            }
+        } catch (err) {
+            console.error("Repeat SMS Error:", err);
+            showAppAlert("Error", "Bigo sa pagproseso ng SMS: " + (err.message || err), "error");
+        } finally {
+            if (btn) btn.innerHTML = '<i class="ph ph-chat-teardrop-dots" style="font-size: 1.15rem;"></i>';
         }
     });
 };
@@ -5303,7 +5401,7 @@ async function batchSaveResults(isPrint) {
         let finalStr = { ...detailsObj, ...newResults, "Prepared By": preparedByName, "Performed By": performerName, date_examined: new Date().toISOString() };
 
         let batchStatus = 'ENCODED';
-        let rptTag = String(detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
+        let rptTag = String(newResults["Repeat"] || newResults["Test Type"] || detailsObj.Repeat || detailsObj["Test Type"] || "").toUpperCase();
         const resCode = String(newResults["ResultCode"] || detailsObj["ResultCode"] || "").trim().toUpperCase();
         const isNAAT = tCodePrint === 'NAAT' || String(item.test || "").toUpperCase().includes('NAAT') || String(item.test || "").toUpperCase().includes('NPOC');
 
@@ -5321,9 +5419,9 @@ async function batchSaveResults(isPrint) {
                 successCount++;
                 if (isPrint) printRequests.push({ testCode: id, testName: tCodePrint });
                 // Send automated Result Ready notification
-                let isBatchRepeat = rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
-                const resCode = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
-                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isBatchRepeat, resCode);
+                let isBatchRepeat = batchStatus === 'FOR REPEAT' || rptTag.includes('INITIAL') || rptTag.includes('REPEAT');
+                const resCodeVal = newResults["ResultCode"] || detailsObj["ResultCode"] || newResults["resultCode"] || detailsObj["resultCode"] || "";
+                notifyPatientResultReady(item.patientId, item.name, item.test, tCodePrint, isBatchRepeat, resCodeVal);
             }
         } catch (e) { }
     }
