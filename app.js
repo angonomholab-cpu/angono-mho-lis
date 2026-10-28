@@ -3161,13 +3161,20 @@ function renderLists() {
             let tCodePrint = getTestCodeFromName(item.test);
             const canPrint = (role === 'ADMIN' || role === 'STAFF');
             const printBtns = canPrint ? `<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success); padding: 4px;" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri); padding: 4px;" title="Download PDF"><i class="ph ph-download-simple"></i></button>` : '';
-            const smsRepeatBtn = `<button class="btn-icon" id="btn-sms-repeat-${safeId}" onclick="sendRepeatCollectionSms('${item.id}')" style="color:var(--pri); padding: 4px;" title="Ipadala / I-queue ang Repeat Collection SMS"><i class="ph ph-chat-teardrop-dots" style="font-size: 1.15rem;"></i></button>`;
+            
+            // Only GeneXpert (GXP) initial tests require repeat collection SMS (NPOC uses the same specimen in the lab)
+            const isGx = (tCodePrint === 'GXP') || String(item.test || "").toUpperCase().includes("GENEXPERT");
+            const isGxInitial = isGx && (String(item.status).toUpperCase() === 'FOR REPEAT' || String(d.Repeat || d["Test Type"] || "").toUpperCase().includes('INITIAL'));
+            const smsRepeatBtn = isGxInitial 
+                ? `<button class="btn-icon" id="btn-sms-repeat-${safeId}" onclick="sendRepeatCollectionSms('${item.id}')" style="color:var(--pri); padding: 4px;" title="Ipadala ang Repeat Collection SMS"><i class="ph ph-chat-teardrop-dots" style="font-size: 1.15rem;"></i></button>` 
+                : '';
+
             const moveBtn = `<button class="btn btn-secondary text-xs" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:600; padding:3px 8px; display:inline-flex; align-items:center; gap:4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1rem;"></i> Move to Pending</button>`;
             const deleteBtn = `<button class="btn-icon" id="btn-del-repeat-${safeId}" onclick="deleteRepeatRequest('${item.id}')" style="color:var(--danger); padding: 4px;" title="Delete Repeat Request"><i class="ph ph-trash" style="font-size: 1.15rem;"></i></button>`;
-            const isGxInitial = tCodePrint === 'GXP' || String(d.Repeat || d["Test Type"] || "").toUpperCase().includes('INITIAL');
+            
             const resSummary = (tCodePrint === 'NAAT' && (d.ResultCode === 'T' || d.Result)) 
-                ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:2px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'}</div>` 
-                : (isGxInitial ? `<div style="font-size:0.68rem; color:var(--warning); font-weight:600; margin-top:2px;">⚠️ FOR REPEAT COLLECTION (INITIAL)</div>` : '');
+                ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:2px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'} <span style="font-size:0.65rem; color:var(--text-muted); font-weight:normal;">• Same specimen for GX (no SMS needed)</span></div>` 
+                : (isGxInitial ? `<div style="font-size:0.68rem; color:var(--warning); font-weight:600; margin-top:2px;">⚠️ FOR REPEAT COLLECTION (INITIAL) • Magpasa ng bagong plema sa lab</div>` : '');
             return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div>${resSummary}</div><div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">${printBtns}${smsRepeatBtn}${moveBtn}${deleteBtn}</div></div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if (cRep) cRep.innerText = `(${fRepeat.length})`;
@@ -3373,7 +3380,12 @@ async function notifyPatientResultReady(patientId, patientName, testName, testCo
 
                     let smsMessage = "";
                     if (isRepeat) {
-                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText ? locationText : 'sa Angono MHO Lab'}.`;
+                        // Strictly only send repeat collection SMS for GeneXpert (NPOC-NAAT uses same specimen in lab)
+                        if (testCode !== 'GXP') {
+                            console.log("Repeat collection SMS skipped: only applicable for GeneXpert initial.");
+                            return;
+                        }
+                        smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong plema para sa GeneXpert. Magpasa po uli ng plema sa Angono MHO Laboratory.`;
                     } else if (testCode === 'GXP' || testCode === 'DSSM' || testCode === 'NAAT') {
                         smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
                     } else {
@@ -3845,7 +3857,9 @@ window.syncResultsToQueueByDate = async function (customDate) {
             let displayTest = tCode === 'GXP' ? 'GeneXpert' : (tCode === 'NAAT' ? 'NPOC-NAAT' : (tCode === 'GXVL' ? 'Viral Load' : (tCode === 'GRAM' ? 'Gram Stain' : 'DSSM')));
             let smsMessage = "";
             if (isRepeat) {
-                smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText ? locationText : 'sa Angono MHO Lab'}.`;
+                // Strictly only for GeneXpert (NPOC uses same specimen in lab)
+                if (tCode !== 'GXP') continue;
+                smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong plema para sa GeneXpert. Magpasa po uli ng plema sa Angono MHO Laboratory.`;
             } else if (tCode === 'GXP' || tCode === 'DSSM' || tCode === 'NAAT') {
                 smsMessage = `Angono MHO Lab Notice: Hi ${firstName}, handa na ang result niyo para sa ${displayTest}. Pwede itong kunin ng 1:00 PM ${locationText}.`;
             } else {
@@ -3983,9 +3997,13 @@ window.sendRepeatCollectionSms = async function (testId) {
     const item = (window.pendingData || []).find(i => String(i.id) === String(testId)) || (window.completedData || []).find(i => String(i.id) === String(testId));
     if (!item) return showAppAlert("Error", "Record not found.", "error");
 
-    let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
     let tCodePrint = getTestCodeFromName(item.test);
-    let displayTest = tCodePrint === 'GXP' ? 'GeneXpert' : (tCodePrint === 'NAAT' ? 'NPOC-NAAT' : item.test);
+    const isGx = (tCodePrint === 'GXP') || String(item.test || "").toUpperCase().includes("GENEXPERT");
+    if (!isGx) {
+        return showAppAlert("Hindi Kailangan ng SMS", "Para sa NPOC-NAAT, parehong specimen na nasa laboratory ang gagamitin sa GeneXpert. Hindi kailangang mag-text o magpasa uli ng specimen ang pasyente.", "info");
+    }
+
+    let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
 
     // Fetch patient contact and facility
     let contact = d.contact || d.Contact || "";
@@ -4010,8 +4028,7 @@ window.sendRepeatCollectionSms = async function (testId) {
     }
 
     let firstName = fullName.includes(',') ? fullName.split(',')[1].trim().split(' ')[0] : fullName.trim().split(' ')[0];
-    let locationText = fac ? `sa ${window.formatFacilityLocationName(fac)}` : "sa Angono MHO Lab";
-    let defaultMsg = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong specimen para sa ${displayTest}. Magpasa uli ng specimen ${locationText}.`;
+    let defaultMsg = `Angono MHO Lab Notice: Hi ${firstName}, kailangan po ng repeat collection ng inyong plema para sa GeneXpert. Magpasa po uli ng plema sa Angono MHO Laboratory.`;
 
     customConfirm(`Nais mo bang ipadala ang Repeat Collection SMS para kay ${fullName} (${phone})?\n\nMensahe:\n"${defaultMsg}"`, async () => {
         const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
