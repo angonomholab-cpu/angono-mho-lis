@@ -92,6 +92,15 @@
         };
     </script>
     <style>
+        #p_age {
+            -moz-appearance: textfield;
+        }
+        #p_age::-webkit-outer-spin-button,
+        #p_age::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
         .switch-row {
             display: flex;
             justify-content: space-between;
@@ -569,7 +578,7 @@
                                             <div id="direct-results-box" class="search-results-container"></div>
                                         </div>
                                         <div style="display:flex; gap:8px;">
-                                            <div class="field-group" style="flex:2;"><label
+                                            <div class="field-group" style="flex:1; min-width:0;"><label
                                                     class="field-label">Birthday</label><input type="date" id="p_bday"
                                                     class="form-input"
                                                     oninput="calculateAge(); generateSmartID();"
@@ -577,13 +586,17 @@
                                                     onblur="calculateAge(); generateSmartID();"
                                                     onkeyup="calculateAge(); generateSmartID();">
                                             </div>
-                                            <div class="field-group" style="flex:1;"><label
-                                                    class="field-label">Age</label><input type="number" id="p_age"
+                                            <div class="field-group" style="flex:0 0 88px; min-width:88px;"><label
+                                                    class="field-label" style="text-align:center;">Age</label><input type="number" id="p_age"
                                                     class="form-input"
+                                                    placeholder="Age"
+                                                    min="0"
+                                                    max="130"
+                                                    style="padding: 10px 8px; text-align: center; font-weight: 600; font-size: 0.9rem;"
                                                     oninput="calculateBdayFromAge();"
                                                     onchange="calculateBdayFromAge();"
                                                     onblur="calculateBdayFromAge();"></div>
-                                            <div class="field-group" style="flex:2;"><label class="field-label">Request
+                                            <div class="field-group" style="flex:1; min-width:0;"><label class="field-label">Request
                                                     Date</label><input type="date" id="p_req_date" class="form-input"
                                                     title="Change this for late entries"
                                                     oninput="calculateAge();"
@@ -2741,7 +2754,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=64"></script>
+    <script src="app.js?v=65"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);
