@@ -736,6 +736,7 @@
                                     </div>
                                     <div id="completed-sms-quick-actions" style="display:none; gap:6px; align-items:center;">
                                         <button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px;" onclick="checkSmsQueueStatus()" title="Refresh Queue"><i class="ph ph-arrows-clockwise"></i></button>
+                                        <button type="button" class="btn btn-secondary text-xs" style="padding:4px 8px; color:var(--text-muted);" onclick="clearOldSentSMS(true)" title="Linisin ang mga lumang sent SMS (lampas 1 linggo)"><i class="ph ph-trash"></i> Clear Sent</button>
                                         <button type="button" class="btn btn-primary text-xs" style="padding:4px 10px;" onclick="sendDueOrAllPendingSMS(true)" title="Ipadala na agad lahat ng nakapilang SMS ngayon"><i class="ph ph-paper-plane-right"></i> Send All</button>
                                     </div>
                                 </div>
@@ -2101,6 +2102,7 @@
                                     </label>
                                     <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-secondary text-xs" style="flex:1; min-width:80px; padding:4px 8px;" onclick="checkSmsQueueStatus()"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+                                        <button type="button" class="btn btn-secondary text-xs" style="flex:1; min-width:90px; padding:4px 8px; color:var(--text-muted);" onclick="clearOldSentSMS(true)" title="Linisin ang mga lumang sent SMS na lampas 1 linggo"><i class="ph ph-trash"></i> Clear Sent</button>
                                         <button type="button" class="btn btn-secondary text-xs" style="flex:1; min-width:110px; padding:4px 8px;" onclick="sendDueOrAllPendingSMS(false)" title="Ipadala lamang ang mga due na text para sa oras na ito"><i class="ph ph-clock"></i> Send Due Now</button>
                                         <button type="button" class="btn btn-primary text-xs" style="flex:1; min-width:120px; padding:4px 8px;" onclick="sendDueOrAllPendingSMS(true)" title="Ipadala na agad lahat ng nakapilang SMS ngayon kahit bukas pa ang schedule"><i class="ph ph-paper-plane-right"></i> Send All Now</button>
                                     </div>
@@ -2739,7 +2741,7 @@
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
     </script>
-    <script src="app.js?v=62"></script>
+    <script src="app.js?v=63"></script>
     <script>
         function togglePass(id, icon) {
             const el = document.getElementById(id);

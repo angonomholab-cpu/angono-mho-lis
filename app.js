@@ -342,6 +342,80 @@ window.saveEditSmsMessage = async function (btn, id) {
     }
 };
 
+window.autoCleanupOldSentSms = async function () {
+    try {
+        const lastCleanup = localStorage.getItem('last_sms_sent_cleanup_date');
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (lastCleanup === todayStr) return; // Only run automatic cleanup once a day
+
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 7);
+        const cutoffIso = cutoff.toISOString();
+
+        // Delete sent messages whose send_at is older than 7 days
+        const { error, count } = await sb.from('pending_sms')
+            .delete({ count: 'exact' })
+            .eq('status', 'sent')
+            .lt('send_at', cutoffIso);
+
+        if (!error) {
+            localStorage.setItem('last_sms_sent_cleanup_date', todayStr);
+            if (count > 0) {
+                console.log(`[autoCleanupOldSentSms] Inalis ang ${count} lumang sent SMS (>7 days).`);
+            }
+        }
+    } catch (e) {
+        console.warn("[autoCleanupOldSentSms] Failed:", e);
+    }
+};
+
+window.clearOldSentSMS = async function (showPrompt = true) {
+    try {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 7);
+        const cutoffIso = cutoff.toISOString();
+
+        // Check how many sent messages older than 7 days exist
+        const { data: oldItems, error: countErr } = await sb.from('pending_sms')
+            .select('id')
+            .eq('status', 'sent')
+            .lt('send_at', cutoffIso);
+
+        if (countErr) throw countErr;
+
+        const count = oldItems ? oldItems.length : 0;
+        if (count === 0) {
+            if (showPrompt) showAppAlert("Walang Lumang Sent SMS", "Walang nahanap na sent SMS na lampas 1 linggo (7 araw).", "info");
+            return;
+        }
+
+        if (showPrompt) {
+            if (!confirm(`Nais mo bang burahin ang ${count} na sent SMS na lampas 1 linggo (7 araw) na sa sistema?`)) {
+                return;
+            }
+        }
+
+        const { error: delErr } = await sb.from('pending_sms')
+            .delete()
+            .eq('status', 'sent')
+            .lt('send_at', cutoffIso);
+
+        if (delErr) throw delErr;
+
+        if (showPrompt) {
+            showAppAlert("Nalinis na", `Matagumpay na nabura ang ${count} lumang sent SMS.`, "success");
+        }
+        if (typeof checkSmsQueueStatus === 'function') {
+            await checkSmsQueueStatus();
+        }
+    } catch (e) {
+        console.error("clearOldSentSMS error:", e);
+        if (showPrompt) {
+            showAppAlert("Error", e.message || "Failed to clear old sent SMS.", "error");
+        }
+    }
+};
+
 window.checkSmsQueueStatus = async function () {
     const queueEl = document.getElementById('sms-queue-count');
     const listEl = document.getElementById('sms-queue-list');
@@ -349,6 +423,9 @@ window.checkSmsQueueStatus = async function () {
     const completedSmsBadge = document.getElementById('count-completed-sms');
 
     try {
+        if (typeof window.autoCleanupOldSentSms === 'function') {
+            await window.autoCleanupOldSentSms();
+        }
         if (queueEl) queueEl.innerText = "Checking...";
         // Fetch up to 200 items ordered by send_at descending so recent and active items are always at top
         const { data: queueItems, error } = await sb.from('pending_sms')
@@ -538,9 +615,16 @@ window.checkSmsQueueStatus = async function () {
                         Sent (${sentCount})
                     </button>
                 </div>
-                <span style="font-size:0.7rem; color:var(--text-muted);">
-                    ${pendingCount > 0 ? `<strong style="color:var(--warning);">${pendingCount} nakapilang ipadala</strong>` : 'Walang nakapilang text'}
-                </span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    ${sentCount > 0 ? `
+                        <button type="button" class="btn btn-secondary text-xs" style="padding:2px 8px; font-size:0.68rem; color:var(--text-muted);" onclick="clearOldSentSMS(true)" title="Linisin ang mga lumang sent SMS na lampas 1 linggo na">
+                            <i class="ph ph-trash"></i> Linisin Sent (>7d)
+                        </button>
+                    ` : ''}
+                    <span style="font-size:0.7rem; color:var(--text-muted);">
+                        ${pendingCount > 0 ? `<strong style="color:var(--warning);">${pendingCount} nakapilang ipadala</strong>` : 'Walang nakapilang text'}
+                    </span>
+                </div>
             </div>
             ` + cardsHtml;
         }
