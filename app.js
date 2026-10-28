@@ -3242,6 +3242,8 @@ function renderLists() {
             const safeId = String(item.id || "").replace(/[^a-zA-Z0-9]/g, "");
             let d = typeof item.details === 'string' ? JSON.parse(item.details) : (item.details || {});
             let fac = d.facility || d.Facility || "N/A";
+            let subTxt = (d.Age || d.Sex) ? `(${d.Age || '?'}/${d.Sex || '?'})` : "";
+            const displaySerial = item.testCode || item.id || "";
             let tCodePrint = getTestCodeFromName(item.test);
             const canPrint = (role === 'ADMIN' || role === 'STAFF');
             const printBtns = canPrint ? `<button class="btn-icon" onclick="printDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--success); padding: 4px;" title="Print"><i class="ph ph-printer"></i></button><button class="btn-icon" onclick="downloadDirect(event, '${item.id}', '${tCodePrint}')" style="color: var(--pri); padding: 4px;" title="Download PDF"><i class="ph ph-download-simple"></i></button>` : '';
@@ -3253,13 +3255,31 @@ function renderLists() {
                 ? `<button class="btn-icon" id="btn-sms-repeat-${safeId}" onclick="sendRepeatCollectionSms('${item.id}')" style="color:var(--pri); padding: 4px;" title="Ipadala ang Repeat Collection SMS"><i class="ph ph-chat-teardrop-dots" style="font-size: 1.15rem;"></i></button>` 
                 : '';
 
-            const moveBtn = `<button class="btn btn-secondary text-xs" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:600; padding:3px 8px; display:inline-flex; align-items:center; gap:4px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1rem;"></i> Move to Pending</button>`;
+            const moveBtn = `<button class="btn btn-secondary text-xs" id="btn-repeat-${safeId}" style="border-color:var(--warning); color:var(--warning); font-weight:600; padding:4px 10px; display:inline-flex; align-items:center; gap:5px;" onclick="moveToPendingRepeat('${item.id}')" title="Move to Pending"><i class="ph ph-arrow-circle-left" style="font-size: 1rem;"></i> Move to Pending</button>`;
             const deleteBtn = `<button class="btn-icon" id="btn-del-repeat-${safeId}" onclick="deleteRepeatRequest('${item.id}')" style="color:var(--danger); padding: 4px;" title="Delete Repeat Request"><i class="ph ph-trash" style="font-size: 1.15rem;"></i></button>`;
             
             const resSummary = (tCodePrint === 'NAAT' && (d.ResultCode === 'T' || d.Result)) 
-                ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:2px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'} <span style="font-size:0.65rem; color:var(--text-muted); font-weight:normal;">• Same specimen for GX (no SMS needed)</span></div>` 
-                : (isGxInitial ? `<div style="font-size:0.68rem; color:var(--warning); font-weight:600; margin-top:2px;">⚠️ FOR REPEAT COLLECTION (INITIAL) • Magpasa ng bagong plema sa lab</div>` : '');
-            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div style="flex: 1; overflow: hidden;"><div class="pc-name" style="color: var(--warning); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div><div class="pc-meta" style="font-size: 0.7rem; color: var(--text-muted);">${fac} | ${item.test}</div>${resSummary}</div><div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">${printBtns}${smsRepeatBtn}${moveBtn}${deleteBtn}</div></div>`;
+                ? `<div style="font-size:0.68rem; color:var(--danger); font-weight:600; margin-top:4px;">${d.Result || 'MTB DETECTED. (FOR LC-NAAT TESTING)'} <span style="font-size:0.65rem; color:var(--text-muted); font-weight:normal;">• Same specimen for GX (no SMS needed)</span></div>` 
+                : (isGxInitial ? `<div style="font-size:0.68rem; color:var(--warning); font-weight:600; margin-top:4px;">⚠️ FOR REPEAT COLLECTION (INITIAL) • Magpasa ng bagong plema sa lab</div>` : '');
+
+            return `<div class="pending-card" style="border-left: 3px solid var(--warning); padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                        <div class="pc-name" style="color: var(--warning); font-size: 0.88rem; font-weight: 700; line-height: 1.35; word-break: break-word;">${item.name} ${subTxt ? `<span style="color:var(--text-muted); font-size:0.72rem; font-weight:normal;">${subTxt}</span>` : ''}</div>
+                        ${displaySerial ? `<span style="background:var(--bg-subtle); color:var(--text-muted); padding:1px 5px; border-radius:3px; font-family:monospace; font-size:0.68rem; border:1px solid var(--border-color); flex-shrink: 0;">${displaySerial}</span>` : ''}
+                    </div>
+                    <div class="pc-meta" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                        <span><i class="ph ph-hospital" style="opacity:0.7;"></i> ${fac}</span>
+                        <span>•</span>
+                        <span style="font-weight: 600; color: var(--text-main);">${item.test}</span>
+                    </div>
+                    ${resSummary}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--border-color); gap: 6px; flex-wrap: wrap;">
+                    <div>${moveBtn}</div>
+                    <div style="display: flex; gap: 6px; align-items: center;">${smsRepeatBtn}${printBtns}${deleteBtn}</div>
+                </div>
+            </div>`;
         }).join('');
         const cRep = document.getElementById('count-repeat'); if (cRep) cRep.innerText = `(${fRepeat.length})`;
         const mwnRep = document.getElementById('mwn-badge-repeat'); if (mwnRep) mwnRep.innerText = fRepeat.length;
